@@ -507,14 +507,14 @@
     <div class="container">
         <div class="header">
             <h1 class="page-title">Фиксация поломок</h1>
-            <p class="page-description">Введите номер велосипеда и выберите поврежденные детали</p>
+            <p class="page-description">Введи номер велосипеда и выбери его поврежденные детали</p>
         </div>
 
         <div class="input-section">
             <label class="input-label">Номер велосипеда</label>
             <div class="input-wrapper">
                 <input type="text" class="bike-input" id="bike-number" placeholder="20000-29030" maxlength="5">
-                <button class="validate-btn" id="validate-btn">Проверить</button>
+                <button class="validate-btn" id="validate-btn">Ввести</button>
             </div>
             <div class="error-message" id="number-error">Номер должен быть от 20000 до 29030</div>
         </div>
@@ -1066,13 +1066,13 @@
             if (!validateBikeNumber(bikeNumber)) {
                 numberError.style.display = 'block';
                 document.getElementById('bike-number').style.borderColor = '#ff4444';
-                showNotification('Введите корректный номер велосипеда (20000-29030)');
+                showNotification('Введи корректный номер велосипеда (20000-29030)');
                 return;
             }
             
             // Проверяем, что есть поломки
             if (selectedDamages.length === 0) {
-                showNotification('Выберите хотя бы одну поломку');
+                showNotification('Выбери хотя бы одну поломку...');
                 return;
             }
             
