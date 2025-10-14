@@ -1,6 +1,6 @@
 <svg width="585" height="446" viewBox="-30 -30 645 506" fill="none" xmlns="http://www.w3.org/2000/svg">
 
-<g transform="translate(30, 30)" clip-path="url(#clip0_586_2)">
+<g transform="translate(30, 30)">
 
  <!-- Заднее колесо -->
 <g id="rear-wheel" class="bike-part">
@@ -216,9 +216,4 @@
 </g>
 
 </g>
-<defs>
-<clipPath id="clip0_586_2">
-<rect width="525" height="386" fill="white"/>
-</clipPath>
-</defs>
 </svg>
