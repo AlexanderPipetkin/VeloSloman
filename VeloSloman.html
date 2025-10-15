@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Фиксация поломок велосипедов</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
     <style>
         :root {
             --primary-bg: #000;
@@ -694,6 +695,58 @@
             width: 20px;
             height: 20px;
         }
+
+        .qr-btn {
+            width: 50px;
+            height: 50px;
+            border: var(--border-width) solid var(--border-color);
+            border-radius: var(--border-radius);
+            background: transparent;
+            color: var(--primary-text);
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .qr-btn:active {
+            transform: scale(0.98);
+        }
+
+        .qr-btn svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .scanner-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+        }
+
+        .scanner-frame {
+            width: 250px;
+            height: 250px;
+            border: 2px solid #00ff00;
+            border-radius: 12px;
+            box-shadow: 0 0 0 10000px rgba(0, 0, 0, 0.7);
+        }
+
+        #qr-scanner-container {
+            display: none;
+        }
+
+        #qr-scanner-container.active {
+            display: flex;
+        }
     </style>
 </head>
 <body>
@@ -707,6 +760,18 @@
             <label class="input-label">Номер велосипеда</label>
             <div class="input-wrapper">
                 <input type="text" class="bike-input" id="bike-number" placeholder="20000-29030" maxlength="5" inputmode="numeric" pattern="[0-9]*">
+                <button class="qr-btn" id="scan-qr-btn" title="Сканировать QR-код">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7"/>
+                        <rect x="14" y="3" width="7" height="7"/>
+                        <rect x="14" y="14" width="7" height="7"/>
+                        <rect x="3" y="14" width="7" height="7"/>
+                        <path d="M10 3v4a1 1 0 0 1-1 1H3"/>
+                        <path d="M14 21v-4a1 1 0 0 1 1-1h6"/>
+                        <path d="M21 14h-4a1 1 0 0 1-1-1V3"/>
+                        <path d="M3 10h4a1 1 0 0 1 1 1v10"/>
+                    </svg>
+                </button>
             </div>
             <div class="error-message" id="number-error">Номер должен быть от 20000 до 29030</div>
         </div>
@@ -768,6 +833,17 @@
         </div>
     </div>
 
+            <div class="camera-container" id="qr-scanner-container">
+            <video id="qr-scanner-video" class="camera-video" autoplay playsinline></video>
+            <div class="scanner-overlay">
+                <div class="scanner-frame"></div>
+            </div>
+            <div class="camera-controls">
+                <button class="camera-btn" id="cancel-qr-scan-btn">Отмена</button>
+            </div>
+        </div>
+
+
     <!-- Модальное окно подтверждения -->
     <div class="modal" id="confirmation-modal">
         <div class="modal-content">
@@ -778,7 +854,7 @@
         </div>
     </div>
 
-    <!-- Уведомление -->
+    <!-- Уведомление -->я
     <div class="notification" id="notification"></div>
 
     <script>
@@ -790,6 +866,8 @@
         let currentPhoto = null;
         let userLocation = null;
         let userData = null;
+        let qrScannerStream = null;
+        let qrScanInterval = null;
 
         // Инициализация Telegram Web App
         function initTelegramWebApp() {
@@ -802,6 +880,124 @@
                 if (telegramWebApp.initDataUnsafe.user) {
                     userData = telegramWebApp.initDataUnsafe.user;
                     console.log('Данные пользователя:', userData);
+                }
+            }
+        }
+
+        function initQRScanner() {
+            const scanQrBtn = document.getElementById('scan-qr-btn');
+            const qrScannerContainer = document.getElementById('qr-scanner-container');
+            const qrScannerVideo = document.getElementById('qr-scanner-video');
+            const cancelQrScanBtn = document.getElementById('cancel-qr-scan-btn');
+            
+            scanQrBtn.addEventListener('click', startQRScan);
+            cancelQrScanBtn.addEventListener('click', stopQRScan);
+            
+            async function startQRScan() {
+                try {
+                    showNotification('Наведите камеру на QR-код');
+                    
+                    qrScannerStream = await navigator.mediaDevices.getUserMedia({ 
+                        video: { 
+                            facingMode: 'environment',
+                            width: { ideal: 1280 },
+                            height: { ideal: 720 }
+                        },
+                        audio: false
+                    });
+                    
+                    qrScannerVideo.srcObject = qrScannerStream;
+                    qrScannerContainer.classList.add('active');
+                    
+                    qrScannerVideo.onloadedmetadata = () => {
+                        qrScannerVideo.play();
+                        startQRDetection();
+                    };
+                    
+                } catch (error) {
+                    console.error('Ошибка доступа к камере:', error);
+                    showNotification('Не удалось получить доступ к камере');
+                }
+            }
+            
+            function stopQRScan() {
+                if (qrScanInterval) {
+                    clearInterval(qrScanInterval);
+                    qrScanInterval = null;
+                }
+                
+                if (qrScannerStream) {
+                    qrScannerStream.getTracks().forEach(track => track.stop());
+                    qrScannerStream = null;
+                }
+                
+                qrScannerContainer.classList.remove('active');
+            }
+            
+            function startQRDetection() {
+                qrScanInterval = setInterval(() => {
+                    if (qrScannerVideo.readyState === qrScannerVideo.HAVE_ENOUGH_DATA) {
+                        try {
+                            // Создаем canvas для анализа кадра
+                            const canvas = document.createElement('canvas');
+                            const context = canvas.getContext('2d');
+                            
+                            // Устанавливаем размеры canvas под видео
+                            canvas.width = qrScannerVideo.videoWidth;
+                            canvas.height = qrScannerVideo.videoHeight;
+                            
+                            // Рисуем текущий кадр видео на canvas
+                            context.drawImage(qrScannerVideo, 0, 0, canvas.width, canvas.height);
+                            
+                            // Получаем ImageData для анализа
+                            const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+                            
+                            // Сканируем QR-код с помощью jsQR
+                            const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                                inversionAttempts: "dontInvert",
+                            });
+                            
+                            // Если QR-код найден
+                            if (code) {
+                                console.log('Найден QR-код:', code.data);
+                                processQRCode(code.data);
+                            }
+                            
+                        } catch (error) {
+                            console.error('Ошибка анализа QR-кода:', error);
+                        }
+                    }
+                }, 500); // Проверяем каждые 500ms
+            }
+            
+            function processQRCode(qrData) {
+                console.log('Распознан QR-код:', qrData);
+                
+                // Парсим номер из URL формата "https://velobike.ru/shorturl/omni/{номер}"
+                const match = qrData.match(/https:\/\/velobike\.ru\/shorturl\/omni\/(\d+)/);
+                
+                if (match && match[1]) {
+                    const bikeNumber = match[1];
+                    
+                    // Проверяем номер на валидность
+                    if (validateBikeNumber(bikeNumber)) {
+                        // Устанавливаем номер в поле ввода
+                        document.getElementById('bike-number').value = bikeNumber;
+                        currentBikeNumber = bikeNumber;
+                        
+                        // Обновляем интерфейс
+                        document.getElementById('number-error').style.display = 'none';
+                        document.getElementById('bike-number').style.borderColor = '';
+                        updateSubmitButton();
+                        
+                        showNotification(`Номер велосипеда ${bikeNumber} распознан`);
+                        stopQRScan();
+                    } else {
+                        showNotification(`QR-код распознан, но номер ${bikeNumber} невалиден`);
+                    }
+                } else {
+                    showNotification('QR-код не содержит номер велосипеда');
+                    console.log('Неверный формат QR-кода:', qrData);
                 }
             }
         }
@@ -1537,6 +1733,7 @@
             
             loadDamageData();
             loadBikeSVG();
+            initQRScanner(); 
             
             // Инициализация камеры
             initCamera();
