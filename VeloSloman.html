@@ -706,8 +706,7 @@
         <div class="input-section">
             <label class="input-label">Номер велосипеда</label>
             <div class="input-wrapper">
-                <input type="text" class="bike-input" id="bike-number" placeholder="20000-29030" maxlength="5">
-                <button class="validate-btn" id="validate-btn">Ввести</button>
+                <input type="text" class="bike-input" id="bike-number" placeholder="20000-29030" maxlength="5" inputmode="numeric" pattern="[0-9]*">
             </div>
             <div class="error-message" id="number-error">Номер должен быть от 20000 до 29030</div>
         </div>
@@ -1164,10 +1163,28 @@
             submitBtn.disabled = !(hasValidBikeNumber && hasDamages);
         }
 
-        // Валидация номера велосипеда
         function validateBikeNumber(number) {
             const num = parseInt(number);
             return !isNaN(num) && num >= 20000 && num <= 29030;
+        }
+
+        // Функция валидации номера
+        function validateBikeNumberInput() {
+            const bikeNumberInput = document.getElementById('bike-number');
+            const number = bikeNumberInput.value.trim();
+            const numberError = document.getElementById('number-error');
+            
+            if (validateBikeNumber(number)) {
+                currentBikeNumber = number;
+                numberError.style.display = 'none';
+                bikeNumberInput.style.borderColor = '';
+                showNotification(`Номер велосипеда ${number} принят`);
+                updateSubmitButton();
+            } else {
+                numberError.style.display = 'block';
+                bikeNumberInput.style.borderColor = '#ff4444';
+                showNotification('Введи корректный номер велосипеда (20000-29030)');
+            }
         }
 
         // Показать уведомление
@@ -1514,45 +1531,54 @@
 
         // Инициализация при загрузке страницы
         document.addEventListener('DOMContentLoaded', function() {
-            // Инициализация Telegram Web App
             initTelegramWebApp();
             
-            // Загрузка данных о поломках
-            loadDamageData();
+            setTimeout(centerBikeSVG, 200);
             
-            // Загрузка SVG велосипеда
+            loadDamageData();
             loadBikeSVG();
             
             // Инициализация камеры
             initCamera();
             
-            // Обработчик ввода номера велосипеда
-            const bikeInput = document.getElementById('bike-number');
-            const validateBtn = document.getElementById('validate-btn');
-            const numberError = document.getElementById('number-error');
+            // Обработчики для ввода номера велосипеда
+            const bikeNumberInput = document.getElementById('bike-number');
             
-            validateBtn.addEventListener('click', function() {
-                const number = bikeInput.value.trim();
+            bikeNumberInput.addEventListener('input', function(e) {
+                // Оставляем только цифры
+                this.value = this.value.replace(/\D/g, '');
                 
-                if (validateBikeNumber(number)) {
-                    currentBikeNumber = number;
-                    numberError.style.display = 'none';
-                    showNotification(`Номер велосипеда ${number} принят`);
-                    updateSubmitButton();
-                } else {
-                    numberError.style.display = 'block';
-                    showNotification('Некорректный номер велосипеда');
+                // Если введено 5 цифр - валидируем
+                if (this.value.length === 5) {
+                    validateBikeNumberInput();
                 }
             });
             
-            bikeInput.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    validateBtn.click();
+            bikeNumberInput.addEventListener('blur', function() {
+                // Валидируем при уходе из поля (если что-то введено)
+                if (this.value.length > 0) {
+                    validateBikeNumberInput();
                 }
             });
             
             // Обработчик отправки заявки
             document.getElementById('submit-btn').addEventListener('click', sendReportToTelegram);
+            
+            // Обработчики модального окна
+            document.getElementById('modal-close').addEventListener('click', function() {
+                hideModal(document.getElementById('confirmation-modal'));
+            });
+            
+            document.getElementById('modal-ok-btn').addEventListener('click', function() {
+                hideModal(document.getElementById('confirmation-modal'));
+            });
+            
+            // Закрытие модального окна при клике вне его
+            document.getElementById('confirmation-modal').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    hideModal(this);
+                }
+            });
             
             // Центрирование SVG после загрузки
             setTimeout(() => {
