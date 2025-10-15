@@ -1163,19 +1163,21 @@
 
         // Работа с камерой
         function initCamera() {
+            const cameraContainer = document.getElementById('camera-container');
+            const video = document.getElementById('camera-video');
             const takePhotoBtn = document.getElementById('take-photo-btn');
             const uploadPhotoBtn = document.getElementById('upload-photo-btn');
             const removePhotoBtn = document.getElementById('remove-photo-btn');
+            const captureBtn = document.getElementById('capture-btn');
+            const cancelCameraBtn = document.getElementById('cancel-camera-btn');
             const photoPreview = document.getElementById('photo-preview');
             
-            // Сделать фото - сразу захватываем кадр
+            let stream = null;
+            
+            // Открытие камеры
             takePhotoBtn.addEventListener('click', async () => {
                 try {
-                    // Показываем уведомление о начале съемки
-                    showNotification('Подготовка камеры...');
-                    
-                    // Запрашиваем доступ к камере и сразу делаем снимок
-                    const stream = await navigator.mediaDevices.getUserMedia({ 
+                    stream = await navigator.mediaDevices.getUserMedia({ 
                         video: { 
                             facingMode: 'environment',
                             width: { ideal: 1280 },
@@ -1184,52 +1186,23 @@
                         audio: false
                     });
                     
-                    // Создаем видео элемент в памяти (не показываем пользователю)
-                    const video = document.createElement('video');
                     video.srcObject = stream;
-                    video.autoplay = true;
-                    video.playsinline = true;
+                    cameraContainer.classList.add('active');
                     
-                    // Ждем пока видео готово
-                    await new Promise((resolve) => {
-                        video.onloadedmetadata = () => {
-                            video.play();
-                            resolve();
-                        };
-                    });
-                    
-                    // Даем камере немного времени для фокусировки
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                    
-                    // Создаем canvas и делаем снимок
-                    const canvas = document.createElement('canvas');
-                    canvas.width = video.videoWidth;
-                    canvas.height = video.videoHeight;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                    
-                    // Сохраняем фото
-                    currentPhoto = canvas.toDataURL('image/jpeg', 0.8);
-                    
-                    // Останавливаем камеру
-                    stream.getTracks().forEach(track => track.stop());
-                    
-                    // Обновляем превью
-                    updatePhotoPreview();
-                    
-                    showNotification('Фото сделано!');
+                    // Ждем пока видео загрузится
+                    video.onloadedmetadata = () => {
+                        video.play();
+                    };
                     
                 } catch (error) {
-                    console.error('Ошибка камеры:', error);
+                    console.error('Ошибка доступа к камере:', error);
+                    showNotification('Не удалось получить доступ к камере');
                     
-                    // Если камера недоступна, используем системный диалог как запасной вариант
+                    // Запасной вариант - системная камера
                     const input = document.createElement('input');
                     input.type = 'file';
                     input.accept = 'image/*';
-                    if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-                        input.setAttribute('capture', 'environment');
-                    }
-                    
+                    input.capture = 'environment';
                     input.onchange = (e) => {
                         const file = e.target.files[0];
                         if (file) {
@@ -1273,6 +1246,40 @@
                 showNotification('Фото удалено');
             });
             
+            // Сделать снимок
+            captureBtn.addEventListener('click', () => {
+                if (!stream) return;
+                
+                try {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    
+                    currentPhoto = canvas.toDataURL('image/jpeg', 0.8);
+                    updatePhotoPreview();
+                    
+                    closeCamera();
+                    showNotification('Фото сделано!');
+                    
+                } catch (error) {
+                    console.error('Ошибка при съемке фото:', error);
+                    showNotification('Ошибка при съемке фото');
+                }
+            });
+            
+            // Отмена съемки
+            cancelCameraBtn.addEventListener('click', closeCamera);
+            
+            function closeCamera() {
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                    stream = null;
+                }
+                cameraContainer.classList.remove('active');
+            }
+            
             // Функция обновления превью фото
             function updatePhotoPreview() {
                 if (currentPhoto) {
@@ -1285,6 +1292,13 @@
                     removePhotoBtn.style.display = 'none';
                 }
             }
+            
+            // Обработчики ошибок видео
+            video.addEventListener('error', (e) => {
+                console.error('Ошибка видео:', e);
+                showNotification('Ошибка загрузки видео');
+                closeCamera();
+            });
         }
 
         // Отправка заявки в Telegram
