@@ -834,7 +834,7 @@
         </div>
     </div>
 
-    <!-- Уведомление -->я
+    <!-- Уведомление -->
     <div class="notification" id="notification"></div>
 
     <script>
@@ -965,10 +965,7 @@
             }
             
             function processQRCode(qrData) {
-                console.log('🔍 Обработка QR-кода:', qrData);
-                
-                // ДЕБАГ: Показываем все что распозналось
-                showNotification(`Распознано: ${qrData.substring(0, 50)}${qrData.length > 50 ? '...' : ''}`);
+                console.log('Обработка QR-кода:', qrData);
                 
                 // Парсим номер из URL формата "https://velobike.ru/shorturl/omni/{номер}"
                 const match = qrData.match(/https:\/\/velobike\.ru\/shorturl\/omni\/\{?(\d+)\}?/);
