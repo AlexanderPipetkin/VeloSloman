@@ -752,28 +752,7 @@
             } catch (error) {
                 console.error('Ошибка загрузки данных о поломках:', error);
                 // Fallback данные на случай ошибки
-                damageData = {
-                    "rear-wheel": ["Прокол колеса", "Восьмерка на колесе", "Износ покрышки"],
-                    "front-wheel": ["Прокол колеса", "Восьмерка на колесе", "Износ покрышки"],
-                    "motor": ["Не работает мотор", "Шумит при работе", "Не включается"],
-                    "rear-ad-sign": ["Отслоение пленки", "Трещина", "Отвалился"],
-                    "front-ad-sign": ["Отслоение пленки", "Трещина", "Отвалился"],
-                    "lock": ["Не открывается", "Заедает ключ", "Расшатался"],
-                    "frame": ["Трещина на раме", "Сколы краски", "Деформация"],
-                    "chain": ["Порвана цепь", "Износ звеньев", "Ржавчина"],
-                    "battery": ["Не заряжается", "Быстро разряжается", "Поврежден корпус"],
-                    "footboard": ["Расшаталась", "Трещина", "Отвалилась"],
-                    "saddle": ["Порвано сиденье", "Расшатано", "Регулировка не работает"],
-                    "handlebars": ["Люфт руля", "Погнуто", "Регулировка не работает"],
-                    "pedals": ["Не крутятся", "Люфтят", "Отвалились"],
-                    "chain-guard": ["Трещина", "Отвалилась", "Деформация"],
-                    "light-marker": ["Не горит", "Трещина", "Отвалился"],
-                    "retroreflector": ["Отвалился", "Потертости", "Трещина"],
-                    "gearshift": ["Не переключает", "Люфт", "Заедает"],
-                    "basket": ["Трещина", "Отвалилась", "Деформация"],
-                    "cable-block": ["Порван трос", "Заедает", "Люфт"],
-                    "front-light": ["Не горит", "Трещина на стекле", "Отвалился"]
-                };
+                damageData = {};
             }
         }
 
@@ -1185,85 +1164,125 @@
 
         // Работа с камерой
         function initCamera() {
-            const cameraContainer = document.getElementById('camera-container');
-            const video = document.getElementById('camera-video');
-            const takePhotoBtn = document.getElementById('take-photo-btn');
-            const uploadPhotoBtn = document.getElementById('upload-photo-btn');
-            const removePhotoBtn = document.getElementById('remove-photo-btn');
-            const captureBtn = document.getElementById('capture-btn');
-            const cancelCameraBtn = document.getElementById('cancel-camera-btn');
-            const photoPreview = document.getElementById('photo-preview');
-            
-            let stream = null;
-            
-            // Открытие камеры
-            takePhotoBtn.addEventListener('click', async () => {
-                try {
-                    stream = await navigator.mediaDevices.getUserMedia({ 
-                        video: { 
-                            facingMode: 'environment',
-                            width: { ideal: 1920 },
-                            height: { ideal: 1080 }
-                        } 
-                    });
-                    video.srcObject = stream;
-                    cameraContainer.classList.add('active');
-                } catch (error) {
-                    console.error('Ошибка доступа к камере:', error);
-                    showNotification('Не удалось получить доступ к камере');
-                }
-            });
-            
-            // Загрузка фото из галереи
-            uploadPhotoBtn.addEventListener('click', () => {
-                const input = document.createElement('input');
-                input.type = 'file';
-                input.accept = 'image/*';
-                input.onchange = (e) => {
-                    const file = e.target.files[0];
-                    if (file) {
-                        const reader = new FileReader();
-                        reader.onload = (event) => {
-                            currentPhoto = event.target.result;
-                            updatePhotoPreview();
-                        };
-                        reader.readAsDataURL(file);
-                    }
+        const cameraContainer = document.getElementById('camera-container');
+        const video = document.getElementById('camera-video');
+        const takePhotoBtn = document.getElementById('take-photo-btn');
+        const uploadPhotoBtn = document.getElementById('upload-photo-btn');
+        const removePhotoBtn = document.getElementById('remove-photo-btn');
+        const captureBtn = document.getElementById('capture-btn');
+        const cancelCameraBtn = document.getElementById('cancel-camera-btn');
+        const photoPreview = document.getElementById('photo-preview');
+        
+        let stream = null;
+        
+        // Открытие камеры
+        takePhotoBtn.addEventListener('click', async () => {
+            try {
+                // Запрашиваем доступ к камере
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        facingMode: 'environment',
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    },
+                    audio: false
+                });
+                
+                video.srcObject = stream;
+                cameraContainer.classList.add('active');
+                
+                // Ждем пока видео загрузится
+                video.onloadedmetadata = () => {
+                    video.play();
                 };
-                input.click();
-            });
+                
+            } catch (error) {
+                console.error('Ошибка доступа к камере:', error);
+                showNotification('Не удалось получить доступ к камере');
+            }
+        });
+        
+        // Загрузка фото из галереи
+        uploadPhotoBtn.addEventListener('click', () => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        currentPhoto = event.target.result;
+                        updatePhotoPreview();
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+            input.click();
+        });
+        
+        // Удаление фото
+        removePhotoBtn.addEventListener('click', () => {
+            currentPhoto = null;
+            updatePhotoPreview();
+        });
+        
+        // Сделать снимок
+        captureBtn.addEventListener('click', () => {
+            if (!stream) return;
             
-            // Удаление фото
-            removePhotoBtn.addEventListener('click', () => {
-                currentPhoto = null;
-                updatePhotoPreview();
-            });
-            
-            // Сделать снимок
-            captureBtn.addEventListener('click', () => {
+            try {
+                // Создаем canvas для захвата кадра
                 const canvas = document.createElement('canvas');
                 canvas.width = video.videoWidth;
                 canvas.height = video.videoHeight;
                 const ctx = canvas.getContext('2d');
-                ctx.drawImage(video, 0, 0);
                 
+                // Рисуем текущий кадр видео на canvas
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                // Конвертируем в base64
                 currentPhoto = canvas.toDataURL('image/jpeg', 0.8);
+                
+                // Обновляем превью
                 updatePhotoPreview();
                 
+                // Закрываем камеру
                 closeCamera();
-            });
-            
-            // Отмена съемки
-            cancelCameraBtn.addEventListener('click', closeCamera);
-            
-            function closeCamera() {
-                if (stream) {
-                    stream.getTracks().forEach(track => track.stop());
-                    stream = null;
-                }
-                cameraContainer.classList.remove('active');
+                
+                showNotification('Фото сделано!');
+                
+            } catch (error) {
+                console.error('Ошибка при съемке фото:', error);
+                showNotification('Ошибка при съемке фото');
+            }
+        });
+        
+        // Отмена съемки
+        cancelCameraBtn.addEventListener('click', closeCamera);
+        
+        function closeCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+            cameraContainer.classList.remove('active');
+        }
+        
+        // Функция обновления превью фото
+        function updatePhotoPreview() {
+            if (currentPhoto) {
+                photoPreview.src = currentPhoto;
+                photoPreview.classList.add('show');
+                removePhotoBtn.style.display = 'block';
+            } else {
+                photoPreview.src = '';
+                photoPreview.classList.remove('show');
+                removePhotoBtn.style.display = 'none';
             }
         }
+    }
+
 
         // Отправка заявки в Telegram
         async function sendReportToTelegram() {
@@ -1461,4 +1480,3 @@
     </script>
 </body>
 </html>
-
