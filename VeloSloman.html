@@ -1163,126 +1163,72 @@
         }
 
         // Работа с камерой
-        function initCamera() {
-        const cameraContainer = document.getElementById('camera-container');
-        const video = document.getElementById('camera-video');
-        const takePhotoBtn = document.getElementById('take-photo-btn');
-        const uploadPhotoBtn = document.getElementById('upload-photo-btn');
-        const removePhotoBtn = document.getElementById('remove-photo-btn');
-        const captureBtn = document.getElementById('capture-btn');
-        const cancelCameraBtn = document.getElementById('cancel-camera-btn');
-        const photoPreview = document.getElementById('photo-preview');
-        
-        let stream = null;
-        
-        // Открытие камеры
-        takePhotoBtn.addEventListener('click', async () => {
-            try {
-                // Запрашиваем доступ к камере
-                stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { 
-                        facingMode: 'environment',
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 }
-                    },
-                    audio: false
-                });
-                
-                video.srcObject = stream;
-                cameraContainer.classList.add('active');
-                
-                // Ждем пока видео загрузится
-                video.onloadedmetadata = () => {
-                    video.play();
+function initCamera() {
+    const takePhotoBtn = document.getElementById('take-photo-btn');
+    const uploadPhotoBtn = document.getElementById('upload-photo-btn');
+    const removePhotoBtn = document.getElementById('remove-photo-btn');
+    const photoPreview = document.getElementById('photo-preview');
+    
+    // Сделать фото через системную камеру
+    takePhotoBtn.addEventListener('click', () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.capture = 'environment'; // Используем заднюю камеру
+        input.onchange = (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    currentPhoto = event.target.result;
+                    updatePhotoPreview();
+                    showNotification('Фото сделано!');
                 };
-                
-            } catch (error) {
-                console.error('Ошибка доступа к камере:', error);
-                showNotification('Не удалось получить доступ к камере');
+                reader.readAsDataURL(file);
             }
-        });
-        
-        // Загрузка фото из галереи
-        uploadPhotoBtn.addEventListener('click', () => {
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.accept = 'image/*';
-            input.onchange = (e) => {
-                const file = e.target.files[0];
-                if (file) {
-                    const reader = new FileReader();
-                    reader.onload = (event) => {
-                        currentPhoto = event.target.result;
-                        updatePhotoPreview();
-                    };
-                    reader.readAsDataURL(file);
-                }
-            };
-            input.click();
-        });
-        
-        // Удаление фото
-        removePhotoBtn.addEventListener('click', () => {
-            currentPhoto = null;
-            updatePhotoPreview();
-        });
-        
-        // Сделать снимок
-        captureBtn.addEventListener('click', () => {
-            if (!stream) return;
-            
-            try {
-                // Создаем canvas для захвата кадра
-                const canvas = document.createElement('canvas');
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                const ctx = canvas.getContext('2d');
-                
-                // Рисуем текущий кадр видео на canvas
-                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                
-                // Конвертируем в base64
-                currentPhoto = canvas.toDataURL('image/jpeg', 0.8);
-                
-                // Обновляем превью
-                updatePhotoPreview();
-                
-                // Закрываем камеру
-                closeCamera();
-                
-                showNotification('Фото сделано!');
-                
-            } catch (error) {
-                console.error('Ошибка при съемке фото:', error);
-                showNotification('Ошибка при съемке фото');
+        };
+        input.click();
+    });
+    
+    // Загрузка фото из галереи
+    uploadPhotoBtn.addEventListener('click', () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.onchange = (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    currentPhoto = event.target.result;
+                    updatePhotoPreview();
+                };
+                reader.readAsDataURL(file);
             }
-        });
-        
-        // Отмена съемки
-        cancelCameraBtn.addEventListener('click', closeCamera);
-        
-        function closeCamera() {
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
-                stream = null;
-            }
-            cameraContainer.classList.remove('active');
-        }
-        
-        // Функция обновления превью фото
-        function updatePhotoPreview() {
-            if (currentPhoto) {
-                photoPreview.src = currentPhoto;
-                photoPreview.classList.add('show');
-                removePhotoBtn.style.display = 'block';
-            } else {
-                photoPreview.src = '';
-                photoPreview.classList.remove('show');
-                removePhotoBtn.style.display = 'none';
-            }
+        };
+        input.click();
+    });
+    
+    // Удаление фото
+    removePhotoBtn.addEventListener('click', () => {
+        currentPhoto = null;
+        updatePhotoPreview();
+        showNotification('Фото удалено');
+    });
+    
+    // Функция обновления превью фото
+    function updatePhotoPreview() {
+        if (currentPhoto) {
+            photoPreview.src = currentPhoto;
+            photoPreview.classList.add('show');
+            removePhotoBtn.style.display = 'block';
+        } else {
+            photoPreview.src = '';
+            photoPreview.classList.remove('show');
+            removePhotoBtn.style.display = 'none';
         }
     }
-
+}
 
         // Отправка заявки в Telegram
         async function sendReportToTelegram() {
