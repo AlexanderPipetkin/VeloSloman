@@ -727,12 +727,48 @@
         #qr-scanner-container.active {
             display: flex;
         }
+
+        /* Стили для окна с днюхой */
+        .birthday-modal .modal-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            text-align: center;
+        }
+
+        .birthday-text {
+            font-size: 18px;
+            margin-bottom: 15px;
+            line-height: 1.4;
+        }
+
+        .birthday-content {
+            text-align: center;
+        }
+
+        .birthday-emoji {
+            width: 60px;
+            height: 60px;
+            margin: 0 auto 15px;
+            display: block;
+        }
+
+        .telegram-link {
+            color: #ffd700;
+            text-decoration: none;
+            font-weight: bold;
+            display: inline-block;
+            margin-bottom: 15px;
+        }
+
+        .telegram-link:hover {
+            text-decoration: underline;
+        }
+        
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1 class="page-title">Фиксация поломок 🥳</h1>
+            <h1 class="page-title">Фиксация поломок</h1>
             <p class="page-description">Введи номер велосипеда и выбери его поврежденные детали</p>
         </div>
 
@@ -834,6 +870,22 @@
         </div>
     </div>
 
+    <!-- Модальное окно дня рождения -->
+    <div class="modal birthday-modal" id="birthday-modal">
+        <div class="modal-content">
+            <div class="birthday-content">
+                <img src="media/birthday.png" alt="🥳" class="birthday-emoji">
+                <h2 class="modal-title">Лёха, с днюхой!</h2>
+                <p class="birthday-text">
+                    У админа сегодня день рождения!<br>
+                    Ты тоже можешь его поздравить :)<br>
+                </p>
+                <a href="https://t.me/tartaletka_evgenevna" class="telegram-link" target="_blank">@tartaletka_evgenevna</a>
+            </div>
+            <button class="modal-btn" id="birthday-ok-btn">Хорошо</button>
+        </div>
+    </div>
+
     <!-- Уведомление -->
     <div class="notification" id="notification"></div>
 
@@ -861,6 +913,30 @@
                     userData = telegramWebApp.initDataUnsafe.user;
                     console.log('Данные пользователя:', userData);
                 }
+            }
+        }
+
+        function showBirthdayModal() {
+            const today = new Date();
+            const isBirthday = today.getDate() === 17 && today.getMonth() === 9;
+            
+            if (isBirthday) {
+                setTimeout(() => {
+                    const modal = document.getElementById('birthday-modal');
+                    modal.classList.add('active');
+                    
+                    // Обработчики закрытия модального окна
+                    document.getElementById('birthday-ok-btn').addEventListener('click', function() {
+                        modal.classList.remove('active');
+                    });
+                    
+                    // Закрытие при клике вне окна
+                    modal.addEventListener('click', function(e) {
+                        if (e.target === this) {
+                            modal.classList.remove('active');
+                        }
+                    });
+                }, 1000);
             }
         }
 
@@ -1730,7 +1806,9 @@
             loadDamageData();
             loadBikeSVG();
             initQRScanner(); 
-            
+
+            showBirthdayModal();
+
             // Инициализация камеры
             initCamera();
             
@@ -1781,4 +1859,3 @@
     </script>
 </body>
 </html>
-
