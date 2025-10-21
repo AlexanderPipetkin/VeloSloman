@@ -1042,13 +1042,8 @@
     const _a1 = [1618025244, 6310949297];
 
     function initSecurity() {
-        const isDesktopTelegram = window.innerWidth > 768 && 
-                                navigator.userAgent.includes('Telegram') &&
-                                !navigator.userAgent.includes('Mobile');
-        
         document.addEventListener('contextmenu', function(e) {
             e.preventDefault();
-            showNotification('Контекстное меню отключено');
             return false;
         });
         
@@ -1056,26 +1051,47 @@
             if (e.key === 'F12' || 
                 (e.ctrlKey && e.shiftKey && e.key === 'I') || 
                 (e.ctrlKey && e.shiftKey && e.key === 'C') || 
+                (e.ctrlKey && e.shiftKey && e.key === 'P') || 
                 (e.ctrlKey && e.key === 'u') ||
-                (e.ctrlKey && e.key === 's')) {
+                (e.ctrlKey && e.key === 's') ||
+                (e.ctrlKey && e.key === 'p') ||
+                (e.ctrlKey && e.key === 'a') ||
+                (e.metaKey && e.key === 's')) {
                 e.preventDefault();
-                showNotification('Данное действие заблокировано');
                 return false;
             }
         });
         
-        if (!isDesktopTelegram) {
-            let devToolsOpen = false;
-            setInterval(function() {
-                const widthThreshold = window.outerWidth - window.innerWidth > 160;
-                const heightThreshold = window.outerHeight - window.innerHeight > 160;
-                
-                if ((widthThreshold || heightThreshold) && !devToolsOpen) {
-                    devToolsOpen = true;
-                    showNotification('Обнаружено открытие инструментов разработчика');
-                }
-            }, 1000);
-        }
+        let devToolsOpen = false;
+        
+        const isWebTelegram = /Web/.test(navigator.userAgent) && window.Telegram?.WebApp;
+        
+        setInterval(function() {
+            const threshold = isWebTelegram ? 300 : 160;
+            
+            const widthThreshold = window.outerWidth - window.innerWidth > threshold;
+            const heightThreshold = window.outerHeight - window.innerHeight > threshold;
+            
+            const consoleCheck = () => {
+                const start = Date.now();
+                console.log('security_check');
+                return Date.now() - start > 100;
+            };
+            
+            if ((widthThreshold || heightThreshold || consoleCheck()) && !devToolsOpen) {
+                devToolsOpen = true;
+                console.log('🚫 DevTools detected - reloading...');
+                window.location.reload();
+            }
+        }, 1000);
+        
+        const element = new Image();
+        Object.defineProperty(element, 'id', {
+            get: function() {
+                devToolsOpen = true;
+                window.location.reload();
+            }
+        });
     }
 
     console.log = function() {};
