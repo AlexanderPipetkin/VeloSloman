@@ -846,10 +846,131 @@
         .page.active {
             display: block;
         }
+
+        /* Стили для TimeStamp Camera */
+        .timestamp-preview {
+            width: 100%;
+            max-width: 400px;
+            height: 300px;
+            border: var(--border-width) solid var(--border-color);
+            border-radius: var(--border-radius);
+            background: #1a1a1a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .timestamp-preview video,
+        .timestamp-preview canvas,
+        .timestamp-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .timestamp-loading {
+            color: #ccc;
+            font-size: 16px;
+            text-align: center;
+        }
+
+        .timestamp-controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .timestamp-btn {
+            padding: 12px 24px;
+            border: var(--border-width) solid var(--border-color);
+            border-radius: var(--border-radius);
+            background: transparent;
+            color: var(--primary-text);
+            height: 50px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .timestamp-btn.primary {
+            background: var(--primary-text);
+            color: var(--primary-bg);
+        }
+
+        .timestamp-btn:active {
+            transform: scale(0.98);
+        }
+
+        .timestamp-icon-btn {
+            width: 50px;
+            height: 50px;
+            border: var(--border-width) solid var(--border-color);
+            border-radius: var(--border-radius);
+            background: transparent;
+            color: var(--primary-text);
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .timestamp-icon-btn.primary {
+            background: var(--primary-text);
+            color: var(--primary-bg);
+        }
+
+        .timestamp-icon-btn:active {
+            transform: scale(0.98);
+        }
+
+        .timestamp-result {
+            display: none;
+            text-align: center;
+        }
+
+        .timestamp-result.active {
+            display: block;
+        }
+
+        .timestamp-result-controls {
+            display: none;
+            gap: 5px;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .processed-photo {
+            max-width: 100%;
+            max-height: 400px;
+            border-radius: var(--border-radius);
+            margin-bottom: 15px;
+        }
+
+        .controls-transition {
+            transition: all 0.3s ease;
+        }
+
+        @keyframes buttonTransform {
+            0% { transform: scale(1); opacity: 0.95; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .button-transform {
+            animation: buttonTransform 0.3s ease;
+        }
     </style>
 </head>
 <body>
-    <section id="main" class="page active">
+    <section id="main" class="page">
         <div class="container">
             <div class="header">
                 <h1 class="page-title">Главная</h1>
@@ -972,11 +1093,40 @@
         <div class="container">
             <div class="header">
                 <h1 class="page-title">TimeStamp</h1>
-                <p class="page-description">Функционал TimeStamp Camera тут.</p>
+                <p class="page-description">Мгновенная фиксация местоположения и времени</p>
             </div>
-            <div class="under-construction">
-                <h2>Раздел в разработке</h2>
-                <p>Обновление этого раздела планируется совсем скоро...<br>(24.10.2025)</p>
+
+            <div class="timestamp-section">
+                <div class="timestamp-preview" id="timestamp-preview">
+                    <div class="timestamp-loading" id="timestamp-loading">
+                        Получение геопозиции...
+                    </div>
+                    <video id="timestamp-video" style="display: none;" autoplay playsinline></video>
+                    <canvas id="timestamp-canvas" style="display: none;"></canvas>
+                    <img id="processed-photo-preview" class="processed-photo" style="display: none;" src="" alt="Обработанное фото">
+                </div>
+
+                <div class="timestamp-controls" id="timestamp-controls">
+                    <button class="timestamp-btn" id="timestamp-capture-btn" style="display: none;">Сфотографировать</button>
+                    
+                    <div class="timestamp-result-controls" id="timestamp-result-controls" style="display: none;">
+                        <button class="timestamp-btn" id="retake-btn">Переснять</button>
+                        <button class="timestamp-icon-btn primary" id="send-telegram-btn" title="Отправить в Telegram">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                <path xmlns="http://www.w3.org/2000/svg" fill-rule="evenodd" clip-rule="evenodd" d="M24 12C24 18.6274 18.6274 24 12 24C5.37258 24 0 18.6274 0 12C0 5.37258 5.37258 0 12 0C18.6274 0 24 5.37258 24 12ZM12.43 8.85893C11.2629 9.3444 8.93015 10.3492 5.43191 11.8733C4.86385 12.0992 4.56628 12.3202 4.53919 12.5363C4.4934 12.9015 4.95073 13.0453 5.57349 13.2411C5.6582 13.2678 5.74598 13.2954 5.83596 13.3246C6.44866 13.5238 7.27284 13.7568 7.70131 13.766C8.08996 13.7744 8.52375 13.6142 9.00266 13.2853C12.2712 11.079 13.9584 9.96381 14.0643 9.93977C14.1391 9.92281 14.2426 9.90148 14.3128 9.96385C14.3829 10.0262 14.3761 10.1443 14.3686 10.176C14.3233 10.3691 12.5281 12.0381 11.5991 12.9018C11.3095 13.171 11.1041 13.362 11.0621 13.4056C10.968 13.5034 10.8721 13.5958 10.78 13.6846C10.2108 14.2333 9.78393 14.6448 10.8036 15.3168C11.2937 15.6397 11.6858 15.9067 12.077 16.1731C12.5042 16.4641 12.9303 16.7543 13.4816 17.1157C13.6221 17.2078 13.7562 17.3034 13.8869 17.3965C14.3841 17.751 14.8308 18.0694 15.3826 18.0186C15.7033 17.9891 16.0345 17.6876 16.2027 16.7884C16.6002 14.6632 17.3816 10.0585 17.5622 8.16098C17.5781 7.99473 17.5582 7.78197 17.5422 7.68858C17.5262 7.59518 17.4928 7.46211 17.3714 7.3636C17.2276 7.24694 17.0057 7.22234 16.9064 7.22408C16.455 7.23204 15.7626 7.47282 12.43 8.85893Z" fill="#000000"/>
+                            </svg>
+                        </button>
+                        <button class="timestamp-icon-btn primary" id="download-btn" title="Скачать">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="location-info" id="timestamp-location-info">
+                    Ожидание геопозиции...
+                </div>
             </div>
         </div>
     </section>
@@ -999,7 +1149,7 @@
 
     <!-- Нижнее меню -->
     <nav class="bottom-nav">
-        <div class="nav-item active" data-page="main">
+        <div class="nav-item" data-page="main">
             <div class="nav-icon">
                 <img src="media/icons/main.png" alt="Главная">
             </div>
@@ -1037,9 +1187,22 @@
     let qrScannerStream = null;
     let qrScanInterval = null;
 
+    // TimeStamp переменные
+    let timestampStream = null;
+    let timestampCanvas = null;
+    let timestampContext = null;
+    let currentProcessedPhoto = null;
+    let userCoords = null;
+    let userAddress = null;
+
     let securityLogs = [];
     let requestLimits = new Map();
     const _a1 = [1618025244, 6310949297];
+
+    // Константы для TimeStamp
+    const BOT_TOKEN = '8201906085:AAGHwKDDvx_X4oixEU0tov8TBfBompX_ZO4';
+    const ADMIN_CHAT_ID = '-1002981629310';
+    const TIMESTAMP_TOPIC_ID = 22;
 
     function initSecurity() {
         document.addEventListener('contextmenu', function(e) {
@@ -1277,6 +1440,386 @@
                 console.log('Данные пользователя:', userData);
             }
         }
+    }
+
+    // TimeStamp функции
+    async function initTimestampCamera() {
+        timestampCanvas = document.getElementById('timestamp-canvas');
+        timestampContext = timestampCanvas.getContext('2d', { willReadFrequently: true });
+        
+        // Получаем геопозицию при загрузке раздела
+        await getTimestampLocation();
+        
+        // Инициализируем камеру
+        try {
+            timestampStream = await navigator.mediaDevices.getUserMedia({ 
+                video: { 
+                    facingMode: 'environment',
+                    width: { ideal: 1920 },
+                    height: { ideal: 1080 }
+                },
+                audio: false
+            });
+            
+            const video = document.getElementById('timestamp-video');
+            video.srcObject = timestampStream;
+            video.style.display = 'block';
+            
+            video.onloadedmetadata = () => {
+                video.play();
+                document.getElementById('timestamp-loading').style.display = 'none';
+                document.getElementById('timestamp-capture-btn').style.display = 'block';
+            };
+            
+        } catch (error) {
+            console.error('Ошибка доступа к камере:', error);
+            showNotification('Не удалось получить доступ к камере');
+            document.getElementById('timestamp-loading').textContent = 'Ошибка доступа к камере';
+        }
+    }
+
+    async function getTimestampLocation() {
+        try {
+            const position = await new Promise((resolve, reject) => {
+                navigator.geolocation.getCurrentPosition(resolve, reject, {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                });
+            });
+            
+            userCoords = {
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude
+            };
+            
+            // Получаем адрес
+            userAddress = await getAddressFromCoords(userCoords.latitude, userCoords.longitude);
+            
+            document.getElementById('timestamp-location-info').textContent = 
+                `Координаты: ${userCoords.latitude.toFixed(6)}, ${userCoords.longitude.toFixed(6)}`;
+                
+            document.getElementById('timestamp-loading').textContent = 'Камера готова';
+            
+        } catch (error) {
+            console.error('Ошибка получения геолокации:', error);
+            document.getElementById('timestamp-location-info').textContent = 
+                'Не удалось получить геопозицию';
+            document.getElementById('timestamp-loading').textContent = 'Ошибка геопозиции';
+        }
+    }
+
+    async function getAddressFromCoords(lat, lon) {
+        try {
+            const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`);
+            const data = await response.json();
+            
+            if (data && data.address) {
+                const addr = data.address;
+                const components = [];
+                
+                if (addr.road) components.push(addr.road);
+                if (addr.house_number) components.push(addr.house_number);
+                if (addr.suburb) components.push(addr.suburb);
+                if (addr.city) components.push(addr.city);
+                if (addr.town) components.push(addr.town);
+                if (addr.village) components.push(addr.village);
+                if (addr.state) components.push(addr.state);
+                if (addr.country) components.push(addr.country);
+                if (addr.postcode) components.push(addr.postcode);
+                
+                return components.join(', ');
+            }
+        } catch (error) {
+            console.error('Ошибка геокодирования:', error);
+        }
+        
+        return 'Адрес не определен';
+    }
+
+    function captureTimestampPhoto() {
+        const video = document.getElementById('timestamp-video');
+        const canvas = document.getElementById('timestamp-canvas');
+        
+        // Увеличиваем качество фото
+        canvas.width = video.videoWidth * 2;
+        canvas.height = video.videoHeight * 2;
+        
+        // Рисуем с высоким качеством
+        timestampContext.imageSmoothingEnabled = true;
+        timestampContext.imageSmoothingQuality = 'high';
+        timestampContext.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        // Останавливаем камеру
+        if (timestampStream) {
+            timestampStream.getTracks().forEach(track => track.stop());
+        }
+        
+        // Анимация перехода кнопок
+        animateButtonTransition();
+        
+        // Обрабатываем фото
+        processTimestampPhoto();
+    }
+
+    function animateButtonTransition() {
+        const captureBtn = document.getElementById('timestamp-capture-btn');
+        const resultControls = document.getElementById('timestamp-result-controls');
+        
+        // Анимация исчезновения кнопки "Сфотографировать"
+        captureBtn.style.animation = 'buttonTransform 0.3s ease';
+        setTimeout(() => {
+            captureBtn.style.display = 'none';
+            // Показываем кнопки управления
+            resultControls.style.display = 'flex';
+            resultControls.style.animation = 'buttonTransform 0.3s ease';
+        }, 150);
+    }
+
+    async function processTimestampPhoto() {
+        const originalCanvas = document.getElementById('timestamp-canvas');
+        const processedCanvas = document.createElement('canvas');
+        const ctx = processedCanvas.getContext('2d', { willReadFrequently: true });
+        
+        // Сохраняем высокое качество
+        processedCanvas.width = originalCanvas.width;
+        processedCanvas.height = originalCanvas.height;
+        
+        // Настройки качества
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.textRendering = 'optimizeLegibility';
+        
+        // Рисуем оригинальное фото
+        ctx.drawImage(originalCanvas, 0, 0, processedCanvas.width, processedCanvas.height);
+        
+        // Добавляем карту (левый верхний угол)
+        await addMapToPhoto(ctx, processedCanvas.width, processedCanvas.height);
+        
+        // Добавляем логотип (правый верхний угол)
+        await addLogoToPhoto(ctx, processedCanvas.width, processedCanvas.height);
+        
+        // Добавляем текст (внизу)
+        addTextToPhoto(ctx, processedCanvas.width, processedCanvas.height);
+        
+        // Сохраняем обработанное фото с высоким качеством
+        currentProcessedPhoto = processedCanvas.toDataURL('image/jpeg', 0.95);
+        
+        // Показываем обработанное фото в превью
+        const previewImg = document.getElementById('processed-photo-preview');
+        previewImg.src = currentProcessedPhoto;
+        previewImg.style.display = 'block';
+        
+        // Скрываем видео и канвас
+        document.getElementById('timestamp-video').style.display = 'none';
+        document.getElementById('timestamp-canvas').style.display = 'none';
+        
+        showNotification('Фото обработано!');
+    }
+
+    async function addMapToPhoto(ctx, width, height) {
+        if (!userCoords) return;
+        
+        try {
+            // Создаем карту с Яндекс.Карт БЕЗ встроенной метки
+            const mapSize = Math.min(width * 0.25, height * 0.25);
+            const mapX = 30;
+            const mapY = 30;
+            
+            // Убрали параметр pt (метку Яндекс)
+            const mapUrl = `https://static-maps.yandex.ru/1.x/?ll=${userCoords.longitude},${userCoords.latitude}&z=16&size=${Math.round(mapSize)},${Math.round(mapSize)}&l=map`;
+            
+            const mapResponse = await fetch(mapUrl);
+            const mapBlob = await mapResponse.blob();
+            const mapImg = await createImageBitmap(mapBlob);
+            
+            // Рисуем карту с закругленными углами
+            const cornerRadius = 15;
+            ctx.save();
+            ctx.beginPath();
+            ctx.roundRect(mapX, mapY, mapSize, mapSize, cornerRadius);
+            ctx.clip();
+            ctx.drawImage(mapImg, mapX, mapY, mapSize, mapSize);
+            ctx.restore();
+            
+            // Добавляем нашу метку поверх карты (увеличили размер)
+            const markerImg = new Image();
+            markerImg.src = 'media/metka.png';
+            await new Promise(resolve => {
+                markerImg.onload = resolve;
+            });
+            
+            // Увеличили размер метки на 40%
+            const markerSize = mapSize * 0.35;
+            const markerX = mapX + (mapSize - markerSize) / 2;
+            const markerY = mapY + (mapSize - markerSize) / 2 - markerSize * 0.15;
+            
+            ctx.drawImage(markerImg, markerX, markerY, markerSize, markerSize);
+            
+            // Добавляем подпись под картой
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 28px "Moscow Sans"';
+            ctx.textAlign = 'left';
+            ctx.fillText('🚲 Велобайк', mapX, mapY + mapSize + 35);
+            
+        } catch (error) {
+            console.error('Ошибка добавления карты:', error);
+        }
+    }
+
+    async function addLogoToPhoto(ctx, width, height) {
+        try {
+            const logoImg = new Image();
+            logoImg.src = 'media/vblogo.png';
+            await new Promise(resolve => {
+                logoImg.onload = resolve;
+            });
+            
+            // Учитываем пропорции логотипа 807x313
+            const logoAspectRatio = 807 / 313;
+            const logoHeight = Math.min(height * 0.1, 100);
+            const logoWidth = logoHeight * logoAspectRatio;
+            
+            const logoX = width - logoWidth - 30;
+            const logoY = 30;
+            
+            // Рисуем логотип с закругленными углами
+            const cornerRadius = 10;
+            ctx.save();
+            ctx.beginPath();
+            ctx.roundRect(logoX, logoY, logoWidth, logoHeight, cornerRadius);
+            ctx.clip();
+            ctx.drawImage(logoImg, logoX, logoY, logoWidth, logoHeight);
+            ctx.restore();
+            
+        } catch (error) {
+            console.error('Ошибка добавления логотипа:', error);
+        }
+    }
+
+    function addTextToPhoto(ctx, width, height) {
+        if (!userCoords || !userAddress) return;
+        
+        const now = new Date();
+        const timeString = now.toLocaleTimeString('ru-RU');
+        const dateString = now.toLocaleDateString('ru-RU', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+        });
+        
+        const coordString = `${userCoords.latitude.toFixed(6)}, ${userCoords.longitude.toFixed(6)}`;
+        
+        // Настройки текста - увеличенные размеры для лучшего качества
+        ctx.fillStyle = '#00ff00'; // Ярко-зеленый
+        ctx.strokeStyle = '#000000'; // Черная обводка
+        ctx.lineWidth = 4;
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 32px "Moscow Sans"';
+        ctx.textRendering = 'optimizeLegibility';
+        
+        const textX = width / 2;
+        const textY = height - 120;
+        
+        const lines = [
+            `${timeString} — ${dateString}`,
+            coordString,
+            userAddress
+        ];
+        
+        // Рисуем текст с обводкой
+        lines.forEach((line, index) => {
+            const y = textY + (index * 45);
+            
+            // Обводка
+            ctx.strokeText(line, textX, y);
+            // Заливка
+            ctx.fillText(line, textX, y);
+        });
+    }
+
+    async function sendTimestampToTelegram() {
+        if (!currentProcessedPhoto || !userCoords) {
+            showNotification('Ошибка: нет фото или геопозиции');
+            return;
+        }
+        
+        try {
+            // Конвертируем dataURL в blob
+            const response = await fetch(currentProcessedPhoto);
+            const blob = await response.blob();
+            
+            // Формируем подпись
+            const username = userData?.username || 'Неизвестен';
+            const caption = `TimeStamp фоточка от @${username}\n\nПолучены координаты: ${userCoords.latitude.toFixed(6)}, ${userCoords.longitude.toFixed(6)}\nВыдан адрес: ${userAddress}\n\n#timestamp`;
+            
+            // Отправляем в группу (топик 22)
+            const formData = new FormData();
+            formData.append('chat_id', ADMIN_CHAT_ID);
+            formData.append('message_thread_id', TIMESTAMP_TOPIC_ID);
+            formData.append('photo', blob, 'timestamp.jpg');
+            formData.append('caption', caption);
+            
+            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+                method: 'POST',
+                body: formData
+            });
+            
+            // Отправляем пользователю
+            const userFormData = new FormData();
+            userFormData.append('chat_id', userData.id);
+            userFormData.append('photo', blob, 'timestamp.jpg');
+            userFormData.append('caption', 'Ваше TimeStamp фото');
+            
+            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+                method: 'POST',
+                body: userFormData
+            });
+            
+            showNotification('Фото отправлено в Telegram');
+            
+        } catch (error) {
+            console.error('Ошибка отправки в Telegram:', error);
+            showNotification('Ошибка отправки фото');
+        }
+    }
+
+    function downloadTimestampPhoto() {
+        if (!currentProcessedPhoto) {
+            showNotification('Ошибка: нет фото для скачивания');
+            return;
+        }
+        
+        const link = document.createElement('a');
+        link.download = `timestamp_${Date.now()}.jpg`;
+        link.href = currentProcessedPhoto;
+        link.click();
+        
+        showNotification('Фото скачано');
+    }
+
+    function retakeTimestampPhoto() {
+        // Сбрасываем состояние
+        const previewImg = document.getElementById('processed-photo-preview');
+        const video = document.getElementById('timestamp-video');
+        const canvas = document.getElementById('timestamp-canvas');
+        const captureBtn = document.getElementById('timestamp-capture-btn');
+        const resultControls = document.getElementById('timestamp-result-controls');
+        
+        previewImg.style.display = 'none';
+        previewImg.src = '';
+        canvas.style.display = 'none';
+        
+        // Анимация перехода обратно
+        resultControls.style.animation = 'buttonTransform 0.3s ease';
+        setTimeout(() => {
+            resultControls.style.display = 'none';
+            captureBtn.style.display = 'block';
+            captureBtn.style.animation = 'buttonTransform 0.3s ease';
+        }, 150);
+        
+        // Перезапускаем камеру
+        initTimestampCamera();
     }
 
     function initQRScanner() {
@@ -2035,31 +2578,53 @@
         if (navItem) {
             navItem.classList.add('active');
         }
+        
+        // Инициализация TimeStamp камеры при переключении на эту страницу
+        if (pageId === 'timestamp') {
+            initTimestampCamera();
+        }
+    }
+
+    function handleDeepLinks() {
+        if (window.Telegram && window.Telegram.WebApp) {
+            const startParam = Telegram.WebApp.startParam;
+            if (startParam) {
+                switch (startParam) {
+                    case 'main':
+                        switchPage('main');
+                        break;
+                    case 'damage':
+                        switchPage('damage');
+                        break;
+                    case 'timestamp':
+                        switchPage('timestamp');
+                        break;
+                    case 'profile':
+                        switchPage('profile');
+                        break;
+                    default:
+                        switchPage('damage'); // По умолчанию
+                }
+            } else {
+                switchPage('damage'); // По умолчанию
+            }
+        } else {
+            switchPage('damage'); // По умолчанию
+        }
     }
 
     document.addEventListener('DOMContentLoaded', function() {
         initSecurity(); 
 
-        if (!isLegitimateTelegramWebApp()) {
-            document.body.innerHTML = `
-                <div style="text-align: center; padding: 50px; color: white; background: black; height: 100vh;">
-                    <h1>🚫 Доступ запрещён</h1>
-                    <p style="margin-top: 30px;"">Тебе сюда нельзя</p>
-                    <p style="margin-top: 30px;"">Доступ только через мини-апп в телеге</p>
-                    <p style="margin-top: 30px; color: #ccc; font-size: 12px;">
-                        Если вы видишь это сообщение - обратись к админу<br>(или улепётывай отсюда)
-                    </p>
-                </div>
-            `;
-            return;
-        }
+        
         
         logSecurityEvent('APP_STARTED', { 
             version: '0.0.5',
             user: window.Telegram.WebApp.initDataUnsafe.user 
         });
 
-        switchPage('damage');
+        // Обработка глубоких ссылок
+        handleDeepLinks();
 
         initTelegramWebApp();
         
@@ -2110,6 +2675,12 @@
                 switchPage(pageId);
             });
         });
+
+        // TimeStamp обработчики
+        document.getElementById('timestamp-capture-btn').addEventListener('click', captureTimestampPhoto);
+        document.getElementById('retake-btn').addEventListener('click', retakeTimestampPhoto);
+        document.getElementById('send-telegram-btn').addEventListener('click', sendTimestampToTelegram);
+        document.getElementById('download-btn').addEventListener('click', downloadTimestampPhoto);
 
     });
 </script>
