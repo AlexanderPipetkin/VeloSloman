@@ -1062,22 +1062,53 @@
             }
         });
         
-        let devToolsOpen = false;
-        let reloadCount = 0;
-        const maxReloads = 5;
+        const userData = window.Telegram?.WebApp?.initDataUnsafe?.user;
+        const isAuthorized = userData && _a1.includes(userData.id);
         
-        setInterval(function() {
-            const widthThreshold = window.outerWidth - window.innerWidth > 160;
-            const heightThreshold = window.outerHeight - window.innerHeight > 160;
+        console.log('🔐 Security check:', { 
+            hasUserData: !!userData, 
+            userId: userData?.id,
+            isAuthorized 
+        });
+        
+        if (!isAuthorized) {
+            console.log('🚫 Unauthorized access - enabling hard security');
             
-            if ((widthThreshold || heightThreshold) && !devToolsOpen && reloadCount < maxReloads) {
-                devToolsOpen = true;
-                reloadCount++;
+            let devToolsOpen = false;
+            let reloadCount = 0;
+            const maxReloads = 10;
+            
+            setInterval(function() {
+                const widthThreshold = window.outerWidth - window.innerWidth > 160;
+                const heightThreshold = window.outerHeight - window.innerHeight > 160;
                 
-                console.log(`🚫 DevTools detected - reloading (${reloadCount}/${maxReloads})`);
-                window.location.reload();
-            }
-        }, 1000);
+                if ((widthThreshold || heightThreshold) && !devToolsOpen && reloadCount < maxReloads) {
+                    devToolsOpen = true;
+                    reloadCount++;
+                    
+                    logSecurityEvent('UNAUTHORIZED_DEVTOOLS_DETECTED', { 
+                        userId: userData?.id || 'unknown',
+                        reloadCount,
+                        maxReloads
+                    });
+                    
+                    console.log(`🚫 Unauthorized DevTools - reloading (${reloadCount}/${maxReloads})`);
+                    window.location.reload();
+                }
+            }, 1000);
+            
+            const element = new Image();
+            Object.defineProperty(element, 'id', {
+                get: function() {
+                    console.log('🚫 Unauthorized console access detected');
+                    window.location.reload();
+                }
+            });
+            console.log('%c', element);
+            
+        } else {
+            console.log('✅ Authorized user - relaxed security mode');
+        }
     }
 
     console.log = function() {};
