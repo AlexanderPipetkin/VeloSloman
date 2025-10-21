@@ -38,7 +38,7 @@
             background-color: var(--primary-bg);
             color: var(--primary-text);
             min-height: 100vh;
-            padding: 20px 12px 80px; /* Увеличить нижний отступ для навигации */
+            padding: 20px 12px 80px;
         }
 
         .container {
@@ -1063,35 +1063,21 @@
         });
         
         let devToolsOpen = false;
-        
-        const isWebTelegram = /Web/.test(navigator.userAgent) && window.Telegram?.WebApp;
+        let reloadCount = 0;
+        const maxReloads = 5;
         
         setInterval(function() {
-            const threshold = isWebTelegram ? 300 : 160;
+            const widthThreshold = window.outerWidth - window.innerWidth > 160;
+            const heightThreshold = window.outerHeight - window.innerHeight > 160;
             
-            const widthThreshold = window.outerWidth - window.innerWidth > threshold;
-            const heightThreshold = window.outerHeight - window.innerHeight > threshold;
-            
-            const consoleCheck = () => {
-                const start = Date.now();
-                console.log('security_check');
-                return Date.now() - start > 100;
-            };
-            
-            if ((widthThreshold || heightThreshold || consoleCheck()) && !devToolsOpen) {
+            if ((widthThreshold || heightThreshold) && !devToolsOpen && reloadCount < maxReloads) {
                 devToolsOpen = true;
-                console.log('🚫 DevTools detected - reloading...');
+                reloadCount++;
+                
+                console.log(`🚫 DevTools detected - reloading (${reloadCount}/${maxReloads})`);
                 window.location.reload();
             }
         }, 1000);
-        
-        const element = new Image();
-        Object.defineProperty(element, 'id', {
-            get: function() {
-                devToolsOpen = true;
-                window.location.reload();
-            }
-        });
     }
 
     console.log = function() {};
@@ -1902,15 +1888,15 @@
             }
             
             const _b2 = '8201906085:AAGHwKDDvx_X4oixEU0tov8TBfBompX_ZO4';
-            const _d4 = '-1002981629310'; // chatId
-            const _e5 = 11; // messageThreadId
+            const _d4 = '-1002981629310';
+            const _e5 = 11;
             
             if (currentPhoto) {
                 const response = await fetch(currentPhoto);
                 const blob = await response.blob();
                 
                 const formData = new FormData();
-                formData.append('chat_id', _d4); // Исправлено на _d4
+                formData.append('chat_id', _d4);
                 formData.append('message_thread_id', _e5);
                 formData.append('photo', blob, 'damage_photo.jpg');
                 formData.append('caption', messageText);
@@ -1932,7 +1918,7 @@
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        chat_id: _d4, // Исправлено на _d4
+                        chat_id: _d4,
                         message_thread_id: _e5,
                         text: messageText
                     })
@@ -2001,18 +1987,15 @@
     }
 
     function switchPage(pageId) {
-        // Скрыть все страницы
         document.querySelectorAll('.page').forEach(page => {
             page.classList.remove('active');
         });
         
-        // Показать выбранную страницу
         const targetPage = document.getElementById(pageId);
         if (targetPage) {
             targetPage.classList.add('active');
         }
         
-        // Обновить активную кнопку навигации
         document.querySelectorAll('.nav-item').forEach(item => {
             item.classList.remove('active');
         });
