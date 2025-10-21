@@ -960,7 +960,8 @@
         }
 
         @keyframes buttonTransform {
-            0% { transform: scale(1); opacity: 0.95; }
+            0% { transform: scale(1); opacity: 1; }
+            50% { opacity: 0.5; }
             100% { transform: scale(1); opacity: 1; }
         }
 
@@ -1194,7 +1195,6 @@
     let currentProcessedPhoto = null;
     let userCoords = null;
     let userAddress = null;
-    let lastTelegramSend = 0;
 
     let securityLogs = [];
     let requestLimits = new Map();
@@ -1451,13 +1451,13 @@
         // Получаем геопозицию при загрузке раздела
         await getTimestampLocation();
         
-        // Инициализируем камеру с правильными настройками для вертикального режима
+        // Инициализируем камеру
         try {
             timestampStream = await navigator.mediaDevices.getUserMedia({ 
                 video: { 
                     facingMode: 'environment',
-                    // Убираем жесткие размеры, позволяем браузеру выбрать оптимальные
-                    aspectRatio: { ideal: 4/3 }
+                    width: { ideal: 1920 },
+                    height: { ideal: 1080 }
                 },
                 audio: false
             });
@@ -1542,11 +1542,11 @@
         const video = document.getElementById('timestamp-video');
         const canvas = document.getElementById('timestamp-canvas');
         
-        // Используем реальные размеры видео для правильного соотношения сторон
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
+        // Увеличиваем качество фото
+        canvas.width = video.videoWidth * 2;
+        canvas.height = video.videoHeight * 2;
         
-        // Рисуем с реальными размерами
+        // Рисуем с высоким качеством
         timestampContext.imageSmoothingEnabled = true;
         timestampContext.imageSmoothingQuality = 'high';
         timestampContext.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -1582,31 +1582,36 @@
         const processedCanvas = document.createElement('canvas');
         const ctx = processedCanvas.getContext('2d', { willReadFrequently: true });
         
-        // Сохраняем оригинальные размеры для качества
+        // Сохраняем высокое качество
         processedCanvas.width = originalCanvas.width;
         processedCanvas.height = originalCanvas.height;
         
-        // Восстанавливаем настройки качества
+        // Настройки качества
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
         ctx.textRendering = 'optimizeLegibility';
         
-        // Рисуем оригинальное фото в полном качестве
+        // Рисуем оригинальное фото
         ctx.drawImage(originalCanvas, 0, 0, processedCanvas.width, processedCanvas.height);
         
-        // Добавляем элементы
+        // Добавляем карту (левый верхний угол)
         await addMapToPhoto(ctx, processedCanvas.width, processedCanvas.height);
+        
+        // Добавляем логотип (правый верхний угол)
         await addLogoToPhoto(ctx, processedCanvas.width, processedCanvas.height);
+        
+        // Добавляем текст (внизу)
         addTextToPhoto(ctx, processedCanvas.width, processedCanvas.height);
         
-        // Сохраняем в высоком качестве
-        currentProcessedPhoto = processedCanvas.toDataURL('image/jpeg', 0.92);
+        // Сохраняем обработанное фото с высоким качеством
+        currentProcessedPhoto = processedCanvas.toDataURL('image/jpeg', 0.95);
         
-        // Показываем результат
+        // Показываем обработанное фото в превью
         const previewImg = document.getElementById('processed-photo-preview');
         previewImg.src = currentProcessedPhoto;
         previewImg.style.display = 'block';
         
+        // Скрываем видео и канвас
         document.getElementById('timestamp-video').style.display = 'none';
         document.getElementById('timestamp-canvas').style.display = 'none';
         
@@ -1617,9 +1622,10 @@
         if (!userCoords) return;
         
         try {
-            const mapSize = Math.min(width * 0.35, height * 0.35);
-            const mapX = 20;
-            const mapY = 20;
+            // Создаем карту с Яндекс.Карт
+            const mapSize = Math.min(width * 0.25, height * 0.25);
+            const mapX = 30;
+            const mapY = 30;
             
             const mapUrl = `https://static-maps.yandex.ru/1.x/?ll=${userCoords.longitude},${userCoords.latitude}&z=16&size=${Math.round(mapSize)},${Math.round(mapSize)}&l=map`;
             
@@ -1627,7 +1633,7 @@
             const mapBlob = await mapResponse.blob();
             const mapImg = await createImageBitmap(mapBlob);
             
-            // Рисуем карту
+            // Рисуем карту с закругленными углами
             const cornerRadius = 15;
             ctx.save();
             ctx.beginPath();
@@ -1636,30 +1642,24 @@
             ctx.drawImage(mapImg, mapX, mapY, mapSize, mapSize);
             ctx.restore();
             
-            // Добавляем нашу метку
+            // Добавляем метку поверх карты
             const markerImg = new Image();
             markerImg.src = 'media/metka.png';
             await new Promise(resolve => {
                 markerImg.onload = resolve;
             });
             
-            const markerSize = mapSize * 0.5;
-            
-            // Центр карты
-            const mapCenterX = mapX + mapSize / 2;
-            const mapCenterY = mapY + mapSize / 2;
-            
-            // Позиционируем метку так, чтобы ее НИЗ (стрелочка) был в центре карты
-            const markerX = mapCenterX - markerSize / 2;
-            const markerY = mapCenterY - markerSize; // Смещаем вверх на полную высоту метки
+            const markerSize = mapSize * 0.25;
+            const markerX = mapX + (mapSize - markerSize) / 2;
+            const markerY = mapY + (mapSize - markerSize) / 2 - markerSize * 0.15;
             
             ctx.drawImage(markerImg, markerX, markerY, markerSize, markerSize);
             
-            // Подпись
-            ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 22px "Moscow Sans"';
+            // Добавляем подпись под картой
+            ctx.fillStyle = '#E76623';
+            ctx.font = 'bold 28px "Moscow Sans"';
             ctx.textAlign = 'left';
-            ctx.fillText('🚲 Велобайк', mapX, mapY + mapSize + 30);
+            ctx.fillText('Кто я?', mapX, mapY + mapSize + 35);
             
         } catch (error) {
             console.error('Ошибка добавления карты:', error);
@@ -1703,22 +1703,22 @@
         const timeString = now.toLocaleTimeString('ru-RU');
         const dateString = now.toLocaleDateString('ru-RU', {
             day: 'numeric',
-            month: 'long', 
+            month: 'long',
             year: 'numeric'
         });
         
         const coordString = `${userCoords.latitude.toFixed(6)}, ${userCoords.longitude.toFixed(6)}`;
         
-        // Нормальные размеры текста
-        ctx.fillStyle = '#00ff00';
-        ctx.strokeStyle = '#000000';
-        ctx.lineWidth = 3;
+        // Настройки текста - увеличенные размеры для лучшего качества
+        ctx.fillStyle = '#00ff00'; // Ярко-зеленый
+        ctx.strokeStyle = '#000000'; // Черная обводка
+        ctx.lineWidth = 4;
         ctx.textAlign = 'center';
-        ctx.font = 'bold 20px "Moscow Sans"'; // Уменьшили до нормального размера
+        ctx.font = 'bold 32px "Moscow Sans"';
         ctx.textRendering = 'optimizeLegibility';
         
         const textX = width / 2;
-        const textY = height - 80;
+        const textY = height - 120;
         
         const lines = [
             `${timeString} — ${dateString}`,
@@ -1728,7 +1728,7 @@
         
         // Рисуем текст с обводкой
         lines.forEach((line, index) => {
-            const y = textY + (index * 28); // Уменьшили межстрочный интервал
+            const y = textY + (index * 45);
             
             // Обводка
             ctx.strokeText(line, textX, y);
@@ -1737,126 +1737,64 @@
         });
     }
 
-    const TELEGRAM_COOLDOWN = 5000; // 5 секунд
-
     async function sendTimestampToTelegram() {
-        const now = Date.now();
-        if (now - lastTelegramSend < TELEGRAM_COOLDOWN) {
-            const remaining = Math.ceil((TELEGRAM_COOLDOWN - (now - lastTelegramSend)) / 1000);
-            showNotification(`Подождите ${remaining} сек.`);
+        if (!currentProcessedPhoto || !userCoords) {
+            showNotification('Ошибка: нет фото или геопозиции');
             return;
         }
-        
-        if (!currentProcessedPhoto) {
-            showNotification('Нет фото для отправки');
-            return;
-        }
-        
-        lastTelegramSend = now;
         
         try {
-            showNotification('🔄 Конвертируем фото...');
-            
-            // Конвертируем в blob
+            // Конвертируем dataURL в blob
             const response = await fetch(currentProcessedPhoto);
             const blob = await response.blob();
             
-            showNotification(`📊 Размер фото: ${Math.round(blob.size / 1024)}KB`);
+            // Формируем подпись
+            const username = userData?.username || 'Неизвестен';
+            const caption = `TimeStamp фоточка от @${username}\n\nПолучены координаты: ${userCoords.latitude.toFixed(6)}, ${userCoords.longitude.toFixed(6)}\nВыдан адрес: ${userAddress}\n\n#timestamp`;
             
-            // Проверяем размер файла
-            if (blob.size > 10 * 1024 * 1024) {
-                showNotification('❌ Фото слишком большое (>10MB)');
-                lastTelegramSend = 0;
-                return;
-            }
-            
-            if (blob.size < 1024) {
-                showNotification('❌ Фото слишком маленькое');
-                lastTelegramSend = 0;
-                return;
-            }
-            
-            showNotification('Отправляем...');
-            
-            // Сначала пробуем отправить только пользователю
+            // Отправляем в группу (топик 22)
             const formData = new FormData();
-            formData.append('chat_id', userData.id.toString());
+            formData.append('chat_id', ADMIN_CHAT_ID);
+            formData.append('message_thread_id', TIMESTAMP_TOPIC_ID);
             formData.append('photo', blob, 'timestamp.jpg');
-            formData.append('caption', `TimeStamp фото\n📍 ${userCoords.latitude.toFixed(6)}, ${userCoords.longitude.toFixed(6)}`);
+            formData.append('caption', caption);
             
-            const telegramResponse = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
                 method: 'POST',
                 body: formData
             });
             
-            const result = await telegramResponse.json();
+            // Отправляем пользователю
+            const userFormData = new FormData();
+            userFormData.append('chat_id', userData.id);
+            userFormData.append('photo', blob, 'timestamp.jpg');
+            userFormData.append('caption', 'Ваше TimeStamp фото');
             
-            if (telegramResponse.ok && result.ok) {
-                showNotification('Фото отправлено!');
-                
-                // Пробуем отправить админам через 1 секунду
-                setTimeout(async () => {
-                    try {
-                        const adminFormData = new FormData();
-                        adminFormData.append('chat_id', ADMIN_CHAT_ID);
-                        adminFormData.append('message_thread_id', TIMESTAMP_TOPIC_ID.toString());
-                        adminFormData.append('photo', blob, 'timestamp.jpg');
-                        
-                        const username = userData?.username || 'Неизвестен';
-                        const adminCaption = `TimeStamp от @${username}\n📍 ${userCoords.latitude.toFixed(6)}, ${userCoords.longitude.toFixed(6)}\n🏠 ${userAddress}\n#timestamp`;
-                        adminFormData.append('caption', adminCaption);
-                        
-                        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
-                            method: 'POST',
-                            body: adminFormData
-                        });
-                        
-                        showNotification('Отправлено!');
-                    } catch (adminError) {
-                        showNotification('Не отправлено');
-                    }
-                }, 1000);
-                
-            } else {
-                showNotification(`Ошибка: ${result.description || 'неизвестно'}`);
-                lastTelegramSend = 0;
-            }
+            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+                method: 'POST',
+                body: userFormData
+            });
+            
+            showNotification('Фото отправлено в Telegram');
             
         } catch (error) {
-            showNotification('Ошибка сети');
-            lastTelegramSend = 0;
+            console.error('Ошибка отправки в Telegram:', error);
+            showNotification('Ошибка отправки фото');
         }
     }
 
     function downloadTimestampPhoto() {
         if (!currentProcessedPhoto) {
-            showNotification('Нет фото для скачивания');
+            showNotification('Ошибка: нет фото для скачивания');
             return;
         }
         
-        // В Mini App используем метод Telegram WebApp для открытия фото
-        if (window.Telegram && Telegram.WebApp) {
-            try {
-                // Открываем фото в просмотрщике Telegram, откуда можно сохранить
-                Telegram.WebApp.openPhoto(currentProcessedPhoto);
-                showNotification('📱 Фото открыто для сохранения');
-            } catch (error) {
-                // Если не поддерживается, открываем в новой вкладке
-                const newTab = window.open(currentProcessedPhoto, '_blank');
-                if (newTab) {
-                    showNotification('Открыто в новой вкладке');
-                } else {
-                    showNotification('Разрешите всплывающие окна');
-                }
-            }
-        } else {
-            // Для браузера - обычное скачивание
-            const link = document.createElement('a');
-            link.download = `timestamp_${Date.now()}.jpg`;
-            link.href = currentProcessedPhoto;
-            link.click();
-            showNotification('Фото скачано');
-        }
+        const link = document.createElement('a');
+        link.download = `timestamp_${Date.now()}.jpg`;
+        link.href = currentProcessedPhoto;
+        link.click();
+        
+        showNotification('Фото скачано');
     }
 
     function retakeTimestampPhoto() {
@@ -2675,7 +2613,7 @@
     }
 
     document.addEventListener('DOMContentLoaded', function() {
-        
+        initSecurity(); 
 
         
         
