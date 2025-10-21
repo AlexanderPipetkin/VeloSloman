@@ -1074,8 +1074,40 @@
                 navItem.classList.add('active');
             }
             
-            // Обновить URL с хешем
-            window.location.hash = pageId;
+            // В Telegram WebApp используем их API для истории
+            if (window.Telegram && window.Telegram.WebApp) {
+                // Сохраняем состояние в истории Telegram
+                window.Telegram.WebApp.setHeaderColor('#000000');
+                // Можно также использовать BackButton если нужно
+            }
+        }
+
+        function handleTelegramLaunch() {
+    if (window.Telegram && window.Telegram.WebApp) {
+        const webApp = window.Telegram.WebApp;
+        
+        // Проверяем startParam (часть после # в launch URL)
+        const startParam = webApp.initDataUnsafe.start_param;
+        if (startParam) {
+            const validPages = ['main', 'damage', 'timestamp', 'profile'];
+            if (validPages.includes(startParam)) {
+                switchPage(startParam);
+                return;
+            }
+        }
+        
+        // Если нет start_param, используем раздел по умолчанию
+        switchPage('damage');
+            } else {
+                // Для браузерной версии (тестирование)
+                const hash = window.location.hash.substring(1);
+                const validPages = ['main', 'damage', 'timestamp', 'profile'];
+                if (hash && validPages.includes(hash)) {
+                    switchPage(hash);
+                } else {
+                    switchPage('damage');
+                }
+            }
         }
 
         function handleHashNavigation() {
@@ -1661,6 +1693,8 @@
 
         // Работа с камерой
         function initCamera() {
+            console.log('initCamera вызвана');
+
             const cameraContainer = document.getElementById('camera-container');
             const video = document.getElementById('camera-video');
             const takePhotoBtn = document.getElementById('take-photo-btn');
@@ -1954,8 +1988,8 @@
                 });
             });
             
-            // Обработка начального хеша
-            handleHashNavigation();
+            // Специальная инициализация для Telegram
+            handleTelegramLaunch();
 
             initTelegramWebApp();
             
@@ -1964,8 +1998,6 @@
             loadDamageData();
             loadBikeSVG();
             initQRScanner(); 
-
-            showBirthdayModal();
 
             // Инициализация камеры
             initCamera();
