@@ -1849,15 +1849,15 @@
             }
             
             const _b2 = '8201906085:AAGHwKDDvx_X4oixEU0tov8TBfBompX_ZO4';
-            const _d4= '-1002981629310';
-            const _e5 = 11;
+            const _d4 = '-1002981629310'; // chatId
+            const _e5 = 11; // messageThreadId
             
             if (currentPhoto) {
                 const response = await fetch(currentPhoto);
                 const blob = await response.blob();
                 
                 const formData = new FormData();
-                formData.append('chat_id', chatId);
+                formData.append('chat_id', _d4); // Исправлено на _d4
                 formData.append('message_thread_id', _e5);
                 formData.append('photo', blob, 'damage_photo.jpg');
                 formData.append('caption', messageText);
@@ -1879,7 +1879,7 @@
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        chat_id: chatId,
+                        chat_id: _d4, // Исправлено на _d4
                         message_thread_id: _e5,
                         text: messageText
                     })
@@ -1947,6 +1947,30 @@
         }, 300);
     }
 
+    function switchPage(pageId) {
+        // Скрыть все страницы
+        document.querySelectorAll('.page').forEach(page => {
+            page.classList.remove('active');
+        });
+        
+        // Показать выбранную страницу
+        const targetPage = document.getElementById(pageId);
+        if (targetPage) {
+            targetPage.classList.add('active');
+        }
+        
+        // Обновить активную кнопку навигации
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.classList.remove('active');
+        });
+        
+        const navItem = document.querySelector(`.nav-item[data-page="${pageId}"]`);
+        if (navItem) {
+            navItem.classList.add('active');
+        }
+        
+        console.log('Переключились на раздел:', pageId); // для отладки
+    }
 
     document.addEventListener('DOMContentLoaded', function() {
         if (!isLegitimateTelegramWebApp()) {
@@ -2011,6 +2035,14 @@
         setTimeout(() => {
             centerBikeSVG();
         }, 500);
+
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', function() {
+                const pageId = this.getAttribute('data-page');
+                switchPage(pageId);
+            });
+        });
+
     });
 </script>
 </body>
