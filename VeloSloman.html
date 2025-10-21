@@ -38,7 +38,7 @@
             background-color: var(--primary-bg);
             color: var(--primary-text);
             min-height: 100vh;
-            padding: 20px 12px 80px;
+            padding: 20px 12px 80px; /* Увеличить нижний отступ для навигации */
         }
 
         .container {
@@ -762,132 +762,268 @@
         .telegram-link:hover {
             text-decoration: underline;
         }
-        
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: var(--primary-bg);
+            border-top: var(--border-width) solid var(--border-color);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition);
+            padding: 3px 8px;
+            border-radius: var(--border-radius);
+            -webkit-tap-highlight-color: transparent;
+            position: relative;
+        }
+
+        .nav-item.active {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .nav-icon {
+            width: 24px;
+            height: 24px;
+            margin-bottom: 3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .nav-icon img {
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        .nav-label {
+            font-size: 12px;
+        }
+
+        .under-construction {
+            text-align: center;
+            padding: 60px 20px;
+            border: var(--border-width) solid var(--border-color);
+            border-radius: var(--border-radius);
+            margin: 30px 0;
+        }
+
+        .under-construction h2 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        .under-construction p {
+            font-size: 16px;
+            color: #ccc;
+            line-height: 1.5;
+        }
+
+        .app-container {
+            margin: 0 auto;
+            min-height: 100vh;
+            position: relative;
+            padding-bottom: 60px; /* Для нижней навигации */
+        }
+
+        .page {
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .page.active {
+            display: block;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1 class="page-title">Фиксация поломок</h1>
-            <p class="page-description">Введи номер велосипеда и выбери его поврежденные детали</p>
-        </div>
-
-        <div class="input-section">
-            <label class="input-label">Номер велосипеда</label>
-            <div class="input-wrapper">
-                <input type="text" class="bike-input" id="bike-number" placeholder="20000-29030" maxlength="5" inputmode="numeric" pattern="[0-9]*">
-                <button class="qr-btn" id="scan-qr-btn" title="Сканировать QR-код">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="3" y="3" width="7" height="7"/>
-                        <rect x="14" y="3" width="7" height="7"/>
-                        <rect x="14" y="14" width="7" height="7"/>
-                        <rect x="3" y="14" width="7" height="7"/>
-                        <path d="M10 3v4a1 1 0 0 1-1 1H3"/>
-                        <path d="M14 21v-4a1 1 0 0 1 1-1h6"/>
-                        <path d="M21 14h-4a1 1 0 0 1-1-1V3"/>
-                        <path d="M3 10h4a1 1 0 0 1 1 1v10"/>
-                    </svg>
-                </button>
+    <section id="main" class="page active">
+        <div class="container">
+            <div class="header">
+                <h1 class="page-title">Главная</h1>
+                <p class="page-description">Тут у нас будет главная страница.</p>
             </div>
-            <div class="error-message" id="number-error">Номер должен быть от 20000 до 29030</div>
-        </div>
-
-        <div class="bike-section">
-            <div class="bike-container">
-                <!-- SVG велосипеда будет вставлено здесь -->
-                <div id="bike-svg-container"></div>
-            </div>
-            <div class="damage-dropdown" id="damage-dropdown"></div>
-        </div>
-
-        <div class="selected-damages">
-            <h2 class="section-title">Выбранные поломки</h2>
-            <div class="damages-list" id="damages-list">
-                <div class="empty-damages">Поломки не выбраны</div>
+            <div class="under-construction">
+                <h2>Раздел в разработке</h2>
+                <p>Обновление этого раздела планируется 31.10.2025</p>
             </div>
         </div>
+    </section>
 
-        <div class="photo-section">
-            <h2 class="section-title">Фотография поломки</h2>
-            <div class="photo-container">
-                <img id="photo-preview" class="photo-preview" src="" alt="Предпросмотр фото">
-                <div class="photo-buttons">
-                    <button class="take-photo-btn" id="take-photo-btn">Сделать фото</button>
-                    <div class="icon-buttons">
-                        <button class="icon-btn" id="upload-photo-btn" title="Загрузить из галереи">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                <polyline points="17 8 12 3 7 8"/>
-                                <line x1="12" y1="3" x2="12" y2="15"/>
-                            </svg>
-                        </button>
-                        <button class="icon-btn primary" id="remove-photo-btn" style="display:none;" title="Удалить фото">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polyline points="3 6 5 6 21 6"/>
-                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                                <line x1="10" y1="11" x2="10" y2="17"/>
-                                <line x1="14" y1="11" x2="14" y2="17"/>
-                            </svg>
-                        </button>
-                    </div>
+    <section id="damage" class="page">
+        <div class="container">
+            <div class="header">
+                <h1 class="page-title">Фиксация поломок</h1>
+                <p class="page-description">Введи номер велосипеда и выбери его поврежденные детали</p>
+            </div>
+
+            <div class="input-section">
+                <label class="input-label">Номер велосипеда</label>
+                <div class="input-wrapper">
+                    <input type="text" class="bike-input" id="bike-number" placeholder="20000-29030" maxlength="5" inputmode="numeric" pattern="[0-9]*">
+                    <button class="qr-btn" id="scan-qr-btn" title="Сканировать QR-код">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="7" height="7"/>
+                            <rect x="14" y="3" width="7" height="7"/>
+                            <rect x="14" y="14" width="7" height="7"/>
+                            <rect x="3" y="14" width="7" height="7"/>
+                            <path d="M10 3v4a1 1 0 0 1-1 1H3"/>
+                            <path d="M14 21v-4a1 1 0 0 1 1-1h6"/>
+                            <path d="M21 14h-4a1 1 0 0 1-1-1V3"/>
+                            <path d="M3 10h4a1 1 0 0 1 1 1v10"/>
+                        </svg>
+                    </button>
                 </div>
-                <div class="location-info" id="location-info">Координаты будут получены при отправке заявки</div>
+                <div class="error-message" id="number-error">Номер должен быть от 20000 до 29030</div>
+            </div>
+
+            <div class="bike-section">
+                <div class="bike-container">
+                    <!-- SVG велосипеда будет вставлено здесь -->
+                    <div id="bike-svg-container"></div>
+                </div>
+                <div class="damage-dropdown" id="damage-dropdown"></div>
+            </div>
+
+            <div class="selected-damages">
+                <h2 class="section-title">Выбранные поломки</h2>
+                <div class="damages-list" id="damages-list">
+                    <div class="empty-damages">Поломки не выбраны</div>
+                </div>
+            </div>
+
+            <div class="photo-section">
+                <h2 class="section-title">Фотография поломки</h2>
+                <div class="photo-container">
+                    <img id="photo-preview" class="photo-preview" src="" alt="Предпросмотр фото">
+                    <div class="photo-buttons">
+                        <button class="take-photo-btn" id="take-photo-btn">Сделать фото</button>
+                        <div class="icon-buttons">
+                            <button class="icon-btn" id="upload-photo-btn" title="Загрузить из галереи">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                    <polyline points="17 8 12 3 7 8"/>
+                                    <line x1="12" y1="3" x2="12" y2="15"/>
+                                </svg>
+                            </button>
+                            <button class="icon-btn primary" id="remove-photo-btn" style="display:none;" title="Удалить фото">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="3 6 5 6 21 6"/>
+                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                    <line x1="10" y1="11" x2="10" y2="17"/>
+                                    <line x1="14" y1="11" x2="14" y2="17"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="location-info" id="location-info">Координаты будут получены при отправке заявки</div>
+                </div>
+            </div>
+
+            <div class="submit-section">
+                <button class="submit-btn" id="submit-btn" disabled>Отправить заявку</button>
             </div>
         </div>
 
-        <div class="submit-section">
-            <button class="submit-btn" id="submit-btn" disabled>Отправить заявку</button>
-        </div>
-    </div>
-
-    <!-- Камера -->
-    <div class="camera-container" id="camera-container">
-        <video id="camera-video" class="camera-video" autoplay playsinline></video>
-        <div class="camera-controls">
-            <button class="camera-btn" id="cancel-camera-btn">Отмена</button>
-            <button class="camera-btn primary" id="capture-btn">Сделать снимок</button>
-        </div>
-    </div>
-
-    <div class="camera-container" id="qr-scanner-container">
-        <video id="qr-scanner-video" class="camera-video" autoplay playsinline></video>
-            <div class="scanner-overlay">
-                <div class="scanner-frame"></div>
-            </div>
+        <!-- Камера -->
+        <div class="camera-container" id="camera-container">
+            <video id="camera-video" class="camera-video" autoplay playsinline></video>
             <div class="camera-controls">
-                <button class="camera-btn" id="cancel-qr-scan-btn">Отмена</button>
+                <button class="camera-btn" id="cancel-camera-btn">Отмена</button>
+                <button class="camera-btn primary" id="capture-btn">Сделать снимок</button>
             </div>
-    </div>
-
-
-    <!-- Модальное окно подтверждения -->
-    <div class="modal" id="confirmation-modal">
-        <div class="modal-content">
-            <span class="modal-close" id="modal-close">&times;</span>
-            <h2 class="modal-title">Заявка отправлена</h2>
-            <p class="modal-text">Заявка на велосипед №<span id="bike-number-confirm"></span> успешно отправлена администратору.</p>
-            <button class="modal-btn" id="modal-ok-btn">Хорошо</button>
         </div>
-    </div>
 
-    <!-- Модальное окно дня рождения -->
-    <div class="modal birthday-modal" id="birthday-modal">
-        <div class="modal-content">
-            <div class="birthday-content">
-                <img src="media/birthday.png" alt="🥳" class="birthday-emoji">
-                <h2 class="modal-title">Лёха, с днюхой!</h2>
-                <p class="birthday-text">
-                    У админа сегодня день рождения!<br>
-                    Ты тоже можешь его поздравить :)<br>
-                </p>
-                <a href="https://t.me/tartaletka_evgenevna" class="telegram-link" target="_blank">@tartaletka_evgenevna</a>
+        <div class="camera-container" id="qr-scanner-container">
+            <video id="qr-scanner-video" class="camera-video" autoplay playsinline></video>
+                <div class="scanner-overlay">
+                    <div class="scanner-frame"></div>
+                </div>
+                <div class="camera-controls">
+                    <button class="camera-btn" id="cancel-qr-scan-btn">Отмена</button>
+                </div>
+        </div>
+
+
+        <!-- Модальное окно подтверждения -->
+        <div class="modal" id="confirmation-modal">
+            <div class="modal-content">
+                <span class="modal-close" id="modal-close">&times;</span>
+                <h2 class="modal-title">Заявка отправлена</h2>
+                <p class="modal-text">Заявка на велосипед №<span id="bike-number-confirm"></span> успешно отправлена Лёхе.</p>
+                <button class="modal-btn" id="modal-ok-btn">Хорошо</button>
             </div>
-            <button class="modal-btn" id="birthday-ok-btn">Хорошо</button>
         </div>
-    </div>
+    </section>
+    
+    <section id="timestamp" class="page">
+        <div class="container">
+            <div class="header">
+                <h1 class="page-title">TimeStamp</h1>
+                <p class="page-description">Функционал TimeStamp Camera тут.</p>
+            </div>
+            <div class="under-construction">
+                <h2>Раздел в разработке</h2>
+                <p>Обновление этого раздела планируется совсем скоро...<br>(24.10.2025)</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="profile" class="page">
+        <div class="container">
+            <div class="header">
+                <h1 class="page-title">Профиль</h1>
+                <p class="page-description">Профиль. Информация о тебе, как о пользователе.</p>
+            </div>
+            <div class="under-construction">
+                <h2>Раздел в разработке</h2>
+                <p>Обновление этого раздела планируется 28.10.2025</p>
+            </div>
+        </div>
+    </section>
 
     <!-- Уведомление -->
     <div class="notification" id="notification"></div>
+
+    <!-- Нижнее меню -->
+    <nav class="bottom-nav">
+        <div class="nav-item active" data-page="main">
+            <div class="nav-icon">
+                <img src="media/icons/main.png" alt="Главная">
+            </div>
+            <span class="nav-label">Главная</span>
+        </div>
+        <div class="nav-item" data-page="damage">
+            <div class="nav-icon">
+                <img src="media/icons/damage.png" alt="Поломки">
+            </div>
+            <span class="nav-label">Поломки</span>
+        </div>
+        <div class="nav-item" data-page="timestamp">
+            <div class="nav-icon">
+                <img src="media/icons/timestamp.png" alt="TimeStamp">
+            </div>
+            <span class="nav-label">TimeStamp</span>
+        </div>
+        <div class="nav-item" data-page="profile">
+            <div class="nav-icon">
+                <img src="media/icons/profile.png" alt="Профиль">
+            </div>
+            <span class="nav-label">Профиль</span>
+        </div>
+    </nav>
 
     <script>
         let currentBikeNumber = '';
@@ -916,27 +1052,47 @@
             }
         }
 
-        function showBirthdayModal() {
-            const today = new Date();
-            const isBirthday = today.getDate() === 17 && today.getMonth() === 9;
+        function switchPage(pageId) {
+            // Скрыть все страницы
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
             
-            if (isBirthday) {
-                setTimeout(() => {
-                    const modal = document.getElementById('birthday-modal');
-                    modal.classList.add('active');
-                    
-                    // Обработчики закрытия модального окна
-                    document.getElementById('birthday-ok-btn').addEventListener('click', function() {
-                        modal.classList.remove('active');
-                    });
-                    
-                    // Закрытие при клике вне окна
-                    modal.addEventListener('click', function(e) {
-                        if (e.target === this) {
-                            modal.classList.remove('active');
-                        }
-                    });
-                }, 1000);
+            // Показать выбранную страницу
+            const targetPage = document.getElementById(pageId);
+            if (targetPage) {
+                targetPage.classList.add('active');
+            }
+            
+            // Обновить активную кнопку навигации
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            const navItem = document.querySelector(`.nav-item[data-page="${pageId}"]`);
+            if (navItem) {
+                navItem.classList.add('active');
+            }
+            
+            // Обновить URL с хешем
+            window.location.hash = pageId;
+        }
+
+        function handleHashNavigation() {
+            const hash = window.location.hash.substring(1); // Убираем #
+            
+            // Список допустимых разделов
+            const validPages = ['main', 'damage', 'timestamp', 'profile'];
+            
+            if (hash && validPages.includes(hash)) {
+                switchPage(hash);
+            } else {
+                // Если хеш невалидный или отсутствует, показываем раздел по умолчанию
+                // но сохраняем текущий хеш если он есть (для обратной совместимости)
+                if (!hash) {
+                    switchPage('damage');
+                }
+                // Если хеш есть но невалидный - игнорируем его
             }
         }
 
@@ -1131,6 +1287,8 @@
             centerBikeSVG();
         });
 
+        window.addEventListener('hashchange', handleHashNavigation);
+
         window.addEventListener('resize', function() {
             const container = document.querySelector('.bike-container');
             const svg = document.querySelector('.bike-svg');
@@ -1182,17 +1340,7 @@
         // Fallback SVG если файл не загрузился
         function loadFallbackSVG() {
             const svgContainer = document.getElementById('bike-svg-container');
-            svgContainer.innerHTML = `<svg width="525" height="386" viewBox="0 0 525 386" fill="none" xmlns="http://www.w3.org/2000/svg" class="bike-svg">
-                <!-- Твое SVG содержимое здесь -->
-                <g clip-path="url(#clip0_586_2)">
-                    <!-- Все твои g элементы с bike-part -->
-                </g>
-                <defs>
-                    <clipPath id="clip0_586_2">
-                        <rect width="525" height="386" fill="white"/>
-                    </clipPath>
-                </defs>
-            </svg>`;
+            svgContainer.innerHTML = ``;
             
             setTimeout(() => {
                 setupBikePartsInteractivity();
@@ -1799,6 +1947,16 @@
 
         // Инициализация при загрузке страницы
         document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    const pageId = this.getAttribute('data-page');
+                    switchPage(pageId);
+                });
+            });
+            
+            // Обработка начального хеша
+            handleHashNavigation();
+
             initTelegramWebApp();
             
             setTimeout(centerBikeSVG, 200);
@@ -1811,7 +1969,14 @@
 
             // Инициализация камеры
             initCamera();
-            
+
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    const pageId = this.getAttribute('data-page');
+                    switchPage(pageId);
+                });
+            });
+                    
             // Обработчики для ввода номера велосипеда
             const bikeNumberInput = document.getElementById('bike-number');
             
