@@ -1450,13 +1450,13 @@
         // Получаем геопозицию при загрузке раздела
         await getTimestampLocation();
         
-        // Инициализируем камеру
+        // Инициализируем камеру с правильными настройками для вертикального режима
         try {
             timestampStream = await navigator.mediaDevices.getUserMedia({ 
                 video: { 
                     facingMode: 'environment',
-                    width: { ideal: 1920 },
-                    height: { ideal: 1080 }
+                    // Убираем жесткие размеры, позволяем браузеру выбрать оптимальные
+                    aspectRatio: { ideal: 4/3 }
                 },
                 audio: false
             });
@@ -1541,11 +1541,11 @@
         const video = document.getElementById('timestamp-video');
         const canvas = document.getElementById('timestamp-canvas');
         
-        // Увеличиваем качество фото
-        canvas.width = video.videoWidth * 2;
-        canvas.height = video.videoHeight * 2;
+        // Используем реальные размеры видео для правильного соотношения сторон
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
         
-        // Рисуем с высоким качеством
+        // Рисуем с реальными размерами
         timestampContext.imageSmoothingEnabled = true;
         timestampContext.imageSmoothingQuality = 'high';
         timestampContext.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -1790,12 +1790,19 @@
             return;
         }
         
-        const link = document.createElement('a');
-        link.download = `timestamp_${Date.now()}.jpg`;
-        link.href = currentProcessedPhoto;
-        link.click();
-        
-        showNotification('Фото скачано');
+        // В Mini App обычное скачивание не работает, используем Telegram Web App метод
+        if (window.Telegram && window.Telegram.WebApp) {
+            // Открываем фото в просмотрщике Telegram
+            Telegram.WebApp.openLink(currentProcessedPhoto);
+            showNotification('Фото открыто для просмотра');
+        } else {
+            // Fallback для браузера
+            const link = document.createElement('a');
+            link.download = `timestamp_${Date.now()}.jpg`;
+            link.href = currentProcessedPhoto;
+            link.click();
+            showNotification('Фото скачано');
+        }
     }
 
     function retakeTimestampPhoto() {
