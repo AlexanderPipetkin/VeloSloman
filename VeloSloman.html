@@ -856,8 +856,7 @@
                 <p class="page-description">Тут у нас будет главная страница.</p>
             </div>
             <div class="under-construction">
-                <h2>Таинственный незнакомец, свяжись со мной</h2>
-                <p>Напиши мне в лс, реально интересно</p>
+                <h2>Раздел в разработке</h2>
                 <p>Обновление этого раздела планируется 31.10.2025</p>
             </div>
         </div>
@@ -1027,736 +1026,689 @@
     </nav>
 
     <script>
-        let currentBikeNumber = '';
-        let selectedDamages = [];
-        let currentPart = null;
-        let telegramWebApp = null;
-        let damageData = {};
-        let currentPhoto = null;
-        let userLocation = null;
-        let userData = null;
-        let qrScannerStream = null;
-        let qrScanInterval = null;
+    let currentBikeNumber = '';
+    let selectedDamages = [];
+    let currentPart = null;
+    let telegramWebApp = null;
+    let damageData = {};
+    let currentPhoto = null;
+    let userLocation = null;
+    let userData = null;
+    let qrScannerStream = null;
+    let qrScanInterval = null;
 
-        // Инициализация Telegram Web App
-        function initTelegramWebApp() {
-            if (window.Telegram && window.Telegram.WebApp) {
-                telegramWebApp = window.Telegram.WebApp;
-                telegramWebApp.ready();
-                telegramWebApp.expand();
-                
-                // Получаем данные пользователя
-                if (telegramWebApp.initDataUnsafe.user) {
-                    userData = telegramWebApp.initDataUnsafe.user;
-                    console.log('Данные пользователя:', userData);
-                }
-            }
-        }
+    let securityLogs = [];
+    let requestLimits = new Map();
+    const _a1 = [1618025244, 6310949297];
 
-        function switchPage(pageId) {
-            // Скрыть все страницы
-            document.querySelectorAll('.page').forEach(page => {
-                page.classList.remove('active');
-            });
-            
-            // Показать выбранную страницу
-            const targetPage = document.getElementById(pageId);
-            if (targetPage) {
-                targetPage.classList.add('active');
-            }
-            
-            // Обновить активную кнопку навигации
-            document.querySelectorAll('.nav-item').forEach(item => {
-                item.classList.remove('active');
-            });
-            
-            const navItem = document.querySelector(`.nav-item[data-page="${pageId}"]`);
-            if (navItem) {
-                navItem.classList.add('active');
-            }
-            
-            // В Telegram WebApp используем их API для истории
-            if (window.Telegram && window.Telegram.WebApp) {
-                // Сохраняем состояние в истории Telegram
-                window.Telegram.WebApp.setHeaderColor('#000000');
-                // Можно также использовать BackButton если нужно
-            }
-        }
-
-        function handleTelegramLaunch() {
-    if (window.Telegram && window.Telegram.WebApp) {
-        const webApp = window.Telegram.WebApp;
-        
-        // Проверяем startParam (часть после # в launch URL)
-        const startParam = webApp.initDataUnsafe.start_param;
-        if (startParam) {
-            const validPages = ['main', 'damage', 'timestamp', 'profile'];
-            if (validPages.includes(startParam)) {
-                switchPage(startParam);
-                return;
-            }
+    function isLegitimateTelegramWebApp() {
+        const webApp = window.Telegram?.WebApp;
+        if (!webApp) {
+            logSecurityEvent('NO_TELEGRAM_WEBAPP', { reason: 'Telegram object not found' });
+            return false;
         }
         
-        // Если нет start_param, используем раздел по умолчанию
-        switchPage('damage');
-            } else {
-                // Для браузерной версии (тестирование)
-                const hash = window.location.hash.substring(1);
-                const validPages = ['main', 'damage', 'timestamp', 'profile'];
-                if (hash && validPages.includes(hash)) {
-                    switchPage(hash);
-                } else {
-                    switchPage('damage');
-                }
+        if (!webApp.initData) {
+            logSecurityEvent('NO_INIT_DATA', { reason: 'Missing initData' });
+            return false;
+        }
+        
+        if (!webApp.initDataUnsafe?.user?.id) {
+            logSecurityEvent('NO_USER_DATA', { reason: 'Missing user data' });
+            return false;
+        }
+        
+        return true;
+    }
+
+    function isUserAuthorized(userData) {
+        if (!userData || !userData.id) {
+            logSecurityEvent('UNAUTHORIZED_NO_ID', { userData });
+            return false;
+        }
+        
+        const isAllowed = _a1.includes(userData.id);
+        
+        if (!isAllowed) {
+            logSecurityEvent('UNAUTHORIZED_USER', { 
+                userId: userData.id, 
+                username: userData.username,
+                allowedUsers: _a1 
+            });
+        }
+        
+        return isAllowed;
+    }
+
+    function checkAndUpdateRateLimit(userId) {
+        const now = Date.now();
+        const WINDOW_MS = 3600000;
+        const MAX_REQUESTS = 20;
+        
+        let userRequests = requestLimits.get(userId) || [];
+        
+        userRequests = userRequests.filter(time => now - time < WINDOW_MS);
+        
+        if (userRequests.length >= MAX_REQUESTS) {
+            logSecurityEvent('RATE_LIMIT_EXCEEDED', { 
+                userId, 
+                requestsCount: userRequests.length,
+                timeWindow: '1 hour'
+            });
+            return false;
+        }
+        
+        userRequests.push(now);
+        requestLimits.set(userId, userRequests);
+        
+        logSecurityEvent('RATE_LIMIT_UPDATE', { 
+            userId, 
+            currentRequests: userRequests.length 
+        });
+        
+        return true;
+    }
+
+    function logSecurityEvent(eventType, details) {
+        const logEntry = {
+            timestamp: new Date().toISOString(),
+            eventType: eventType,
+            userAgent: navigator.userAgent,
+            platform: navigator.platform,
+            url: window.location.href,
+            hash: window.location.hash,
+            userData: window.Telegram?.WebApp?.initDataUnsafe?.user || null,
+            details: details
+        };
+        
+        securityLogs.push(logEntry);
+        console.log('🔐 SECURITY:', logEntry);
+        
+        if (eventType.includes('UNAUTHORIZED') || eventType.includes('LIMIT_EXCEEDED')) {
+            sendSecurityAlertToTelegram(logEntry);
+        }
+    }
+
+    async function sendSecurityAlertToTelegram(alertData) {
+        const _b2 = '8201906085:AAGHwKDDvx_X4oixEU0tov8TBfBompX_ZO4';
+        const _c3 = '1618025244';
+        
+        const alertMessage = `🚨 SECURITY ALERT
+                            Событие: ${alertData.eventType}
+                            Время: ${new Date().toLocaleString()}
+                            Пользователь: ${alertData.userData?.id || 'Неизвестен'}
+                            User-Agent: ${alertData.userAgent}
+
+                            Детали: ${JSON.stringify(alertData.details, null, 2)}`;
+        
+        try {
+            await fetch(`https://api.telegram.org/bot${_b2}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    chat_id: _c3,
+                    text: alertMessage
+                })
+            });
+        } catch (error) {
+            console.error('Ошибка отправки алерта:', error);
+        }
+    }
+
+    function performSecurityChecks() {
+        if (!isLegitimateTelegramWebApp()) {
+            showNotification('Доступ только через мини-апп Telegram');
+            return false;
+        }
+        
+        const userData = window.Telegram.WebApp.initDataUnsafe.user;
+        
+        if (!isUserAuthorized(userData)) {
+            showNotification('Доступ ограничен. Обратись к администратору.');
+            return false;
+        }
+        
+        if (!checkAndUpdateRateLimit(userData.id)) {
+            showNotification('Превышен лимит заявок. Попробуйте позже.');
+            return false;
+        }
+        
+        logSecurityEvent('SECURITY_CHECKS_PASSED', { userId: userData.id });
+        return true;
+    }
+
+    function showSecurityDashboard() {
+        console.log('=== VELOSLOMAN SECURITY DASHBOARD ===');
+        console.log('Всего событий:', securityLogs.length);
+        console.log('Лимиты пользователей:', Array.from(requestLimits.entries()));
+        console.table(securityLogs.slice(-10));
+        return securityLogs;
+    }
+
+    function clearSecurityData() {
+        securityLogs = [];
+        requestLimits.clear();
+        console.log('🔓 Данные безопасности очищены');
+    }
+
+    function initTelegramWebApp() {
+        if (window.Telegram && window.Telegram.WebApp) {
+            telegramWebApp = window.Telegram.WebApp;
+            telegramWebApp.ready();
+            telegramWebApp.expand();
+            
+            if (telegramWebApp.initDataUnsafe.user) {
+                userData = telegramWebApp.initDataUnsafe.user;
+                console.log('Данные пользователя:', userData);
             }
         }
+    }
 
-        function handleHashNavigation() {
-            const hash = window.location.hash.substring(1); // Убираем #
-            
-            // Список допустимых разделов
-            const validPages = ['main', 'damage', 'timestamp', 'profile'];
-            
-            if (hash && validPages.includes(hash)) {
-                switchPage(hash);
-            } else {
-                // Если хеш невалидный или отсутствует, показываем раздел по умолчанию
-                // но сохраняем текущий хеш если он есть (для обратной совместимости)
-                if (!hash) {
-                    switchPage('damage');
-                }
-                // Если хеш есть но невалидный - игнорируем его
-            }
-        }
-
-        function initQRScanner() {
-            const scanQrBtn = document.getElementById('scan-qr-btn');
-            const qrScannerContainer = document.getElementById('qr-scanner-container');
-            const qrScannerVideo = document.getElementById('qr-scanner-video');
-            const cancelQrScanBtn = document.getElementById('cancel-qr-scan-btn');
-            
-            scanQrBtn.addEventListener('click', startQRScan);
-            cancelQrScanBtn.addEventListener('click', stopQRScan);
-            
-            async function startQRScan() {
-                try {
-                    showNotification('Сканирование QR-кода...');
-                    
-                    qrScannerStream = await navigator.mediaDevices.getUserMedia({ 
-                        video: { 
-                            facingMode: 'environment',
-                            width: { ideal: 1280 },
-                            height: { ideal: 720 }
-                        },
-                        audio: false
-                    });
-                    
-                    qrScannerVideo.srcObject = qrScannerStream;
-                    qrScannerContainer.classList.add('active');
-                    
-                    qrScannerVideo.onloadedmetadata = () => {
-                        qrScannerVideo.play();
-                        startQRDetection();
-                    };
-                    
-                } catch (error) {
-                    console.error('Ошибка доступа к камере:', error);
-                    showNotification('Не удалось получить доступ к камере');
-                }
-            }
-            
-            function stopQRScan() {
-                if (qrScanInterval) {
-                    clearInterval(qrScanInterval);
-                    qrScanInterval = null;
-                }
-                
-                if (qrScannerStream) {
-                    qrScannerStream.getTracks().forEach(track => track.stop());
-                    qrScannerStream = null;
-                }
-                
-                qrScannerContainer.classList.remove('active');
-            }
-            
-            function startQRDetection() {
-                let scanAttempts = 0;
-                
-                qrScanInterval = setInterval(() => {
-                    if (qrScannerVideo.readyState === qrScannerVideo.HAVE_ENOUGH_DATA) {
-                        scanAttempts++;
-                        
-                        try {
-                            // Создаем canvas для анализа кадра
-                            const canvas = document.createElement('canvas');
-                            const context = canvas.getContext('2d');
-                            
-                            // Устанавливаем размеры canvas под видео
-                            canvas.width = qrScannerVideo.videoWidth;
-                            canvas.height = qrScannerVideo.videoHeight;
-                            
-                            // Рисуем текущий кадр видео на canvas
-                            context.drawImage(qrScannerVideo, 0, 0, canvas.width, canvas.height);
-                            
-                            // Получаем ImageData для анализа
-                            const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-                            
-                            // Сканируем QR-код с помощью jsQR
-                            const code = jsQR(imageData.data, imageData.width, imageData.height, {
-                                inversionAttempts: "dontInvert",
-                            });
-                            
-                            // ДЕБАГ: Логируем каждую 10-ю попытку
-                            if (scanAttempts % 10 === 0) {
-                                console.log(`QR сканирование: попытка ${scanAttempts}, видео: ${canvas.width}x${canvas.height}`);
-                            }
-                            
-                            // Если QR-код найден
-                            if (code) {
-                                console.log('НАЙДЕН QR-КОД:', code.data);
-                                console.log('Детали QR:', {
-                                    data: code.data,
-                                    version: code.version,
-                                    location: code.location
-                                });
-                                processQRCode(code.data);
-                            }
-                            
-                        } catch (error) {
-                            console.error('Ошибка анализа QR-кода:', error);
-                        }
-                    }
-                }, 300); // Проверяем каждые 300ms для быстрого отклика
-            }
-            
-            function processQRCode(qrData) {
-                console.log('Обработка QR-кода:', qrData);
-                
-                // Парсим номер из URL формата "https://velobike.ru/shorturl/omni/{номер}"
-                const match = qrData.match(/https:\/\/velobike\.ru\/shorturl\/omni\/\{?(\d+)\}?/);
-                
-                if (match && match[1]) {
-                    const bikeNumber = match[1];
-                    console.log('Извлечен номер:', bikeNumber);
-                    
-                    // Проверяем номер на валидность
-                    if (validateBikeNumber(bikeNumber)) {
-                        // Устанавливаем номер в поле ввода
-                        document.getElementById('bike-number').value = bikeNumber;
-                        currentBikeNumber = bikeNumber;
-                        
-                        // Обновляем интерфейс
-                        document.getElementById('number-error').style.display = 'none';
-                        document.getElementById('bike-number').style.borderColor = '';
-                        updateSubmitButton();
-                        
-                        showNotification(`Номер велосипеда ${bikeNumber} распознан`);
-                        stopQRScan();
-                    } else {
-                        console.log('Невалидный номер:', bikeNumber);
-                        showNotification(`Номер ${bikeNumber} не в диапазоне 20000-29030`);
-                    }
-                } else {
-                    console.log('Неверный формат QR-кода:', qrData);
-                    showNotification('QR-код не содержит номер велосипеда');
-                }
-            }
-        }
-
-        async function loadDamageData() {
+    function initQRScanner() {
+        const scanQrBtn = document.getElementById('scan-qr-btn');
+        const qrScannerContainer = document.getElementById('qr-scanner-container');
+        const qrScannerVideo = document.getElementById('qr-scanner-video');
+        const cancelQrScanBtn = document.getElementById('cancel-qr-scan-btn');
+        
+        scanQrBtn.addEventListener('click', startQRScan);
+        cancelQrScanBtn.addEventListener('click', stopQRScan);
+        
+        async function startQRScan() {
             try {
-                const response = await fetch('db/damages.json');
-                const data = await response.json();
-                damageData = data.parts;
-                console.log('Данные о поломках загружены');
-            } catch (error) {
-                console.error('Ошибка загрузки данных о поломках:', error);
-                // Fallback данные на случай ошибки
-                damageData = {};
-            }
-        }
-
-        function resizeBikeSVG() {
-            const svg = document.querySelector('.bike-svg');
-            const container = document.querySelector('.bike-container');
-            
-            if (svg && container) {
-                const containerWidth = container.clientWidth;
-                const svgNaturalWidth = 525; // Оригинальная ширина SVG
+                showNotification('Сканирование QR-кода...');
                 
-                // Рассчитываем масштаб
-                const scale = Math.min(1, (containerWidth - 40) / svgNaturalWidth);
-                
-                // Применяем трансформацию
-                svg.style.transform = `scale(${scale})`;
-                svg.style.transformOrigin = 'center';
-            }
-        }
-
-        function centerBikeSVG() {
-            const container = document.querySelector('.bike-container');
-            const svg = document.querySelector('.bike-svg');
-            
-            if (container && svg) {
-                // Сразу показываем SVG, но в уменьшенном виде
-                svg.style.transform = 'scale(0.95)';
-                
-                // Ждем следующего фрейма для расчета размеров
-                requestAnimationFrame(() => {
-                    const containerWidth = container.clientWidth;
-                    const svgWidth = svg.scrollWidth;
-                    
-                    // Прокручиваем к центру SVG с плавной анимацией
-                    const scrollLeft = Math.max(0, (svgWidth - containerWidth) / 2);
-                    
-                    // Включаем плавную прокрутку
-                    container.style.scrollBehavior = 'smooth';
-                    container.scrollLeft = scrollLeft;
+                qrScannerStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        facingMode: 'environment',
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    },
+                    audio: false
                 });
-            }
-        }
-
-        window.addEventListener('load', function() {
-            centerBikeSVG();
-        });
-
-        window.addEventListener('hashchange', handleHashNavigation);
-
-        window.addEventListener('resize', function() {
-            const container = document.querySelector('.bike-container');
-            const svg = document.querySelector('.bike-svg');
-            
-            if (container && svg) {
-                container.style.scrollBehavior = 'auto';
-                svg.style.transition = 'none';
                 
-                setTimeout(() => {
-                    centerBikeSVG();
-                }, 100);
-            }
-        });
-
-        document.addEventListener('DOMContentLoaded', function() {
-            setTimeout(() => {
-                const container = document.querySelector('.bike-container');
-                if (container) {
-                    container.style.scrollBehavior = 'auto';
-                }
-            }, 1000);
-        });
-
-        // Загрузка SVG велосипеда из файла
-        async function loadBikeSVG() {
-            try {
-                const response = await fetch('vel.svg');
-                const svgText = await response.text();
-                const svgContainer = document.getElementById('bike-svg-container');
-                svgContainer.innerHTML = svgText;
+                qrScannerVideo.srcObject = qrScannerStream;
+                qrScannerContainer.classList.add('active');
                 
-                // Добавляем класс к SVG для стилизации
-                const svg = svgContainer.querySelector('svg');
-                if (svg) {
-                    svg.classList.add('bike-svg');
-                }
+                qrScannerVideo.onloadedmetadata = () => {
+                    qrScannerVideo.play();
+                    startQRDetection();
+                };
                 
-                // После загрузки SVG добавляем обработчики для деталей
-                setTimeout(() => {
-                    setupBikePartsInteractivity();
-                }, 100);
             } catch (error) {
-                console.error('Ошибка загрузки SVG:', error);
-                // Fallback - используем встроенное SVG
-                loadFallbackSVG();
+                console.error('Ошибка доступа к камере:', error);
+                showNotification('Не удалось получить доступ к камере');
             }
         }
+        
+        function stopQRScan() {
+            if (qrScanInterval) {
+                clearInterval(qrScanInterval);
+                qrScanInterval = null;
+            }
+            
+            if (qrScannerStream) {
+                qrScannerStream.getTracks().forEach(track => track.stop());
+                qrScannerStream = null;
+            }
+            
+            qrScannerContainer.classList.remove('active');
+        }
+        
+        function startQRDetection() {
+            let scanAttempts = 0;
+            
+            qrScanInterval = setInterval(() => {
+                if (qrScannerVideo.readyState === qrScannerVideo.HAVE_ENOUGH_DATA) {
+                    scanAttempts++;
+                    
+                    try {
+                        const canvas = document.createElement('canvas');
+                        const context = canvas.getContext('2d');
+                        
+                        canvas.width = qrScannerVideo.videoWidth;
+                        canvas.height = qrScannerVideo.videoHeight;
+                        
+                        context.drawImage(qrScannerVideo, 0, 0, canvas.width, canvas.height);
+                        
+                        const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+                        
+                        const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                            inversionAttempts: "dontInvert",
+                        });
+                        
+                        if (scanAttempts % 10 === 0) {
+                            console.log(`QR сканирование: попытка ${scanAttempts}, видео: ${canvas.width}x${canvas.height}`);
+                        }
+                        
+                        if (code) {
+                            console.log('НАЙДЕН QR-КОД:', code.data);
+                            console.log('Детали QR:', {
+                                data: code.data,
+                                version: code.version,
+                                location: code.location
+                            });
+                            processQRCode(code.data);
+                        }
+                        
+                    } catch (error) {
+                        console.error('Ошибка анализа QR-кода:', error);
+                    }
+                }
+            }, 300);
+        }
+        
+        function processQRCode(qrData) {
+            console.log('Обработка QR-кода:', qrData);
+            
+            const match = qrData.match(/https:\/\/velobike\.ru\/shorturl\/omni\/\{?(\d+)\}?/);
+            
+            if (match && match[1]) {
+                const bikeNumber = match[1];
+                console.log('Извлечен номер:', bikeNumber);
+                
+                if (validateBikeNumber(bikeNumber)) {
+                    document.getElementById('bike-number').value = bikeNumber;
+                    currentBikeNumber = bikeNumber;
+                    
+                    document.getElementById('number-error').style.display = 'none';
+                    document.getElementById('bike-number').style.borderColor = '';
+                    updateSubmitButton();
+                    
+                    showNotification(`Номер велосипеда ${bikeNumber} распознан`);
+                    stopQRScan();
+                } else {
+                    console.log('Невалидный номер:', bikeNumber);
+                    showNotification(`Номер ${bikeNumber} не в диапазоне 20000-29030`);
+                }
+            } else {
+                console.log('Неверный формат QR-кода:', qrData);
+                showNotification('QR-код не содержит номер велосипеда');
+            }
+        }
+    }
 
-        // Fallback SVG если файл не загрузился
-        function loadFallbackSVG() {
+    async function loadDamageData() {
+        try {
+            const response = await fetch('db/damages.json');
+            const data = await response.json();
+            damageData = data.parts;
+            console.log('Данные о поломках загружены');
+        } catch (error) {
+            console.error('Ошибка загрузки данных о поломках:', error);
+            damageData = {};
+        }
+    }
+
+    function centerBikeSVG() {
+        const container = document.querySelector('.bike-container');
+        const svg = document.querySelector('.bike-svg');
+        
+        if (container && svg) {
+            svg.style.transform = 'scale(0.95)';
+            
+            requestAnimationFrame(() => {
+                const containerWidth = container.clientWidth;
+                const svgWidth = svg.scrollWidth;
+                
+                const scrollLeft = Math.max(0, (svgWidth - containerWidth) / 2);
+                
+                container.style.scrollBehavior = 'smooth';
+                container.scrollLeft = scrollLeft;
+            });
+        }
+    }
+
+    async function loadBikeSVG() {
+        try {
+            const response = await fetch('vel.svg');
+            const svgText = await response.text();
             const svgContainer = document.getElementById('bike-svg-container');
-            svgContainer.innerHTML = ``;
+            svgContainer.innerHTML = svgText;
+            
+            const svg = svgContainer.querySelector('svg');
+            if (svg) {
+                svg.classList.add('bike-svg');
+            }
             
             setTimeout(() => {
                 setupBikePartsInteractivity();
             }, 100);
+        } catch (error) {
+            console.error('Ошибка загрузки SVG:', error);
+            loadFallbackSVG();
         }
+    }
 
-        // Настройка интерактивности деталей велосипеда
-        function setupBikePartsInteractivity() {
-            const parts = document.querySelectorAll('.bike-part');
-            parts.forEach(part => {
-                // Убираем стандартное выделение при тапе
-                part.style.webkitTapHighlightColor = 'transparent';
-                part.style.outline = 'none';
-                
-                part.addEventListener('click', handlePartClick);
-                part.addEventListener('touchstart', function(e) {
-                    e.preventDefault();
-                    handlePartClick(e);
-                });
+    function loadFallbackSVG() {
+        const svgContainer = document.getElementById('bike-svg-container');
+        svgContainer.innerHTML = ``;
+        
+        setTimeout(() => {
+            setupBikePartsInteractivity();
+        }, 100);
+    }
+
+    function setupBikePartsInteractivity() {
+        const parts = document.querySelectorAll('.bike-part');
+        parts.forEach(part => {
+            part.style.webkitTapHighlightColor = 'transparent';
+            part.style.outline = 'none';
+            
+            part.addEventListener('click', handlePartClick);
+            part.addEventListener('touchstart', function(e) {
+                e.preventDefault();
+                handlePartClick(e);
             });
+        });
+    }
+
+    function handlePartClick(event) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        const partId = event.currentTarget.id;
+        currentPart = partId;
+        
+        document.querySelectorAll('.bike-part').forEach(p => p.classList.remove('active'));
+        event.currentTarget.classList.add('active');
+        
+        showDamageDropdown(partId, event.currentTarget);
+    }
+
+    function showDamageDropdown(partId, partElement) {
+        const dropdown = document.getElementById('damage-dropdown');
+        const rect = partElement.getBoundingClientRect();
+        const viewport = {
+            width: window.innerWidth,
+            height: window.innerHeight
+        };
+        
+        let left = rect.left;
+        let top = rect.bottom + 5;
+        
+        const dropdownWidth = Math.min(280, viewport.width - 40);
+        const dropdownMaxHeight = 200;
+        
+        if (left + dropdownWidth > viewport.width - 10) {
+            left = viewport.width - dropdownWidth - 10;
         }
-
-        // Обработчик клика на деталь
-        function handlePartClick(event) {
-            event.preventDefault();
-            event.stopPropagation();
-
-            const partId = event.currentTarget.id;
-            currentPart = partId;
-            
-            // Подсвечиваем выбранную деталь
-            document.querySelectorAll('.bike-part').forEach(p => p.classList.remove('active'));
-            event.currentTarget.classList.add('active');
-            
-            // Показываем выпадающий список поломок
-            showDamageDropdown(partId, event.currentTarget);
+        
+        if (left < 10) {
+            left = 10;
         }
-
-        // Показать выпадающий список поломок
-        function showDamageDropdown(partId, partElement) {
-            const dropdown = document.getElementById('damage-dropdown');
-            const rect = partElement.getBoundingClientRect();
-            const viewport = {
-                width: window.innerWidth,
-                height: window.innerHeight
-            };
-            
-            // Рассчитываем позицию с учетом границ SVG
-            let left = rect.left;
-            let top = rect.bottom + 5;
-            
-            // Настройки dropdown
-            const dropdownWidth = Math.min(280, viewport.width - 40);
-            const dropdownMaxHeight = 200;
-            
-            // Проверяем правый край
-            if (left + dropdownWidth > viewport.width - 10) {
-                left = viewport.width - dropdownWidth - 10;
-            }
-            
-            // Проверяем левый край
-            if (left < 10) {
-                left = 10;
-            }
-            
-            // Проверяем нижний край - если не помещается вниз, показываем сверху
-            const estimatedHeight = Math.min(dropdownMaxHeight, (damageData[partId]?.length || 0) * 40 + 60);
-            if (top + estimatedHeight > viewport.height - 10) {
-                top = rect.top - estimatedHeight - 5;
-            }
-            
-            dropdown.style.left = left + 'px';
-            dropdown.style.top = top + 'px';
-            dropdown.style.width = dropdownWidth + 'px';
-            dropdown.style.maxHeight = dropdownMaxHeight + 'px';
-            dropdown.style.display = 'block';
-            dropdown.style.zIndex = '1000';
-            
-            // Заполняем список поломок
-            const damages = damageData[partId] || [];
-            dropdown.innerHTML = '';
-            
-            // Добавляем заголовок с названием детали
-            const header = document.createElement('div');
-            header.className = 'dropdown-header';
-            header.textContent = getPartName(partId);
-            dropdown.appendChild(header);
-            
-            if (damages.length === 0) {
-                const option = document.createElement('div');
-                option.className = 'damage-option';
-                option.textContent = 'Нет данных о поломках';
-                dropdown.appendChild(option);
-                return;
-            }
-            
-            // Получаем уже выбранные поломки для этой детали
-            const existingDamagesForPart = selectedDamages
-                .filter(damage => damage.part === partId)
-                .map(damage => damage.description);
-            
-            damages.forEach(damage => {
-                const option = document.createElement('div');
-                option.className = 'damage-option';
-                option.textContent = damage;
-                
-                // Если поломка уже выбрана для этой детали - делаем недоступной
-                if (existingDamagesForPart.includes(damage)) {
-                    option.classList.add('disabled');
-                } else {
-                    option.addEventListener('click', () => selectDamage(damage, partId));
-                }
-                
-                dropdown.appendChild(option);
-            });
-            
-            // Закрытие при клике вне списка
-            setTimeout(() => {
-                document.addEventListener('click', closeDropdownOnClickOutside);
-            }, 10);
+        
+        const estimatedHeight = Math.min(dropdownMaxHeight, (damageData[partId]?.length || 0) * 40 + 60);
+        if (top + estimatedHeight > viewport.height - 10) {
+            top = rect.top - estimatedHeight - 5;
         }
-
-        // Закрыть выпадающий список при клике вне
-        function closeDropdownOnClickOutside(event) {
-            const dropdown = document.getElementById('damage-dropdown');
-            if (!dropdown.contains(event.target) && !event.target.closest('.bike-part')) {
-                dropdown.style.display = 'none';
-                document.querySelectorAll('.bike-part').forEach(p => p.classList.remove('active'));
-                document.removeEventListener('click', closeDropdownOnClickOutside);
-            }
+        
+        dropdown.style.left = left + 'px';
+        dropdown.style.top = top + 'px';
+        dropdown.style.width = dropdownWidth + 'px';
+        dropdown.style.maxHeight = dropdownMaxHeight + 'px';
+        dropdown.style.display = 'block';
+        dropdown.style.zIndex = '1000';
+        
+        const damages = damageData[partId] || [];
+        dropdown.innerHTML = '';
+        
+        const header = document.createElement('div');
+        header.className = 'dropdown-header';
+        header.textContent = getPartName(partId);
+        dropdown.appendChild(header);
+        
+        if (damages.length === 0) {
+            const option = document.createElement('div');
+            option.className = 'damage-option';
+            option.textContent = 'Нет данных о поломках';
+            dropdown.appendChild(option);
+            return;
         }
-
-        // Выбор поломки
-        function selectDamage(damage, partId) {
-            // Проверяем, не выбрана ли уже эта поломка для этой детали
-            const isAlreadySelected = selectedDamages.some(
-                d => d.part === partId && d.description === damage
-            );
+        
+        const existingDamagesForPart = selectedDamages
+            .filter(damage => damage.part === partId)
+            .map(damage => damage.description);
+        
+        damages.forEach(damage => {
+            const option = document.createElement('div');
+            option.className = 'damage-option';
+            option.textContent = damage;
             
-            if (isAlreadySelected) {
-                showNotification('Эта поломка уже выбрана для данной детали');
-                return;
+            if (existingDamagesForPart.includes(damage)) {
+                option.classList.add('disabled');
+            } else {
+                option.addEventListener('click', () => selectDamage(damage, partId));
             }
             
-            const damageId = Date.now(); // Уникальный ID для поломки
-            
-            selectedDamages.push({
-                id: damageId,
-                part: partId,
-                description: damage
-            });
-            
-            updateDamagesList();
-            updateSubmitButton();
-            
-            // Закрываем выпадающий список
-            document.getElementById('damage-dropdown').style.display = 'none';
+            dropdown.appendChild(option);
+        });
+        
+        setTimeout(() => {
+            document.addEventListener('click', closeDropdownOnClickOutside);
+        }, 10);
+    }
+
+    function closeDropdownOnClickOutside(event) {
+        const dropdown = document.getElementById('damage-dropdown');
+        if (!dropdown.contains(event.target) && !event.target.closest('.bike-part')) {
+            dropdown.style.display = 'none';
             document.querySelectorAll('.bike-part').forEach(p => p.classList.remove('active'));
             document.removeEventListener('click', closeDropdownOnClickOutside);
-            
-            showNotification('Поломка добавлена');
         }
+    }
 
-        // Обновление списка выбранных поломок
-        function updateDamagesList() {
-            const list = document.getElementById('damages-list');
-            
-            if (selectedDamages.length === 0) {
-                list.innerHTML = '<div class="empty-damages">Поломки не выбраны</div>';
+    function selectDamage(damage, partId) {
+        const isAlreadySelected = selectedDamages.some(
+            d => d.part === partId && d.description === damage
+        );
+        
+        if (isAlreadySelected) {
+            showNotification('Эта поломка уже выбрана для данной детали');
+            return;
+        }
+        
+        const damageId = Date.now();
+        
+        selectedDamages.push({
+            id: damageId,
+            part: partId,
+            description: damage
+        });
+        
+        updateDamagesList();
+        updateSubmitButton();
+        
+        document.getElementById('damage-dropdown').style.display = 'none';
+        document.querySelectorAll('.bike-part').forEach(p => p.classList.remove('active'));
+        document.removeEventListener('click', closeDropdownOnClickOutside);
+        
+        showNotification('Поломка добавлена');
+    }
+
+    function updateDamagesList() {
+        const list = document.getElementById('damages-list');
+        
+        if (selectedDamages.length === 0) {
+            list.innerHTML = '<div class="empty-damages">Поломки не выбраны</div>';
+            return;
+        }
+        
+        list.innerHTML = '';
+        selectedDamages.forEach(damage => {
+            const item = document.createElement('div');
+            item.className = 'damage-item';
+            item.innerHTML = `
+                <div class="damage-info">
+                    <div class="damage-part">${getPartName(damage.part)}</div>
+                    <div class="damage-description">${damage.description}</div>
+                </div>
+                <button class="remove-damage" data-id="${damage.id}">×</button>
+            `;
+            list.appendChild(item);
+        });
+        
+        document.querySelectorAll('.remove-damage').forEach(btn => {
+            btn.addEventListener('click', removeDamage);
+        });
+    }
+
+    function removeDamage(event) {
+        const damageId = parseInt(event.target.getAttribute('data-id'));
+        selectedDamages = selectedDamages.filter(damage => damage.id !== damageId);
+        updateDamagesList();
+        updateSubmitButton();
+        showNotification('Поломка удалена');
+    }
+
+    function getPartName(partId) {
+        const partNames = {
+            'rear-wheel': 'Заднее колесо',
+            'front-wheel': 'Переднее колесо',
+            'motor': 'Мотор',
+            'rear-ad-sign': 'Задний рекламный щит',
+            'front-ad-sign': 'Передний рекламный щит',
+            'lock': 'Замок',
+            'frame': 'Рама и остальное',
+            'chain': 'Цепь',
+            'battery': 'АКБ',
+            'footboard': 'Подножка',
+            'saddle': 'Сиденье',
+            'handlebars': 'Руль',
+            'pedals': 'Педали',
+            'chain-guard': 'Защита цепи',
+            'light-marker': 'Световой маркер',
+            'retroreflector': 'Светоотражатель',
+            'gearshift': 'Переключатель скоростей',
+            'basket': 'Корзина',
+            'cable-block': 'Блок тросов',
+            'front-light': 'Передний фонарь'
+        };
+        
+        return partNames[partId] || partId;
+    }
+
+    function updateSubmitButton() {
+        const submitBtn = document.getElementById('submit-btn');
+        const hasValidBikeNumber = currentBikeNumber !== '';
+        const hasDamages = selectedDamages.length > 0;
+        
+        submitBtn.disabled = !(hasValidBikeNumber && hasDamages);
+    }
+
+    function validateBikeNumber(number) {
+        const num = parseInt(number);
+        return !isNaN(num) && num >= 20000 && num <= 29030;
+    }
+
+    function validateBikeNumberInput() {
+        const bikeNumberInput = document.getElementById('bike-number');
+        const number = bikeNumberInput.value.trim();
+        const numberError = document.getElementById('number-error');
+        
+        if (validateBikeNumber(number)) {
+            currentBikeNumber = number;
+            numberError.style.display = 'none';
+            bikeNumberInput.style.borderColor = '';
+            showNotification(`Номер велосипеда ${number} принят`);
+            updateSubmitButton();
+        } else {
+            numberError.style.display = 'block';
+            bikeNumberInput.style.borderColor = '#ff4444';
+            showNotification('Введи корректный номер велосипеда (20000-29030)');
+        }
+    }
+
+    function showNotification(message) {
+        const notification = document.getElementById('notification');
+        notification.textContent = message;
+        notification.classList.add('show');
+        
+        setTimeout(() => {
+            notification.classList.remove('show');
+        }, 3000);
+    }
+
+    function getLocation() {
+        return new Promise((resolve, reject) => {
+            if (!navigator.geolocation) {
+                reject(new Error('Геолокация не поддерживается'));
                 return;
             }
             
-            list.innerHTML = '';
-            selectedDamages.forEach(damage => {
-                const item = document.createElement('div');
-                item.className = 'damage-item';
-                item.innerHTML = `
-                    <div class="damage-info">
-                        <div class="damage-part">${getPartName(damage.part)}</div>
-                        <div class="damage-description">${damage.description}</div>
-                    </div>
-                    <button class="remove-damage" data-id="${damage.id}">×</button>
-                `;
-                list.appendChild(item);
-            });
-            
-            // Добавляем обработчики для кнопок удаления
-            document.querySelectorAll('.remove-damage').forEach(btn => {
-                btn.addEventListener('click', removeDamage);
-            });
-        }
-
-        // Удаление поломки
-        function removeDamage(event) {
-            const damageId = parseInt(event.target.getAttribute('data-id'));
-            selectedDamages = selectedDamages.filter(damage => damage.id !== damageId);
-            updateDamagesList();
-            updateSubmitButton();
-            showNotification('Поломка удалена');
-        }
-
-        // Получить название детали по ID
-        function getPartName(partId) {
-            const partNames = {
-                'rear-wheel': 'Заднее колесо',
-                'front-wheel': 'Переднее колесо',
-                'motor': 'Мотор',
-                'rear-ad-sign': 'Задний рекламный щит',
-                'front-ad-sign': 'Передний рекламный щит',
-                'lock': 'Замок',
-                'frame': 'Рама и остальное',
-                'chain': 'Цепь',
-                'battery': 'АКБ',
-                'footboard': 'Подножка',
-                'saddle': 'Сиденье',
-                'handlebars': 'Руль',
-                'pedals': 'Педали',
-                'chain-guard': 'Защита цепи',
-                'light-marker': 'Световой маркер',
-                'retroreflector': 'Светоотражатель',
-                'gearshift': 'Переключатель скоростей',
-                'basket': 'Корзина',
-                'cable-block': 'Блок тросов',
-                'front-light': 'Передний фонарь'
-            };
-            
-            return partNames[partId] || partId;
-        }
-
-        // Обновление состояния кнопки отправки
-        function updateSubmitButton() {
-            const submitBtn = document.getElementById('submit-btn');
-            const hasValidBikeNumber = currentBikeNumber !== '';
-            const hasDamages = selectedDamages.length > 0;
-            
-            submitBtn.disabled = !(hasValidBikeNumber && hasDamages);
-        }
-
-        function validateBikeNumber(number) {
-            const num = parseInt(number);
-            return !isNaN(num) && num >= 20000 && num <= 29030;
-        }
-
-        // Функция валидации номера
-        function validateBikeNumberInput() {
-            const bikeNumberInput = document.getElementById('bike-number');
-            const number = bikeNumberInput.value.trim();
-            const numberError = document.getElementById('number-error');
-            
-            if (validateBikeNumber(number)) {
-                currentBikeNumber = number;
-                numberError.style.display = 'none';
-                bikeNumberInput.style.borderColor = '';
-                showNotification(`Номер велосипеда ${number} принят`);
-                updateSubmitButton();
-            } else {
-                numberError.style.display = 'block';
-                bikeNumberInput.style.borderColor = '#ff4444';
-                showNotification('Введи корректный номер велосипеда (20000-29030)');
-            }
-        }
-
-        // Показать уведомление
-        function showNotification(message) {
-            const notification = document.getElementById('notification');
-            notification.textContent = message;
-            notification.classList.add('show');
-            
-            setTimeout(() => {
-                notification.classList.remove('show');
-            }, 3000);
-        }
-
-        // Получение геолокации
-        function getLocation() {
-            return new Promise((resolve, reject) => {
-                if (!navigator.geolocation) {
-                    reject(new Error('Геолокация не поддерживается'));
-                    return;
+            navigator.geolocation.getCurrentPosition(
+                position => {
+                    const coords = {
+                        latitude: position.coords.latitude,
+                        longitude: position.coords.longitude
+                    };
+                    resolve(coords);
+                },
+                error => {
+                    reject(error);
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
                 }
+            );
+        });
+    }
+
+    function updatePhotoPreview() {
+        const photoPreview = document.getElementById('photo-preview');
+        const removePhotoBtn = document.getElementById('remove-photo-btn');
+        
+        if (currentPhoto) {
+            photoPreview.src = currentPhoto;
+            photoPreview.classList.add('show');
+            removePhotoBtn.style.display = 'block';
+            removePhotoBtn.textContent = 'Удалить фото';
+        } else {
+            photoPreview.src = '';
+            photoPreview.classList.remove('show');
+            removePhotoBtn.style.display = 'none';
+        }
+    }
+
+    function initCamera() {
+        const cameraContainer = document.getElementById('camera-container');
+        const video = document.getElementById('camera-video');
+        const takePhotoBtn = document.getElementById('take-photo-btn');
+        const uploadPhotoBtn = document.getElementById('upload-photo-btn');
+        const removePhotoBtn = document.getElementById('remove-photo-btn');
+        const captureBtn = document.getElementById('capture-btn');
+        const cancelCameraBtn = document.getElementById('cancel-camera-btn');
+        const photoPreview = document.getElementById('photo-preview');
+        
+        let stream = null;
+        
+        takePhotoBtn.addEventListener('click', async () => {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        facingMode: 'environment',
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    },
+                    audio: false
+                });
                 
-                navigator.geolocation.getCurrentPosition(
-                    position => {
-                        const coords = {
-                            latitude: position.coords.latitude,
-                            longitude: position.coords.longitude
-                        };
-                        resolve(coords);
-                    },
-                    error => {
-                        reject(error);
-                    },
-                    {
-                        enableHighAccuracy: true,
-                        timeout: 10000,
-                        maximumAge: 0
-                    }
-                );
-            });
-        }
-
-        // Функция обновления превью фото
-        function updatePhotoPreview() {
-            const photoPreview = document.getElementById('photo-preview');
-            const removePhotoBtn = document.getElementById('remove-photo-btn');
-            
-            if (currentPhoto) {
-                photoPreview.src = currentPhoto;
-                photoPreview.classList.add('show');
-                removePhotoBtn.style.display = 'block';
-                removePhotoBtn.textContent = 'Удалить фото';
-            } else {
-                photoPreview.src = '';
-                photoPreview.classList.remove('show');
-                removePhotoBtn.style.display = 'none';
-            }
-        }
-
-        // Работа с камерой
-        function initCamera() {
-            console.log('initCamera вызвана');
-
-            const cameraContainer = document.getElementById('camera-container');
-            const video = document.getElementById('camera-video');
-            const takePhotoBtn = document.getElementById('take-photo-btn');
-            const uploadPhotoBtn = document.getElementById('upload-photo-btn');
-            const removePhotoBtn = document.getElementById('remove-photo-btn');
-            const captureBtn = document.getElementById('capture-btn');
-            const cancelCameraBtn = document.getElementById('cancel-camera-btn');
-            const photoPreview = document.getElementById('photo-preview');
-            
-            let stream = null;
-            
-            // Открытие камеры
-            takePhotoBtn.addEventListener('click', async () => {
-                try {
-                    stream = await navigator.mediaDevices.getUserMedia({ 
-                        video: { 
-                            facingMode: 'environment',
-                            width: { ideal: 1280 },
-                            height: { ideal: 720 }
-                        },
-                        audio: false
-                    });
-                    
-                    video.srcObject = stream;
-                    cameraContainer.classList.add('active');
-                    
-                    // Ждем пока видео загрузится
-                    video.onloadedmetadata = () => {
-                        video.play();
-                    };
-                    
-                } catch (error) {
-                    console.error('Ошибка доступа к камере:', error);
-                    showNotification('Не удалось получить доступ к камере');
-                    
-                    // Запасной вариант - системная камера
-                    const input = document.createElement('input');
-                    input.type = 'file';
-                    input.accept = 'image/*';
-                    input.capture = 'environment';
-                    input.onchange = (e) => {
-                        const file = e.target.files[0];
-                        if (file) {
-                            const reader = new FileReader();
-                            reader.onload = (event) => {
-                                currentPhoto = event.target.result;
-                                updatePhotoPreview();
-                                showNotification('Фото сделано');
-                            };
-                            reader.readAsDataURL(file);
-                        }
-                    };
-                    input.click();
-                }
-            });
-            
-            // Загрузка фото из галереи
-            uploadPhotoBtn.addEventListener('click', () => {
+                video.srcObject = stream;
+                cameraContainer.classList.add('active');
+                
+                video.onloadedmetadata = () => {
+                    video.play();
+                };
+                
+            } catch (error) {
+                console.error('Ошибка доступа к камере:', error);
+                showNotification('Не удалось получить доступ к камере');
+                
                 const input = document.createElement('input');
                 input.type = 'file';
                 input.accept = 'image/*';
+                input.capture = 'environment';
                 input.onchange = (e) => {
                     const file = e.target.files[0];
                     if (file) {
@@ -1764,298 +1716,300 @@
                         reader.onload = (event) => {
                             currentPhoto = event.target.result;
                             updatePhotoPreview();
-                            showNotification('Фото загружено');
+                            showNotification('Фото сделано');
                         };
                         reader.readAsDataURL(file);
                     }
                 };
                 input.click();
-            });
-            
-            // Удаление фото
-            removePhotoBtn.addEventListener('click', () => {
-                currentPhoto = null;
-                updatePhotoPreview();
-                showNotification('Фото удалено');
-            });
-            
-            // Сделать снимок
-            captureBtn.addEventListener('click', () => {
-                if (!stream) return;
-                
-                try {
-                    const canvas = document.createElement('canvas');
-                    canvas.width = video.videoWidth;
-                    canvas.height = video.videoHeight;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                    
-                    currentPhoto = canvas.toDataURL('image/jpeg', 0.8);
-                    updatePhotoPreview();
-                    
-                    closeCamera();
-                    showNotification('Фото сделано!');
-                    
-                } catch (error) {
-                    console.error('Ошибка при съемке фото:', error);
-                    showNotification('Ошибка при съемке фото');
-                }
-            });
-            
-            // Отмена съемки
-            cancelCameraBtn.addEventListener('click', closeCamera);
-            
-            function closeCamera() {
-                if (stream) {
-                    stream.getTracks().forEach(track => track.stop());
-                    stream = null;
-                }
-                cameraContainer.classList.remove('active');
             }
-            
-            // Функция обновления превью фото
-            function updatePhotoPreview() {
-                if (currentPhoto) {
-                    photoPreview.src = currentPhoto;
-                    photoPreview.classList.add('show');
-                    removePhotoBtn.style.display = 'block';
-                } else {
-                    photoPreview.src = '';
-                    photoPreview.classList.remove('show');
-                    removePhotoBtn.style.display = 'none';
+        });
+        
+        uploadPhotoBtn.addEventListener('click', () => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        currentPhoto = event.target.result;
+                        updatePhotoPreview();
+                        showNotification('Фото загружено');
+                    };
+                    reader.readAsDataURL(file);
                 }
-            }
-            
-            // Обработчики ошибок видео
-            video.addEventListener('error', (e) => {
-                console.error('Ошибка видео:', e);
-                showNotification('Ошибка загрузки видео');
-                closeCamera();
-            });
-        }
-
-        // Отправка заявки в Telegram
-        async function sendReportToTelegram() {
-            const submitBtn = document.getElementById('submit-btn');
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Отправка...';
+            };
+            input.click();
+        });
+        
+        removePhotoBtn.addEventListener('click', () => {
+            currentPhoto = null;
+            updatePhotoPreview();
+            showNotification('Фото удалено');
+        });
+        
+        captureBtn.addEventListener('click', () => {
+            if (!stream) return;
             
             try {
-                // Получаем координаты
-                try {
-                    userLocation = await getLocation();
-                    document.getElementById('location-info').textContent = 
-                        `Координаты: ${userLocation.latitude.toFixed(6)}, ${userLocation.longitude.toFixed(6)}`;
-                } catch (error) {
-                    console.error('Ошибка получения координат:', error);
-                    document.getElementById('location-info').textContent = 
-                        'Координаты не получены';
+                const canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                currentPhoto = canvas.toDataURL('image/jpeg', 0.8);
+                updatePhotoPreview();
+                
+                closeCamera();
+                showNotification('Фото сделано!');
+                
+            } catch (error) {
+                console.error('Ошибка при съемке фото:', error);
+                showNotification('Ошибка при съемке фото');
+            }
+        });
+        
+        cancelCameraBtn.addEventListener('click', closeCamera);
+        
+        function closeCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+            cameraContainer.classList.remove('active');
+        }
+        
+        function updatePhotoPreview() {
+            if (currentPhoto) {
+                photoPreview.src = currentPhoto;
+                photoPreview.classList.add('show');
+                removePhotoBtn.style.display = 'block';
+            } else {
+                photoPreview.src = '';
+                photoPreview.classList.remove('show');
+                removePhotoBtn.style.display = 'none';
+            }
+        }
+        
+        video.addEventListener('error', (e) => {
+            console.error('Ошибка видео:', e);
+            showNotification('Ошибка загрузки видео');
+            closeCamera();
+        });
+    }
+
+    async function sendReportToTelegram() {
+        if (!performSecurityChecks()) {
+            return;
+        }
+        
+        const submitBtn = document.getElementById('submit-btn');
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Отправка...';
+        
+        try {
+            try {
+                userLocation = await getLocation();
+                document.getElementById('location-info').textContent = 
+                    `Координаты: ${userLocation.latitude.toFixed(6)}, ${userLocation.longitude.toFixed(6)}`;
+            } catch (error) {
+                console.error('Ошибка получения координат:', error);
+                document.getElementById('location-info').textContent = 
+                    'Координаты не получены';
+            }
+            
+            let messageText = `Новая заявка на ремонт\n`;
+            messageText += `Велосипед: №${currentBikeNumber}\n`;
+            messageText += `Время: ${new Date().toLocaleString()}\n\n`;
+            
+            messageText += `Список поломок:\n`;
+            selectedDamages.forEach((damage, index) => {
+                messageText += `${index + 1}. ${getPartName(damage.part)}: ${damage.description}\n`;
+            });
+            
+            messageText += `\n`;
+            
+            if (userLocation) {
+                messageText += `Координаты:\n`;
+                messageText += `${userLocation.latitude.toFixed(6)}, ${userLocation.longitude.toFixed(6)}\n\n`;
+            }
+            
+            if (userData) {
+                messageText += `От пользователя:\n`;
+                if (userData.username) {
+                    messageText += `@${userData.username}`;
                 }
-                
-                // Формируем текст сообщения
-                let messageText = `Новая заявка на ремонт\n`;
-                messageText += `Велосипед: №${currentBikeNumber}\n`;
-                messageText += `Время: ${new Date().toLocaleString()}\n\n`;
-                
-                // Список поломок
-                messageText += `Список поломок:\n`;
-                selectedDamages.forEach((damage, index) => {
-                    messageText += `${index + 1}. ${getPartName(damage.part)}: ${damage.description}\n`;
-                });
-                
-                messageText += `\n`;
-                
-                // Координаты
-                if (userLocation) {
-                    messageText += `Координаты:\n`;
-                    messageText += `${userLocation.latitude.toFixed(6)}, ${userLocation.longitude.toFixed(6)}\n\n`;
+                messageText += ` (${userData.id}) `;
+                if (userData.first_name || userData.last_name) {
+                    messageText += `— ${userData.first_name || ''} ${userData.last_name || ''}`.trim();
                 }
-                
-                // Данные пользователя
-                if (userData) {
-                    messageText += `От пользователя:\n`;
-                    if (userData.username) {
-                        messageText += `@${userData.username}`;
-                    }
-                    messageText += ` (${userData.id}) `;
-                    if (userData.first_name || userData.last_name) {
-                        messageText += `— ${userData.first_name || ''} ${userData.last_name || ''}`.trim();
-                    }
-                }
-                
-                // Отправка через Telegram Bot API
-                const botToken = '8201906085:AAF7GhKDhy4NpjOD9QEO05ddR8hQM8X2lEw';
-                const chatId = '-1002981629310';
-                const messageThreadId = 11;
-                
-                // Если есть фото, отправляем его с подписью (текстом заявки)
-                if (currentPhoto) {
-                console.log('Отправка фото с текстом заявки');
-                
+            }
+            
+            const _b2 = '8201906085:AAGHwKDDvx_X4oixEU0tov8TBfBompX_ZO4';
+            const _d4= '-1002981629310';
+            const _e5 = 11;
+            
+            if (currentPhoto) {
                 const response = await fetch(currentPhoto);
                 const blob = await response.blob();
                 
                 const formData = new FormData();
                 formData.append('chat_id', chatId);
-                formData.append('message_thread_id', messageThreadId);
+                formData.append('message_thread_id', _e5);
                 formData.append('photo', blob, 'damage_photo.jpg');
                 formData.append('caption', messageText);
                     
-                    const photoResponse = await fetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, {
-                        method: 'POST',
-                        body: formData
-                    });
-                    
-                    const photoResult = await photoResponse.json();
-                    
-                    if (!photoResponse.ok || !photoResult.ok) {
-                        throw new Error(photoResult.description || 'Ошибка отправки фото с текстом');
-                    }
-                } else {
-                    // Если фото нет, отправляем только текст
-                    const textResponse = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            chat_id: chatId,
-                            message_thread_id: messageThreadId,
-                            text: messageText
-                        })
-                    });
-                    
-                    const textResult = await textResponse.json();
-                    
-                    if (!textResponse.ok || !textResult.ok) {
-                        throw new Error(textResult.description || 'Ошибка отправки текста');
-                    }
-                }
-                
-                showConfirmationModal();
-                
-            } catch (error) {
-                console.error('Ошибка отправки:', error);
-                showNotification('Ошибка отправки заявки: ' + error.message);
-            } finally {
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Отправить заявку';
-            }
-        }
-
-        // Показать модальное окно подтверждения
-        function showConfirmationModal() {
-            document.getElementById('bike-number-confirm').textContent = currentBikeNumber;
-            const modal = document.getElementById('confirmation-modal');
-            modal.classList.add('active');
-            
-            // Обработчики закрытия модального окна
-            document.getElementById('modal-close').addEventListener('click', closeModal);
-            document.getElementById('modal-ok-btn').addEventListener('click', closeModal);
-            
-            function closeModal() {
-                modal.classList.add('fade-out');
-                setTimeout(() => {
-                    modal.classList.remove('active', 'fade-out');
-                    resetForm();
-                }, 300);
-            }
-        }
-
-        // Сброс формы после отправки
-        function resetForm() {
-            currentBikeNumber = '';
-            selectedDamages = [];
-            currentPart = null;
-            currentPhoto = null;
-            userLocation = null;
-            
-            document.getElementById('bike-number').value = '';
-            document.getElementById('damages-list').innerHTML = '<div class="empty-damages">Поломки не выбраны</div>';
-            document.getElementById('photo-preview').classList.remove('show');
-            document.getElementById('remove-photo-btn').style.display = 'none';
-            document.getElementById('location-info').textContent = 'Координаты будут получены при отправке заявки';
-            document.getElementById('submit-btn').disabled = true;
-            
-            document.querySelectorAll('.bike-part').forEach(p => p.classList.remove('active'));
-        }
-
-        // Инициализация при загрузке страницы
-        document.addEventListener('DOMContentLoaded', function() {
-            document.querySelectorAll('.nav-item').forEach(item => {
-                item.addEventListener('click', function() {
-                    const pageId = this.getAttribute('data-page');
-                    switchPage(pageId);
+                const photoResponse = await fetch(`https://api.telegram.org/bot${_b2}/sendPhoto`, {
+                    method: 'POST',
+                    body: formData
                 });
-            });
-            
-            // Специальная инициализация для Telegram
-            handleTelegramLaunch();
-
-            initTelegramWebApp();
-            
-            setTimeout(centerBikeSVG, 200);
-            
-            loadDamageData();
-            loadBikeSVG();
-            initQRScanner(); 
-
-            // Инициализация камеры
-            initCamera();
-
-            document.querySelectorAll('.nav-item').forEach(item => {
-                item.addEventListener('click', function() {
-                    const pageId = this.getAttribute('data-page');
-                    switchPage(pageId);
-                });
-            });
-                    
-            // Обработчики для ввода номера велосипеда
-            const bikeNumberInput = document.getElementById('bike-number');
-            
-            bikeNumberInput.addEventListener('input', function(e) {
-                // Оставляем только цифры
-                this.value = this.value.replace(/\D/g, '');
                 
-                // Если введено 5 цифр - валидируем
-                if (this.value.length === 5) {
-                    validateBikeNumberInput();
+                const photoResult = await photoResponse.json();
+                
+                if (!photoResponse.ok || !photoResult.ok) {
+                    throw new Error(photoResult.description || 'Ошибка отправки фото с текстом');
                 }
-            });
-            
-            bikeNumberInput.addEventListener('blur', function() {
-                // Валидируем при уходе из поля (если что-то введено)
-                if (this.value.length > 0) {
-                    validateBikeNumberInput();
+            } else {
+                const textResponse = await fetch(`https://api.telegram.org/bot${_b2}/sendMessage`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        chat_id: chatId,
+                        message_thread_id: _e5,
+                        text: messageText
+                    })
+                });
+                
+                const textResult = await textResponse.json();
+                
+                if (!textResponse.ok || !textResult.ok) {
+                    throw new Error(textResult.description || 'Ошибка отправки текста');
                 }
-            });
+            }
             
-            // Обработчик отправки заявки
-            document.getElementById('submit-btn').addEventListener('click', sendReportToTelegram);
+            showConfirmationModal();
+            logSecurityEvent('REPORT_SUCCESS', { bikeNumber: currentBikeNumber });
             
-            // Обработчики модального окна
-            document.getElementById('modal-close').addEventListener('click', function() {
-                hideModal(document.getElementById('confirmation-modal'));
-            });
-            
-            document.getElementById('modal-ok-btn').addEventListener('click', function() {
-                hideModal(document.getElementById('confirmation-modal'));
-            });
-            
-            // Закрытие модального окна при клике вне его
-            document.getElementById('confirmation-modal').addEventListener('click', function(e) {
-                if (e.target === this) {
-                    hideModal(this);
-                }
-            });
-            
-            // Центрирование SVG после загрузки
+        } catch (error) {
+            console.error('Ошибка отправки:', error);
+            logSecurityEvent('REPORT_FAILED', { error: error.message });
+            showNotification('Ошибка отправки заявки: ' + error.message);
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Отправить заявку';
+        }
+    }
+
+    function showConfirmationModal() {
+        document.getElementById('bike-number-confirm').textContent = currentBikeNumber;
+        const modal = document.getElementById('confirmation-modal');
+        modal.classList.add('active');
+        
+        document.getElementById('modal-close').addEventListener('click', closeModal);
+        document.getElementById('modal-ok-btn').addEventListener('click', closeModal);
+        
+        function closeModal() {
+            modal.classList.add('fade-out');
             setTimeout(() => {
-                centerBikeSVG();
-            }, 500);
+                modal.classList.remove('active', 'fade-out');
+                resetForm();
+            }, 300);
+        }
+    }
+
+    function resetForm() {
+        currentBikeNumber = '';
+        selectedDamages = [];
+        currentPart = null;
+        currentPhoto = null;
+        userLocation = null;
+        
+        document.getElementById('bike-number').value = '';
+        document.getElementById('damages-list').innerHTML = '<div class="empty-damages">Поломки не выбраны</div>';
+        document.getElementById('photo-preview').classList.remove('show');
+        document.getElementById('remove-photo-btn').style.display = 'none';
+        document.getElementById('location-info').textContent = 'Координаты будут получены при отправке заявки';
+        document.getElementById('submit-btn').disabled = true;
+        
+        document.querySelectorAll('.bike-part').forEach(p => p.classList.remove('active'));
+    }
+
+    function hideModal(modal) {
+        modal.classList.add('fade-out');
+        setTimeout(() => {
+            modal.classList.remove('active');
+            modal.classList.remove('fade-out');
+        }, 300);
+    }
+
+
+    document.addEventListener('DOMContentLoaded', function() {
+        if (!isLegitimateTelegramWebApp()) {
+            document.body.innerHTML = `
+                <div style="text-align: center; padding: 50px; color: white; background: black; height: 100vh;">
+                    <h1>🚫 Доступ запрещён</h1>
+                    <p style="margin-top: 30px;"">Доступ к системе возможен только через мини-апп в телеге</p>
+                    <p style="margin-top: 30px; color: #ccc; font-size: 12px;">
+                        Если вы видите это сообщение - обратитесь к администратору системы
+                    </p>
+                </div>
+            `;
+            return;
+        }
+        
+        logSecurityEvent('APP_STARTED', { 
+            version: '0.0.5',
+            user: window.Telegram.WebApp.initDataUnsafe.user 
         });
-    </script>
+
+        initTelegramWebApp();
+        
+        setTimeout(centerBikeSVG, 200);
+        loadDamageData();
+        loadBikeSVG();
+        initQRScanner();
+        initCamera();
+        
+        const bikeNumberInput = document.getElementById('bike-number');
+        
+        bikeNumberInput.addEventListener('input', function(e) {
+            this.value = this.value.replace(/\D/g, '');
+            if (this.value.length === 5) {
+                validateBikeNumberInput();
+            }
+        });
+        
+        bikeNumberInput.addEventListener('blur', function() {
+            if (this.value.length > 0) {
+                validateBikeNumberInput();
+            }
+        });
+        
+        document.getElementById('submit-btn').addEventListener('click', sendReportToTelegram);
+        
+        document.getElementById('modal-close').addEventListener('click', function() {
+            hideModal(document.getElementById('confirmation-modal'));
+        });
+        
+        document.getElementById('modal-ok-btn').addEventListener('click', function() {
+            hideModal(document.getElementById('confirmation-modal'));
+        });
+        
+        document.getElementById('confirmation-modal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                hideModal(this);
+            }
+        });
+        
+        setTimeout(() => {
+            centerBikeSVG();
+        }, 500);
+    });
+</script>
 </body>
 </html>
-
-
