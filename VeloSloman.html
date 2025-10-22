@@ -1697,9 +1697,7 @@
             
             // Пробуем разные провайдеры карт
             const providers = [
-                `https://maps.geoapify.com/v1/staticmap?style=osm-bright&width=${Math.round(mapSize)}&height=${Math.round(mapSize)}&center=lonlat:${userCoords.longitude},${userCoords.latitude}&zoom=14&apiKey=YOUR_GEOAPIFY_KEY`,
-                `https://api.maptiler.com/maps/streets/static/${userCoords.longitude},${userCoords.latitude},14/${Math.round(mapSize)}x${Math.round(mapSize)}.png?key=YOUR_MAPTILER_KEY`,
-                `https://static-maps.yandex.ru/v1?ll=${userCoords.longitude},${userCoords.latitude}&z=14&size=${Math.round(mapSize)},${Math.round(mapSize)}&l=map&apikey=YANDEX_API_KEY`
+                `https://static-maps.yandex.ru/v1?ll=${userCoords.longitude},${userCoords.latitude}&z=14&size=${Math.round(mapSize)},${Math.round(mapSize)}&l=map`
             ];
             
             let currentProvider = 0;
@@ -1759,9 +1757,9 @@
                 ctx.textAlign = 'center';
                 
                 const lines = [
-                    'карта не прогрузилась',
+                    'Карта не прогрузилась',
                     '',
-                    'нужен API ключ'
+                    'Увы...'
                 ];
                 
                 lines.forEach((line, index) => {
@@ -2755,21 +2753,21 @@
     }
 
     document.addEventListener('DOMContentLoaded', function() {
-        // initSecurity(); 
+        initSecurity(); 
 
-        // if (!isLegitimateTelegramWebApp()) {
-        //     document.body.innerHTML = `
-        //         <div style="text-align: center; padding: 50px; color: white; background: black; height: 100vh;">
-        //             <h1>🚫 Доступ запрещён</h1>
-        //             <p style="margin-top: 30px;"">Тебе сюда нельзя</p>
-        //             <p style="margin-top: 30px;"">Доступ только через мини-апп в телеге</p>
-        //             <p style="margin-top: 30px; color: #ccc; font-size: 12px;">
-        //                 Если вы видишь это сообщение - обратись к админу<br>(или улепётывай отсюда)
-        //             </p>
-        //         </div>
-        //     `;
-        //     return;
-        // }
+        if (!isLegitimateTelegramWebApp()) {
+            document.body.innerHTML = `
+                <div style="text-align: center; padding: 50px; color: white; background: black; height: 100vh;">
+                    <h1>🚫 Доступ запрещён</h1>
+                    <p style="margin-top: 30px;"">Тебе сюда нельзя</p>
+                    <p style="margin-top: 30px;"">Доступ только через мини-апп в телеге</p>
+                    <p style="margin-top: 30px; color: #ccc; font-size: 12px;">
+                        Если вы видишь это сообщение - обратись к админу<br>(или улепётывай отсюда)
+                    </p>
+                </div>
+            `;
+            return;
+        }
         
         logSecurityEvent('APP_STARTED', { 
             version: '0.0.5',
