@@ -1509,39 +1509,93 @@
         timestampCanvas = document.getElementById('timestamp-canvas');
         timestampContext = timestampCanvas.getContext('2d', { willReadFrequently: true });
         
-        // Получаем геопозицию при загрузке раздела
         await getTimestampLocation();
         
-        // Инициализируем камеру
-        try {      
-            document.getElementById('timestamp-loading').textContent = 'Получение предпросмотра с камеры...';
-
-            timestampStream = await navigator.mediaDevices.getUserMedia({ 
-                video: { 
+        try {
+            // Пробуем разные настройки камеры
+            const constraints = {
+                video: {
                     facingMode: 'environment',
-                    width: { ideal: 1920 },
-                    height: { ideal: 1080 }
+                    width: { ideal: 1280, min: 640 },
+                    height: { ideal: 720, min: 480 },
+                    frameRate: { ideal: 30 }
                 },
                 audio: false
-            });
+            };
 
-            document.getElementById('timestamp-loading').textContent = 'Готово.';
+            timestampStream = await navigator.mediaDevices.getUserMedia(constraints);
             
             const video = document.getElementById('timestamp-video');
             video.srcObject = timestampStream;
             video.style.display = 'block';
             
-            video.onloadedmetadata = () => {
-                video.play();
-                document.getElementById('timestamp-loading').style.display = 'none';
-                document.getElementById('timestamp-capture-btn').style.display = 'block';
-            };
+            // Добавляем обработчик для проверки работы видео
+            video.addEventListener('loadeddata', () => {
+                console.log('Видео загружено, размер:', video.videoWidth, 'x', video.videoHeight);
+                if (video.videoWidth === 0 || video.videoHeight === 0) {
+                    showNotification('Камера не дала изображение. Без паники, вторая попытка');
+                    retryWithFallback();
+                    return;
+                }
+                
+                video.play().then(() => {
+                    document.getElementById('timestamp-loading').style.display = 'none';
+                    document.getElementById('timestamp-capture-btn').style.display = 'block';
+                    showNotification('Камера готова к работе');
+                }).catch(e => {
+                    console.error('Ошибка воспроизведения:', e);
+                    showNotification('Ошибка камеры, пробуем другой режим');
+                    retryWithFallback();
+                });
+            });
+
+            // Таймаут на случай если видео никогда не загрузится
+            setTimeout(() => {
+                if (document.getElementById('timestamp-loading').style.display !== 'none') {
+                    showNotification('Камера не отвечает, таймаут');
+                    retryWithFallback();
+                }
+            }, 5000);
             
         } catch (error) {
             console.error('Ошибка доступа к камере:', error);
             showNotification('Не удалось получить доступ к камере');
             document.getElementById('timestamp-loading').textContent = 'Ошибка доступа к камере';
         }
+    }
+
+    function retryWithFallback() {
+        if (timestampStream) {
+            timestampStream.getTracks().forEach(track => track.stop());
+            timestampStream = null;
+        }
+        
+        // Пробуем упрощенные настройки
+        const fallbackConstraints = {
+            video: {
+                facingMode: { ideal: 'environment' },
+                width: { min: 320, ideal: 640 },
+                height: { min: 240, ideal: 480 }
+            },
+            audio: false
+        };
+        
+        navigator.mediaDevices.getUserMedia(fallbackConstraints)
+            .then(stream => {
+                timestampStream = stream;
+                const video = document.getElementById('timestamp-video');
+                video.srcObject = stream;
+                video.play().then(() => {
+                    document.getElementById('timestamp-loading').style.display = 'none';
+                    document.getElementById('timestamp-capture-btn').style.display = 'block';
+                    showNotification('Камера работает в упрощенном режиме');
+                });
+            })
+            .catch(error => {
+                console.error('Фолбэк тоже не сработал:', error);
+                document.getElementById('timestamp-loading').textContent = 'Камера недоступна';
+                showNotification('Камера недоступна в этом браузере');
+            });
     }
 
     async function getTimestampLocation() {
@@ -1600,15 +1654,19 @@
 
     function captureTimestampPhoto() {
         const video = document.getElementById('timestamp-video');
+        
+        // Проверяем что видео действительно работает
+        if (video.readyState !== video.HAVE_ENOUGH_DATA || video.videoWidth === 0) {
+            showNotification('Камера не готова, подождите');
+            return;
+        }
+        
         const canvas = document.getElementById('timestamp-canvas');
         
-        // Увеличиваем качество фото
-        canvas.width = video.videoWidth * 2;
-        canvas.height = video.videoHeight * 2;
+        // Используем реальные размеры видео, не увеличиваем
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
         
-        // Рисуем с высоким качеством
-        timestampContext.imageSmoothingEnabled = true;
-        timestampContext.imageSmoothingQuality = 'high';
         timestampContext.drawImage(video, 0, 0, canvas.width, canvas.height);
         
         // Останавливаем камеру
@@ -1622,15 +1680,16 @@
         btnContent.innerHTML = '<span class="loading-spinner"></span><span class="btn-text">Загрузка...</span>';
         captureBtn.disabled = true;
 
-        // Обрабатываем фото с обработкой ошибок
-        try {
-            processTimestampPhoto();
-        } catch (error) {
-            console.error('Ошибка обработки фото:', error);
-            showNotification('Ошибка обработки фото');
-            // В случае ошибки возвращаем кнопку "Сфотографировать"
-            retakeTimestampPhoto();
-        }
+        // Обрабатываем фото
+        setTimeout(() => {
+            try {
+                processTimestampPhoto();
+            } catch (error) {
+                console.error('Ошибка обработки фото:', error);
+                showNotification('Ошибка обработки фото');
+                retakeTimestampPhoto();
+            }
+        }, 100);
     }
 
     async function processTimestampPhoto() {
