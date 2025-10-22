@@ -849,26 +849,26 @@
 
         /* Стили для TimeStamp Camera */
         .timestamp-preview {
-            width: 100%;
-            height: 70vh;
-            max-height: 600px;
-            border: var(--border-width) solid var(--border-color);
-            border-radius: var(--border-radius);
+            width: 100vw;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
             background: #000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 20px;
-            overflow: hidden;
-            position: relative;
+            z-index: 1000;
+            border: none !important;
+            border-radius: 0 !important;
+            margin: 0 !important;
+            max-height: none !important;
         }
 
         .timestamp-preview video,
         .timestamp-preview canvas,
         .timestamp-preview img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover !important;
+            display: block;
         }
 
         .timestamp-loading {
@@ -881,15 +881,22 @@
             text-align: center;
         }
 
-        .timestamp-controls {
-            margin-top: auto;
-            padding: 20px 0;
-        }
- 
         .timestamp-section {
+            margin: 0;
+            padding: 0;
+        }
+
+        .timestamp-controls {
+            position: fixed;
+            bottom: 80px;
+            left: 0;
+            right: 0;
+            z-index: 1001;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
             display: flex;
-            flex-direction: column;
-            min-height: calc(100vh - 200px);
+            justify-content: center;
+            gap: 15px;
         }
 
         .timestamp-btn {
@@ -2696,7 +2703,13 @@
 
     function handleDeepLinks() {
         if (window.Telegram && window.Telegram.WebApp) {
-            const startParam = Telegram.WebApp.startParam;
+            const startParam = Telegram.WebApp.startParam || getStartAppParam();
+
+        function getStartAppParam() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('startapp');
+        }
+
             if (startParam) {
                 switch (startParam) {
                     case 'main':
