@@ -1695,13 +1695,26 @@
             const mapImg = new Image();
             mapImg.crossOrigin = "Anonymous";
             
-            // Используем OpenStreetMap вместо Яндекс карт
-            const mapUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${userCoords.latitude},${userCoords.longitude}&zoom=15&size=${Math.round(mapSize)}x${Math.round(mapSize)}&markers=color:red%7C${userCoords.latitude},${userCoords.longitude}&key=AIzaSyC4eQdRkbfY6Y-b1lCGZ2aXa_6sSdCq7U0`;
+            // Пробуем разные провайдеры карт
+            const providers = [
+                `https://maps.geoapify.com/v1/staticmap?style=osm-bright&width=${Math.round(mapSize)}&height=${Math.round(mapSize)}&center=lonlat:${userCoords.longitude},${userCoords.latitude}&zoom=14&apiKey=YOUR_GEOAPIFY_KEY`,
+                `https://api.maptiler.com/maps/streets/static/${userCoords.longitude},${userCoords.latitude},14/${Math.round(mapSize)}x${Math.round(mapSize)}.png?key=YOUR_MAPTILER_KEY`,
+                `https://static-maps.yandex.ru/v1?ll=${userCoords.longitude},${userCoords.latitude}&z=14&size=${Math.round(mapSize)},${Math.round(mapSize)}&l=map&apikey=YANDEX_API_KEY`
+            ];
             
-            // Или альтернатива через OpenStreetMap
-            // const mapUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${userCoords.longitude-0.01},${userCoords.latitude-0.01},${userCoords.longitude+0.01},${userCoords.latitude+0.01}&layer=mapnik&marker=${userCoords.latitude},${userCoords.longitude}`;
+            let currentProvider = 0;
             
-            mapImg.src = mapUrl;
+            function tryNextProvider() {
+                if (currentProvider >= providers.length) {
+                    // Все провайдеры не сработали - рисуем заглушку
+                    drawFallbackMap();
+                    resolve();
+                    return;
+                }
+                
+                mapImg.src = providers[currentProvider];
+                currentProvider++;
+            }
             
             mapImg.onload = () => {
                 const cornerRadius = 10;
@@ -1721,13 +1734,16 @@
                 resolve();
             };
             
-            mapImg.onerror = () => {
-                console.log('Карта не загрузилась, рисуем простой квадрат');
-                
-                // Рисуем простой квадрат если карта не загрузилась
-                ctx.fillStyle = '#2a2a2a';
-                ctx.strokeStyle = '#E76623';
-                ctx.lineWidth = 10;
+            mapImg.onerror = tryNextProvider;
+            
+            // Начинаем с первого провайдера
+            tryNextProvider();
+            
+            function drawFallbackMap() {
+                // Полупрозрачный щит
+                ctx.fillStyle = 'rgba(40, 40, 40, 0.8)';
+                ctx.strokeStyle = 'rgba(100, 100, 100, 0.6)';
+                ctx.lineWidth = 2;
                 
                 const cornerRadius = 10;
                 ctx.save();
@@ -1737,24 +1753,28 @@
                 ctx.stroke();
                 ctx.restore();
                 
-                // Рисуем крестик в центре
-                ctx.strokeStyle = '#E76623';
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.moveTo(mapX + mapSize/2 - 10, mapY + mapSize/2);
-                ctx.lineTo(mapX + mapSize/2 + 10, mapY + mapSize/2);
-                ctx.moveTo(mapX + mapSize/2, mapY + mapSize/2 - 10);
-                ctx.lineTo(mapX + mapSize/2, mapY + mapSize/2 + 10);
-                ctx.stroke();
+                // Текст сообщения
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 16px "Moscow Sans"';
+                ctx.textAlign = 'center';
+                
+                const lines = [
+                    'карта не прогрузилась',
+                    '',
+                    'нужен API ключ'
+                ];
+                
+                lines.forEach((line, index) => {
+                    const y = mapY + mapSize/2 - 10 + (index * 25);
+                    ctx.fillText(line, mapX + mapSize/2, y);
+                });
                 
                 // Подпись "Кто я?"
                 ctx.fillStyle = '#E76623';
                 ctx.font = 'bold 38px "Moscow Sans"';
                 ctx.textAlign = 'center';
                 ctx.fillText('Кто я?', mapX + mapSize/2, mapY + mapSize + 40);
-                
-                resolve();
-            };
+            }
         });
     }
 
