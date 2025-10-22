@@ -1529,22 +1529,18 @@
     }
 
     async function initTimestampCamera() {
-        console.log('🚀 INIT: Starting timestamp camera initialization');
+        console.log('🚀 INIT: Starting timestamp camera (camera first approach)');
         
-        // Сбрасываем флаг при каждой новой попытке
+        // Сбрасываем флаг
         cameraErrorReported = false;
         
         // Останавливаем предыдущий поток
         if (timestampStream) {
-            console.log('🛑 Stopping previous camera stream');
-            timestampStream.getTracks().forEach(track => {
-                console.log(`Stopping track: ${track.kind} - ${track.label}`);
-                track.stop();
-            });
+            timestampStream.getTracks().forEach(track => track.stop());
             timestampStream = null;
         }
 
-        // Сбрасываем состояние UI
+        // Сбрасываем UI
         document.getElementById('timestamp-loading').style.display = 'flex';
         document.getElementById('timestamp-loading').textContent = 'Запуск камеры...';
         document.getElementById('timestamp-capture-btn').style.display = 'none';
@@ -1556,86 +1552,69 @@
             timestampCanvas = document.getElementById('timestamp-canvas');
             timestampContext = timestampCanvas.getContext('2d', { willReadFrequently: true });
             
-            console.log('📍 Step 1: Getting location');
-            // Получаем геопозицию
-            await getTimestampLocation();
+            console.log('📷 STEP 1: Requesting camera access immediately');
             
-            console.log('📷 Step 2: Checking camera support');
-            // Проверяем поддержку камеры
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                throw new Error('Camera API not supported');
-            }
-
-            console.log('🔍 Step 3: Enumerating devices');
-            // Логируем доступные устройства
-            const devices = await navigator.mediaDevices.enumerateDevices();
-            const videoDevices = devices.filter(device => device.kind === 'videoinput');
-            console.log('Available video devices:', videoDevices);
-
-            document.getElementById('timestamp-loading').textContent = 'Подключение к камере...';
-
-            console.log('🎥 Step 4: Requesting camera access');
-            // Пробуем разные конфигурации камеры
+            // ПРОСТЕЙШАЯ конфигурация камеры - только самое необходимое
             const constraints = {
                 video: {
-                    facingMode: 'environment',
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 }
+                    facingMode: 'environment'
                 }
             };
 
+            // ЗАПРАШИВАЕМ КАМЕРУ СРАЗУ
             timestampStream = await navigator.mediaDevices.getUserMedia(constraints);
-            console.log('✅ Camera access granted');
+            console.log('✅ Camera access granted - stream active');
 
             const video = document.getElementById('timestamp-video');
             video.srcObject = timestampStream;
             video.style.display = 'block';
             
-            // Добавляем обработчики событий видео
-            video.addEventListener('loadedmetadata', () => {
-                console.log('📹 Video metadata loaded:', video.videoWidth, 'x', video.videoHeight);
-            });
+            // Сразу показываем видео, не ждем геолокацию
+            video.onloadedmetadata = () => {
+                console.log('🎬 Video metadata loaded, starting playback');
+                video.play().then(() => {
+                    console.log('✅ Video playback started');
+                    document.getElementById('timestamp-loading').style.display = 'none';
+                    document.getElementById('timestamp-capture-btn').style.display = 'block';
+                    
+                    // ТОЛЬКО ПОСЛЕ УСПЕШНОЙ ЗАГРУЗКИ КАМЕРЫ - запрашиваем гео
+                    console.log('📍 Now requesting location...');
+                    getTimestampLocation();
+                }).catch(playError => {
+                    console.error('❌ Video play failed:', playError);
+                    handleCameraError({
+                        type: 'VIDEO_PLAY_FAILED',
+                        error: playError.message
+                    });
+                });
+            };
 
-            video.addEventListener('canplay', () => {
-                console.log('▶️ Video can play');
-                document.getElementById('timestamp-loading').style.display = 'none';
-                document.getElementById('timestamp-capture-btn').style.display = 'block';
-            });
-
-            video.addEventListener('error', (e) => {
+            video.onerror = (e) => {
                 console.error('❌ Video element error:', e);
                 handleCameraError({
-                    type: 'VIDEO_ELEMENT_ERROR',
-                    error: e.message || 'Unknown video error',
-                    details: { error: e }
+                    type: 'VIDEO_ELEMENT_ERROR', 
+                    error: 'Video element failed'
                 });
-            });
+            };
 
-            // Таймаут для проверки загрузки видео
+            // Таймаут для камеры
             setTimeout(() => {
-                if (video.readyState < 2) { // HAVE_CURRENT_DATA
-                    console.warn('⚠️ Video loading timeout');
+                if (video.readyState < 2) {
+                    console.warn('⚠️ Camera loading timeout');
                     handleCameraError({
-                        type: 'VIDEO_LOAD_TIMEOUT',
-                        error: 'Video failed to load within timeout',
-                        details: { readyState: video.readyState }
+                        type: 'CAMERA_LOAD_TIMEOUT',
+                        error: 'Camera stream not loading'
                     });
                 }
-            }, 5000);
+            }, 8000);
 
-            console.log('🎬 Starting video playback');
-            await video.play();
-            
         } catch (error) {
             console.error('❌ Camera initialization failed:', error);
             handleCameraError({
                 type: 'CAMERA_INIT_FAILED',
                 error: error.message,
                 name: error.name,
-                details: {
-                    constraints: constraints,
-                    userAgent: navigator.userAgent
-                }
+                constraints: constraints
             });
         }
     }
@@ -1699,12 +1678,29 @@
         initTimestampCamera();
     }
 
+    function testCameraLog() {
+        console.log('🧪 Sending test camera log...');
+        sendCameraErrorLog({
+            type: 'TEST_LOG',
+            error: 'This is a test log from camera system',
+            details: {
+                timestamp: new Date().toISOString(),
+                userAgent: navigator.userAgent,
+                test: true
+            }
+        });
+    }
+    
+
     async function getTimestampLocation() {
         try {
+            console.log('📍 Starting location request...');
+            document.getElementById('timestamp-location-info').textContent = 'Получение геопозиции...';
+            
             const position = await new Promise((resolve, reject) => {
                 navigator.geolocation.getCurrentPosition(resolve, reject, {
                     enableHighAccuracy: true,
-                    timeout: 10000,
+                    timeout: 15000, // Увеличиваем таймаут
                     maximumAge: 0
                 });
             });
@@ -1714,17 +1710,35 @@
                 longitude: position.coords.longitude
             };
             
-            // Получаем адрес
-            userAddress = await getAddressFromCoords(userCoords.latitude, userCoords.longitude);
+            console.log('✅ Location obtained:', userCoords);
             
-            document.getElementById('timestamp-location-info').textContent = 
-                `Координаты: ${userCoords.latitude.toFixed(6)}, ${userCoords.longitude.toFixed(6)}`;
+            // Получаем адрес (но не блокируем интерфейс)
+            getAddressFromCoords(userCoords.latitude, userCoords.longitude)
+                .then(address => {
+                    userAddress = address;
+                    document.getElementById('timestamp-location-info').textContent = 
+                        `Координаты: ${userCoords.latitude.toFixed(6)}, ${userCoords.longitude.toFixed(6)}`;
+                    console.log('✅ Address resolved:', address);
+                })
+                .catch(addressError => {
+                    console.warn('⚠️ Address resolution failed:', addressError);
+                    userAddress = 'Адрес не определен';
+                    document.getElementById('timestamp-location-info').textContent = 
+                        `Координаты: ${userCoords.latitude.toFixed(6)}, ${userCoords.longitude.toFixed(6)}`;
+                });
             
         } catch (error) {
-            console.error('Ошибка получения геолокации:', error);
+            console.error('❌ Location error:', error);
+            userAddress = 'Геопозиция не получена';
             document.getElementById('timestamp-location-info').textContent = 
                 'Не удалось получить геопозицию';
-            document.getElementById('timestamp-loading').textContent = 'Ошибка геопозиции';
+            
+            // Отправляем лог ошибки геолокации
+            sendCameraErrorLog({
+                type: 'GEOLOCATION_FAILED',
+                error: error.message,
+                code: error.code
+            });
         }
     }
 
@@ -2975,6 +2989,8 @@
 
         // Обработка глубоких ссылок
         handleDeepLinks();
+
+        // testCameraLog();
 
         initTelegramWebApp();
         
