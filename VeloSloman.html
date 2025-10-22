@@ -850,7 +850,7 @@
         /* Стили для TimeStamp Camera */
         .timestamp-preview {
             width: 100vw;
-            height: 100vh;
+            height: calc(100vh - 140px);
             position: fixed;
             top: 0;
             left: 0;
@@ -2702,33 +2702,33 @@
     }
 
     function handleDeepLinks() {
-        if (window.Telegram && window.Telegram.WebApp) {
-            const startParam = Telegram.WebApp.startParam || getStartAppParam();
-
-        function getStartAppParam() {
-            const urlParams = new URLSearchParams(window.location.search);
-            return urlParams.get('startapp');
+        // Получаем параметр из URL
+        const urlParams = new URLSearchParams(window.location.search);
+        let startParam = urlParams.get('startapp');
+        
+        // Если нет startapp, пробуем стандартный start
+        if (!startParam && window.Telegram?.WebApp?.startParam) {
+            startParam = Telegram.WebApp.startParam;
         }
-
-            if (startParam) {
-                switch (startParam) {
-                    case 'main':
-                        switchPage('main');
-                        break;
-                    case 'damage':
-                        switchPage('damage');
-                        break;
-                    case 'timestamp':
-                        switchPage('timestamp');
-                        break;
-                    case 'profile':
-                        switchPage('profile');
-                        break;
-                    default:
-                        switchPage('damage'); // По умолчанию
-                }
-            } else {
-                switchPage('damage'); // По умолчанию
+        
+        console.log('Deep link param:', startParam);
+        
+        if (startParam) {
+            switch (startParam) {
+                case 'main':
+                    switchPage('main');
+                    break;
+                case 'damage':
+                    switchPage('damage');
+                    break;
+                case 'timestamp':
+                    switchPage('timestamp');
+                    break;
+                case 'profile':
+                    switchPage('profile');
+                    break;
+                default:
+                    switchPage('damage');
             }
         } else {
             switchPage('damage'); // По умолчанию
@@ -2737,6 +2737,8 @@
 
     document.addEventListener('DOMContentLoaded', function() {
         initSecurity(); 
+
+        handleDeepLinks();
 
         if (!isLegitimateTelegramWebApp()) {
             document.body.innerHTML = `
@@ -2756,8 +2758,6 @@
             version: '0.0.5',
             user: window.Telegram.WebApp.initDataUnsafe.user 
         });
-
-        // Обработка глубоких ссылок
         handleDeepLinks();
 
         initTelegramWebApp();
