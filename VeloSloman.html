@@ -1576,10 +1576,19 @@
 
     function captureTimestampPhoto() {
         const captureBtn = document.getElementById('timestamp-capture-btn');
+        const video = document.getElementById('timestamp-video');
         
         // Меняем текст кнопки на "Загрузка..."
         captureBtn.textContent = 'Загрузка...';
         captureBtn.disabled = true;
+        
+        // Получаем правильные размеры видео
+        const canvas = document.getElementById('timestamp-canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        
+        // Рисуем кадр с видео
+        timestampContext.drawImage(video, 0, 0, canvas.width, canvas.height);
         
         // Останавливаем камеру
         if (timestampStream) {
@@ -1592,7 +1601,6 @@
         } catch (error) {
             console.error('Ошибка обработки фото:', error);
             showNotification('Ошибка обработки фото');
-            // Возвращаем к состоянию съемки
             captureBtn.textContent = 'Сфотографировать';
             captureBtn.disabled = false;
             retakeTimestampPhoto();
@@ -1614,55 +1622,63 @@
     }
 
     async function processTimestampPhoto() {
-        const originalCanvas = document.getElementById('timestamp-canvas');
-        
-        if (!originalCanvas || originalCanvas.width === 0) {
-            throw new Error('Нет данных для обработки');
+        try {
+            const originalCanvas = document.getElementById('timestamp-canvas');
+            
+            // Проверяем что canvas имеет данные
+            if (!originalCanvas || originalCanvas.width === 0) {
+                throw new Error('Нет данных для обработки');
+            }
+            
+            const processedCanvas = document.createElement('canvas');
+            const ctx = processedCanvas.getContext('2d', { willReadFrequently: true });
+            
+            // Сохраняем оригинальные пропорции фото
+            processedCanvas.width = originalCanvas.width;
+            processedCanvas.height = originalCanvas.height;
+            
+            // Настройки качества
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            
+            // Рисуем оригинальное фото (без масштабирования!)
+            ctx.drawImage(originalCanvas, 0, 0, processedCanvas.width, processedCanvas.height);
+            
+            // Добавляем карту
+            await addMapToPhoto(ctx, processedCanvas.width, processedCanvas.height);
+            
+            // Добавляем логотип
+            try {
+                await addLogoToPhoto(ctx, processedCanvas.width, processedCanvas.height);
+            } catch (error) {
+                console.error('Ошибка добавления лого:', error);
+            }
+            
+            // Добавляем текст (уменьшаем размер!)
+            addTextToPhoto(ctx, processedCanvas.width, processedCanvas.height);
+            
+            // Сохраняем обработанное фото
+            currentProcessedPhoto = processedCanvas.toDataURL('image/jpeg', 0.95);
+            
+            // Показываем обработанное фото в превью
+            const previewImg = document.getElementById('processed-photo-preview');
+            previewImg.src = currentProcessedPhoto;
+            previewImg.style.display = 'block';
+            
+            // Скрываем видео и канвас
+            document.getElementById('timestamp-video').style.display = 'none';
+            document.getElementById('timestamp-canvas').style.display = 'none';
+            
+            showNotification('Фото обработано!');
+            
+            // Переключаем на кнопки управления
+            animateButtonTransition();
+            
+        } catch (error) {
+            console.error('Ошибка обработки фото:', error);
+            showNotification('Ошибка обработки фото');
+            throw error;
         }
-
-        const processedCanvas = document.createElement('canvas');
-        const ctx = processedCanvas.getContext('2d', { willReadFrequently: true });
-        
-        // Сохраняем высокое качество
-        processedCanvas.width = originalCanvas.width;
-        processedCanvas.height = originalCanvas.height;
-        
-        // Настройки качества
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
-        ctx.textRendering = 'optimizeLegibility';
-        
-        // Рисуем оригинальное фото
-        const scale = Math.max(processedCanvas.width / originalCanvas.width, processedCanvas.height / originalCanvas.height);
-        const x = (processedCanvas.width - originalCanvas.width * scale) / 2;
-        const y = (processedCanvas.height - originalCanvas.height * scale) / 2;
-
-        ctx.drawImage(originalCanvas, x, y, originalCanvas.width * scale, originalCanvas.height * scale);
-
-        // Добавляем карту
-        await addMapToPhoto(ctx, processedCanvas.width, processedCanvas.height);
-        
-        // Добавляем логотип (правый верхний угол)
-        await addLogoToPhoto(ctx, processedCanvas.width, processedCanvas.height);
-        
-        // Добавляем текст (внизу)
-        addTextToPhoto(ctx, processedCanvas.width, processedCanvas.height);
-        
-        // Сохраняем обработанное фото с высоким качеством
-        currentProcessedPhoto = processedCanvas.toDataURL('image/jpeg', 0.95);
-        
-        // Показываем обработанное фото в превью
-        const previewImg = document.getElementById('processed-photo-preview');
-        previewImg.src = currentProcessedPhoto;
-        previewImg.style.display = 'block';
-        
-        // Скрываем видео и канвас
-        document.getElementById('timestamp-video').style.display = 'none';
-        document.getElementById('timestamp-canvas').style.display = 'none';
-        
-        showNotification('Фото обработано');
-
-        animateButtonTransition();
     }
 
     function addMapToPhoto(ctx, width, height) {
@@ -1801,18 +1817,18 @@
         
         const coordString = `${userCoords.latitude.toFixed(6)}, ${userCoords.longitude.toFixed(6)}`;
         
-        // Настройки текста
+        // УМЕНЬШАЕМ РАЗМЕР ТЕКСТА!
         ctx.fillStyle = '#00ff00';
         ctx.strokeStyle = '#000000';
-        ctx.lineWidth = 6;
+        ctx.lineWidth = 3;
         ctx.textAlign = 'center';
-        ctx.font = 'bold 64px "Moscow Sans"';
+        ctx.font = 'bold 24px "Moscow Sans"'; // Было 64px!
         ctx.textRendering = 'optimizeLegibility';
         
-        const maxTextWidth = width - 60; // Отступы по бокам
-        const lineHeight = 80;
+        const maxTextWidth = width - 60;
+        const lineHeight = 35; // Было 80!
         
-        // Разбиваем текст на строки с учетом максимальной ширины
+        // Разбиваем текст на строки
         const timeDateLine = `${timeString} — ${dateString}`;
         const coordLine = coordString;
         const addressLines = splitAddressToLines(userAddress, maxTextWidth, ctx);
@@ -1821,7 +1837,7 @@
         
         // Вычисляем общую высоту текстового блока
         const totalTextHeight = allLines.length * lineHeight;
-        const textY = height - totalTextHeight - 50; // Поднимаем выше чтобы вместить все строки
+        const textY = height - totalTextHeight - 30;
         
         // Рисуем текст с обводкой
         allLines.forEach((line, index) => {
@@ -1829,8 +1845,6 @@
             
             // Обводка
             ctx.strokeText(line, width / 2, y);
-            ctx.strokeText(line, width / 2, y);
-            
             // Заливка
             ctx.fillText(line, width / 2, y);
         });
@@ -1862,15 +1876,23 @@
 
     async function sendTimestampToTelegram() {
         const sendBtn = document.getElementById('send-telegram-btn');
-        
+    
         if (!currentProcessedPhoto || !userCoords) {
             showNotification('Ошибка: нет фото или геопозиции');
             return;
         }
         
-        // Делаем кнопку неактивной
-        const originalText = sendBtn.innerHTML;
-        sendBtn.innerHTML = 'Отправка...';
+        // Сохраняем оригинальный SVG
+        const originalSvg = sendBtn.innerHTML;
+        
+        // Меняем на "Отправка..."
+        sendBtn.innerHTML = `
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none">
+                    <animate attributeName="stroke-dasharray" attributeType="XML" dur="2s" values="0, 150; 100, 150; 0, 150" repeatCount="indefinite"/>
+                </circle>
+            </svg>
+        `;
         sendBtn.disabled = true;
         
         try {
@@ -1894,7 +1916,6 @@
                 body: formData
             });
             
-            // Отправляем пользователю
             const userFormData = new FormData();
             userFormData.append('chat_id', userData.id);
             userFormData.append('photo', blob, 'timestamp.jpg');
@@ -1905,17 +1926,19 @@
                 body: userFormData
             });
             
-            showNotification('Фото отправлено в Telegram');
-            
-            // Оставляем кнопку неактивной после успешной отправки
-            sendBtn.innerHTML = '✓ Отправлено';
-            
+            showNotification('Фото отправлено в телегу');
+        
+            sendBtn.innerHTML = `
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                </svg>
+            `;            
         } catch (error) {
             console.error('Ошибка отправки в Telegram:', error);
             showNotification('Ошибка отправки фото');
             
-            // Восстанавливаем кнопку при ошибке
-            sendBtn.innerHTML = originalText;
+            // Восстанавливаем оригинальный SVG при ошибке
+            sendBtn.innerHTML = originalSvg;
             sendBtn.disabled = false;
         }
     }
@@ -1935,11 +1958,30 @@
     }
 
     function retakeTimestampPhoto() {
-        // Сбрасываем состояние
+        // Сбрасываем состояние кнопки "Сфотографировать"
         const captureBtn = document.getElementById('timestamp-capture-btn');
         captureBtn.textContent = 'Сфотографировать';
         captureBtn.disabled = false;
         
+        // Сбрасываем состояние кнопки "Отправить в Telegram"
+        const sendBtn = document.getElementById('send-telegram-btn');
+        sendBtn.innerHTML = `
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.14.14-.26.26-.535.26l.213-3.05 5.56-5.022c.217-.197-.047-.307-.337-.11l-6.87 4.326-2.96-.924c-.64-.203-.652-.64.136-.945l11.57-4.458c.538-.196 1.006.128.832.945z"/>
+            </svg>
+        `;
+        sendBtn.disabled = false;
+        
+        // Сбрасываем состояние кнопки "Скачать"
+        const downloadBtn = document.getElementById('download-btn');
+        downloadBtn.innerHTML = `
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+            </svg>
+        `;
+        downloadBtn.disabled = false;
+        
+        // Сбрасываем визуальное состояние
         const previewImg = document.getElementById('processed-photo-preview');
         const video = document.getElementById('timestamp-video');
         const canvas = document.getElementById('timestamp-canvas');
