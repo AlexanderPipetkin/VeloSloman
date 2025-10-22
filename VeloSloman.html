@@ -96,7 +96,7 @@
             font-size: 16px;
             transition: var(--transition);
             box-sizing: border-box;
-            }
+        }
 
         .bike-input:focus {
             outline: none;
@@ -850,18 +850,17 @@
         /* Стили для TimeStamp Camera */
         .timestamp-preview {
             width: 100%;
-            height: 70vh;
-            max-height: 600px;
+            height: calc(100vh - 250px);
+            max-height: calc(100vh - 250px);
             border: var(--border-width) solid var(--border-color);
             border-radius: var(--border-radius);
             background: #1a1a1a;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 20px;
+            margin: 0 auto 20px auto;
             overflow: hidden;
             position: relative;
-            aspect-ratio: 9/16;
         }
 
         .timestamp-preview video,
@@ -869,13 +868,18 @@
         .timestamp-preview img {
             width: 100%;
             height: 100%;
-            object-fit: cover;
+            object-fit: contain;
         }
 
         .timestamp-loading {
             color: #ccc;
             font-size: 16px;
             text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            width: 100%;
         }
 
         .timestamp-controls {
@@ -884,14 +888,12 @@
             justify-content: center;
             margin-bottom: 20px;
             transition: all 0.3s ease;
-            margin-top: auto;
-            padding-bottom: 20px;
         }
- 
+
         .timestamp-section {
             display: flex;
             flex-direction: column;
-            height: calc(100vh - 200px);
+            min-height: calc(100vh - 200px);
         }
 
         .timestamp-btn {
@@ -907,6 +909,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            min-width: 160px;
         }
 
         .timestamp-btn.primary {
@@ -914,7 +917,12 @@
             color: var(--primary-bg);
         }
 
-        .timestamp-btn:active {
+        .timestamp-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .timestamp-btn:active:not(:disabled) {
             transform: scale(0.98);
         }
 
@@ -937,7 +945,12 @@
             color: var(--primary-bg);
         }
 
-        .timestamp-icon-btn:active {
+        .timestamp-icon-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .timestamp-icon-btn:active:not(:disabled) {
             transform: scale(0.98);
         }
 
@@ -952,7 +965,7 @@
 
         .timestamp-result-controls {
             display: none;
-            gap: 5px;
+            gap: 10px;
             justify-content: center;
             align-items: center;
         }
@@ -977,6 +990,30 @@
         .button-transform {
             animation: buttonTransform 0.3s ease;
         }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid transparent;
+            border-top: 2px solid currentColor;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .btn-content {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
     </style>
 </head>
 <body>
@@ -993,7 +1030,7 @@
         </div>
     </section>
 
-    <section id="damage" class="page">
+    <section id="damage" class="page active">
         <div class="container">
             <div class="header">
                 <h1 class="page-title">Фиксация поломок</h1>
@@ -1117,19 +1154,22 @@
                 </div>
 
                 <div class="timestamp-controls" id="timestamp-controls">
-                    <button class="timestamp-btn" id="timestamp-capture-btn" style="display: none;">Сфотографировать</button>
+                    <button class="timestamp-btn" id="timestamp-capture-btn" style="display: none;">
+                        <span class="btn-content">
+                            <span class="btn-text">Сфотографировать</span>
+                        </span>
+                    </button>
                     
                     <div class="timestamp-result-controls" id="timestamp-result-controls" style="display: none;">
-                        <button class="timestamp-btn" id="retake-btn">Переснять</button>
-                        <button class="timestamp-icon-btn primary" id="send-telegram-btn" title="Отправить в Telegram">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                                <path xmlns="http://www.w3.org/2000/svg" fill-rule="evenodd" clip-rule="evenodd" d="M24 12C24 18.6274 18.6274 24 12 24C5.37258 24 0 18.6274 0 12C0 5.37258 5.37258 0 12 0C18.6274 0 24 5.37258 24 12ZM12.43 8.85893C11.2629 9.3444 8.93015 10.3492 5.43191 11.8733C4.86385 12.0992 4.56628 12.3202 4.53919 12.5363C4.4934 12.9015 4.95073 13.0453 5.57349 13.2411C5.6582 13.2678 5.74598 13.2954 5.83596 13.3246C6.44866 13.5238 7.27284 13.7568 7.70131 13.766C8.08996 13.7744 8.52375 13.6142 9.00266 13.2853C12.2712 11.079 13.9584 9.96381 14.0643 9.93977C14.1391 9.92281 14.2426 9.90148 14.3128 9.96385C14.3829 10.0262 14.3761 10.1443 14.3686 10.176C14.3233 10.3691 12.5281 12.0381 11.5991 12.9018C11.3095 13.171 11.1041 13.362 11.0621 13.4056C10.968 13.5034 10.8721 13.5958 10.78 13.6846C10.2108 14.2333 9.78393 14.6448 10.8036 15.3168C11.2937 15.6397 11.6858 15.9067 12.077 16.1731C12.5042 16.4641 12.9303 16.7543 13.4816 17.1157C13.6221 17.2078 13.7562 17.3034 13.8869 17.3965C14.3841 17.751 14.8308 18.0694 15.3826 18.0186C15.7033 17.9891 16.0345 17.6876 16.2027 16.7884C16.6002 14.6632 17.3816 10.0585 17.5622 8.16098C17.5781 7.99473 17.5582 7.78197 17.5422 7.68858C17.5262 7.59518 17.4928 7.46211 17.3714 7.3636C17.2276 7.24694 17.0057 7.22234 16.9064 7.22408C16.455 7.23204 15.7626 7.47282 12.43 8.85893Z" fill="#000000"/>
-                            </svg>
+                        <button class="timestamp-btn" id="retake-btn">
+                            <span class="btn-content">
+                                <span class="btn-text">Переснять</span>
+                            </span>
                         </button>
-                        <button class="timestamp-icon-btn primary" id="download-btn" title="Скачать">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
-                            </svg>
+                        <button class="timestamp-btn primary" id="send-telegram-btn">
+                            <span class="btn-content">
+                                <span class="btn-text">Отправить в Telegram</span>
+                            </span>
                         </button>
                     </div>
                 </div>
@@ -1165,7 +1205,7 @@
             </div>
             <span class="nav-label">Главная</span>
         </div>
-        <div class="nav-item" data-page="damage">
+        <div class="nav-item active" data-page="damage">
             <div class="nav-icon">
                 <img src="media/icons/damage.png" alt="Поломки">
             </div>
@@ -1459,7 +1499,7 @@
             timestampStream = null;
         }
 
-        document.getElementById('timestamp-loading').style.display = 'block';
+        document.getElementById('timestamp-loading').style.display = 'flex';
         document.getElementById('timestamp-capture-btn').style.display = 'none';
         document.getElementById('timestamp-result-controls').style.display = 'none';
         document.getElementById('processed-photo-preview').style.display = 'none';
@@ -1544,9 +1584,6 @@
                 if (addr.road) components.push(addr.road);
                 if (addr.house_number) components.push(addr.house_number);
                 
-                // if (addr.city) components.push(addr.city);
-                // if (addr.village) components.push(addr.village);
-                // if (addr.state) components.push(addr.state);
                 if (addr.postcode) components.push(addr.postcode);
                 
                 return components.join(', ');
@@ -1576,8 +1613,11 @@
             timestampStream.getTracks().forEach(track => track.stop());
         }
 
-        // Анимация перехода кнопок
-        animateButtonTransition();
+        // Показываем состояние загрузки
+        const captureBtn = document.getElementById('timestamp-capture-btn');
+        const btnContent = captureBtn.querySelector('.btn-content');
+        btnContent.innerHTML = '<span class="loading-spinner"></span><span class="btn-text">Загрузка...</span>';
+        captureBtn.disabled = true;
 
         // Обрабатываем фото с обработкой ошибок
         try {
@@ -1588,20 +1628,6 @@
             // В случае ошибки возвращаем кнопку "Сфотографировать"
             retakeTimestampPhoto();
         }
-    }
-
-    function animateButtonTransition() {
-        const captureBtn = document.getElementById('timestamp-capture-btn');
-        const resultControls = document.getElementById('timestamp-result-controls');
-        
-        // Анимация исчезновения кнопки "Сфотографировать"
-        captureBtn.style.animation = 'buttonTransform 0.3s ease';
-        setTimeout(() => {
-            captureBtn.style.display = 'none';
-            // Показываем кнопки управления
-            resultControls.style.display = 'flex';
-            resultControls.style.animation = 'buttonTransform 0.3s ease';
-        }, 150);
     }
 
     async function processTimestampPhoto() {
@@ -1630,11 +1656,11 @@
 
         ctx.drawImage(originalCanvas, x, y, originalCanvas.width * scale, originalCanvas.height * scale);
 
-        // Добавляем карту
-        await addMapToPhoto(ctx, processedCanvas.width, processedCanvas.height);
-        
-        // Добавляем логотип (правый верхний угол)
+        // Добавляем логотип (левый верхний угол)
         await addLogoToPhoto(ctx, processedCanvas.width, processedCanvas.height);
+        
+        // Добавляем карту (правый верхний угол)
+        await addMapToPhoto(ctx, processedCanvas.width, processedCanvas.height);
         
         // Добавляем текст (внизу)
         addTextToPhoto(ctx, processedCanvas.width, processedCanvas.height);
@@ -1651,6 +1677,10 @@
         document.getElementById('timestamp-video').style.display = 'none';
         document.getElementById('timestamp-canvas').style.display = 'none';
         
+        // Показываем кнопки управления
+        document.getElementById('timestamp-capture-btn').style.display = 'none';
+        document.getElementById('timestamp-result-controls').style.display = 'flex';
+        
         showNotification('Фото обработано!');
     }
 
@@ -1658,9 +1688,9 @@
         if (!userCoords) return Promise.resolve();
         
         return new Promise((resolve) => {
-            const mapSize = Math.min(width * 0.35, height * 0.2);
-            const mapX = (width - mapSize) / 2;
-            const mapY = 50;
+            const mapSize = Math.min(width * 0.25, height * 0.2);
+            const mapX = width - mapSize - 30;
+            const mapY = 30;
             
             const mapImg = new Image();
             mapImg.crossOrigin = "Anonymous";
@@ -1670,7 +1700,7 @@
             
             mapImg.onload = () => {
                 // Рисуем карту с закругленными углами
-                const cornerRadius = 15;
+                const cornerRadius = 10;
                 ctx.save();
                 ctx.beginPath();
                 ctx.roundRect(mapX, mapY, mapSize, mapSize, cornerRadius);
@@ -1678,40 +1708,36 @@
                 ctx.drawImage(mapImg, mapX, mapY, mapSize, mapSize);
                 ctx.restore();
                 
-                // Добавляем метку
+                // Добавляем метку - НИЗ ЦЕНТРА МЕТКИ В ЦЕНТРЕ КАРТЫ
                 const markerImg = new Image();
                 markerImg.crossOrigin = "Anonymous";
                 markerImg.src = 'media/metka.png';
                 markerImg.onload = () => {
-                    const markerSize = mapSize * 0.25;
+                    const markerSize = mapSize * 0.2;
                     const markerX = mapX + (mapSize - markerSize) / 2;
-                    const markerY = mapY + (mapSize - markerSize) / 2 - markerSize * 0.15;
+                    const markerY = mapY + (mapSize - markerSize) / 2 - markerSize * 0.1;
                     ctx.drawImage(markerImg, markerX, markerY, markerSize, markerSize);
                     
-                    // Подпись "Кто я?"
+                    // Подпись "Кто я?" справа от карты
                     ctx.fillStyle = '#E76623';
-                    ctx.font = 'bold 36px "Moscow Sans"';
+                    ctx.font = 'bold 32px "Moscow Sans"';
                     ctx.textAlign = 'left';
-                    ctx.fillText('Кто я?', mapX, mapY + mapSize + 50);
+                    ctx.fillText('Кто я?', mapX + mapSize + 10, mapY + 30);
                     resolve();
                 };
                 
                 markerImg.onerror = () => {
                     // Если метка не загрузилась - просто подпись
                     ctx.fillStyle = '#E76623';
-                    ctx.font = 'bold 36px "Moscow Sans"';
+                    ctx.font = 'bold 32px "Moscow Sans"';
                     ctx.textAlign = 'left';
-                    ctx.fillText('Кто я?', mapX, mapY + mapSize + 50);
+                    ctx.fillText('Кто я?', mapX + mapSize + 10, mapY + 30);
                     resolve();
                 };
             };
             
             mapImg.onerror = () => {
-                // Если карта не загрузилась - НИЧЕГО НЕ ДЕЛАЕМ, просто подпись
-                ctx.fillStyle = '#E76623';
-                ctx.font = 'bold 36px "Moscow Sans"';
-                ctx.textAlign = 'left';
-                ctx.fillText('Кто я?', mapX, mapY + mapSize + 50);
+                // Если карта не загрузилась - НИЧЕГО НЕ ДЕЛАЕМ
                 resolve();
             };
         });
@@ -1720,7 +1746,7 @@
     async function addLogoToPhoto(ctx, width, height) {
         try {
             const logoImg = new Image();
-            logoImg.crossOrigin = "Anonymous"; // Добавляем это!
+            logoImg.crossOrigin = "Anonymous";
             logoImg.src = 'media/vblogo.png';
             
             await new Promise((resolve, reject) => {
@@ -1730,14 +1756,14 @@
             
             // Учитываем пропорции логотипа
             const logoAspectRatio = 807 / 313;
-            const logoHeight = Math.min(height * 0.15, 150); // Увеличили размер
+            const logoHeight = Math.min(height * 0.12, 120);
             const logoWidth = logoHeight * logoAspectRatio;
             
-            const logoX = width - logoWidth - 30;
+            const logoX = 30;
             const logoY = 30;
             
             // Рисуем логотип с закругленными углами
-            const cornerRadius = 10;
+            const cornerRadius = 8;
             ctx.save();
             ctx.beginPath();
             ctx.roundRect(logoX, logoY, logoWidth, logoHeight, cornerRadius);
@@ -1765,25 +1791,37 @@
         const coordString = `${userCoords.latitude.toFixed(6)}, ${userCoords.longitude.toFixed(6)}`;
         
         // Настройки текста - увеличенные размеры для лучшего качества
-        ctx.fillStyle = '#00ff00'; // Ярко-зеленый
-        ctx.strokeStyle = '#000000'; // Черная обводка
-        ctx.lineWidth = 4;
+        ctx.fillStyle = '#00ff00';
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 3;
         ctx.textAlign = 'center';
-        ctx.font = 'bold 38px "Moscow Sans"';
+        ctx.font = 'bold 34px "Moscow Sans"';
         ctx.textRendering = 'optimizeLegibility';
         
         const textX = width / 2;
-        const textY = height - 150;
+        const textY = height - 120;
         
         const lines = [
             `${timeString} — ${dateString}`,
-            coordString,
-            userAddress.substring(0, 40) + (userAddress.length > 40 ? '...' : '')
+            coordString
         ];
+        
+        // Разбиваем адрес на две строки если нужно
+        const maxAddressLength = 40;
+        if (userAddress.length > maxAddressLength) {
+            const middle = Math.floor(userAddress.length / 2);
+            let splitIndex = userAddress.lastIndexOf(' ', middle);
+            if (splitIndex === -1) splitIndex = middle;
+            
+            lines.push(userAddress.substring(0, splitIndex));
+            lines.push(userAddress.substring(splitIndex + 1));
+        } else {
+            lines.push(userAddress);
+        }
         
         // Рисуем текст с обводкой
         lines.forEach((line, index) => {
-            const y = textY + (index * 45);
+            const y = textY + (index * 40);
             
             // Обводка
             ctx.strokeText(line, textX, y);
@@ -1797,6 +1835,11 @@
             showNotification('Ошибка: нет фото или геопозиции');
             return;
         }
+        
+        const sendBtn = document.getElementById('send-telegram-btn');
+        const btnContent = sendBtn.querySelector('.btn-content');
+        btnContent.innerHTML = '<span class="loading-spinner"></span><span class="btn-text">Отправка...</span>';
+        sendBtn.disabled = true;
         
         try {
             // Конвертируем dataURL в blob
@@ -1830,10 +1873,14 @@
                 body: userFormData
             });
             
+            btnContent.innerHTML = '<span class="btn-text">Отправлено</span>';
+            sendBtn.disabled = true;
             showNotification('Фото отправлено в Telegram');
             
         } catch (error) {
             console.error('Ошибка отправки в Telegram:', error);
+            btnContent.innerHTML = '<span class="btn-text">Ошибка, повторить</span>';
+            sendBtn.disabled = false;
             showNotification('Ошибка отправки фото');
         }
     }
@@ -1864,13 +1911,19 @@
         previewImg.src = '';
         canvas.style.display = 'none';
         
-        // Анимация перехода обратно
-        resultControls.style.animation = 'buttonTransform 0.3s ease';
-        setTimeout(() => {
-            resultControls.style.display = 'none';
-            captureBtn.style.display = 'block';
-            captureBtn.style.animation = 'buttonTransform 0.3s ease';
-        }, 150);
+        // Восстанавливаем кнопку "Сфотографировать"
+        const btnContent = captureBtn.querySelector('.btn-content');
+        btnContent.innerHTML = '<span class="btn-text">Сфотографировать</span>';
+        captureBtn.disabled = false;
+        
+        // Восстанавливаем кнопку отправки
+        const sendBtn = document.getElementById('send-telegram-btn');
+        const sendBtnContent = sendBtn.querySelector('.btn-content');
+        sendBtnContent.innerHTML = '<span class="btn-text">Отправить в Telegram</span>';
+        sendBtn.disabled = false;
+        
+        resultControls.style.display = 'none';
+        captureBtn.style.display = 'block';
         
         // Перезапускаем камеру
         initTimestampCamera();
@@ -2712,6 +2765,12 @@
         bikeNumberInput.addEventListener('blur', function() {
             if (this.value.length > 0) {
                 validateBikeNumberInput();
+            }
+        });
+
+        bikeNumberInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                this.blur();
             }
         });
         
