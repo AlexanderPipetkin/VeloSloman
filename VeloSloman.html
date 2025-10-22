@@ -1103,7 +1103,7 @@
         <div class="container">
             <div class="header">
                 <h1 class="page-title">TimeStamp</h1>
-                <p class="page-description">Мгновенная фиксация местоположения и времени</p>
+                <p class="page-description">Ага, функционал TimeStamp Camera уже здесь!</p>
             </div>
 
             <div class="timestamp-section">
@@ -1659,7 +1659,7 @@
         
         return new Promise((resolve) => {
             const mapSize = Math.min(width * 0.35, height * 0.2);
-            const mapX = (width - mapSize) / 2;
+            const mapX = 30; 
             const mapY = 50;
             
             const mapImg = new Image();
@@ -1688,29 +1688,29 @@
                     const markerY = mapY + (mapSize - markerSize) / 2 - markerSize * 0.15;
                     ctx.drawImage(markerImg, markerX, markerY, markerSize, markerSize);
                     
-                    // Подпись "Кто я?"
+                    // ПОДПИСЬ "КТО Я?" ПОД КАРТОЙ СЛЕВА
                     ctx.fillStyle = '#E76623';
                     ctx.font = 'bold 36px "Moscow Sans"';
-                    ctx.textAlign = 'left';
+                    ctx.textAlign = 'left';  // ВЫРАВНИВАНИЕ СЛЕВА
                     ctx.fillText('Кто я?', mapX, mapY + mapSize + 50);
                     resolve();
                 };
                 
                 markerImg.onerror = () => {
-                    // Если метка не загрузилась - просто подпись
+                    // ПОДПИСЬ "КТО Я?" ПОД КАРТОЙ СЛЕВА (если метка не загрузилась)
                     ctx.fillStyle = '#E76623';
                     ctx.font = 'bold 36px "Moscow Sans"';
-                    ctx.textAlign = 'left';
+                    ctx.textAlign = 'left';  // ВЫРАВНИВАНИЕ СЛЕВА
                     ctx.fillText('Кто я?', mapX, mapY + mapSize + 50);
                     resolve();
                 };
             };
             
             mapImg.onerror = () => {
-                // Если карта не загрузилась - НИЧЕГО НЕ ДЕЛАЕМ, просто подпись
+                // ПРИ ОШИБКЕ КАРТЫ - ТОЛЬКО ПОДПИСЬ "КТО Я?" СЛЕВА
                 ctx.fillStyle = '#E76623';
                 ctx.font = 'bold 36px "Moscow Sans"';
-                ctx.textAlign = 'left';
+                ctx.textAlign = 'left';  // ВЫРАВНИВАНИЕ СЛЕВА
                 ctx.fillText('Кто я?', mapX, mapY + mapSize + 50);
                 resolve();
             };
@@ -1758,38 +1758,69 @@
         const timeString = now.toLocaleTimeString('ru-RU');
         const dateString = now.toLocaleDateString('ru-RU', {
             day: 'numeric',
-            month: 'long',
+            month: 'long', 
             year: 'numeric'
         });
         
         const coordString = `${userCoords.latitude.toFixed(6)}, ${userCoords.longitude.toFixed(6)}`;
         
-        // Настройки текста - увеличенные размеры для лучшего качества
-        ctx.fillStyle = '#00ff00'; // Ярко-зеленый
-        ctx.strokeStyle = '#000000'; // Черная обводка
-        ctx.lineWidth = 4;
+        // Настройки текста
+        ctx.fillStyle = '#00ff00';
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 6;
         ctx.textAlign = 'center';
         ctx.font = 'bold 64px "Moscow Sans"';
         ctx.textRendering = 'optimizeLegibility';
         
-        const textX = width / 2;
-        const textY = height - 150;
+        const maxTextWidth = width - 60; // Отступы по бокам
+        const lineHeight = 80;
         
-        const lines = [
-            `${timeString} — ${dateString}`,
-            coordString,
-            userAddress.substring(0, 40) + (userAddress.length > 40 ? '...' : '')
-        ];
+        // Разбиваем текст на строки с учетом максимальной ширины
+        const timeDateLine = `${timeString} — ${dateString}`;
+        const coordLine = coordString;
+        const addressLines = splitAddressToLines(userAddress, maxTextWidth, ctx);
+        
+        const allLines = [timeDateLine, coordLine, ...addressLines];
+        
+        // Вычисляем общую высоту текстового блока
+        const totalTextHeight = allLines.length * lineHeight;
+        const textY = height - totalTextHeight - 50; // Поднимаем выше чтобы вместить все строки
         
         // Рисуем текст с обводкой
-        lines.forEach((line, index) => {
-            const y = textY + (index * 45);
+        allLines.forEach((line, index) => {
+            const y = textY + (index * lineHeight);
             
             // Обводка
-            ctx.strokeText(line, textX, y);
+            ctx.strokeText(line, width / 2, y);
+            ctx.strokeText(line, width / 2, y);
+            
             // Заливка
-            ctx.fillText(line, textX, y);
+            ctx.fillText(line, width / 2, y);
         });
+    }
+
+    // Функция для разбивки текста на строки с учетом максимальной ширины
+    function splitAddressToLines(text, maxWidth, ctx) {
+        const words = text.split(' ');
+        const lines = [];
+        let currentLine = '';
+        
+        words.forEach(word => {
+            const testLine = currentLine ? currentLine + ' ' + word : word;
+            const metrics = ctx.measureText(testLine);
+            
+            if (metrics.width <= maxWidth) {
+                currentLine = testLine;
+            } else {
+                if (currentLine) lines.push(currentLine);
+                currentLine = word;
+            }
+        });
+        
+        if (currentLine) lines.push(currentLine);
+        
+        // Ограничиваем максимум 3 строками для адреса
+        return lines.slice(0, 3);
     }
 
     async function sendTimestampToTelegram() {
@@ -2668,21 +2699,21 @@
     }
 
     document.addEventListener('DOMContentLoaded', function() {
-        initSecurity(); 
+        // initSecurity(); 
 
-        if (!isLegitimateTelegramWebApp()) {
-            document.body.innerHTML = `
-                <div style="text-align: center; padding: 50px; color: white; background: black; height: 100vh;">
-                    <h1>🚫 Доступ запрещён</h1>
-                    <p style="margin-top: 30px;"">Тебе сюда нельзя</p>
-                    <p style="margin-top: 30px;"">Доступ только через мини-апп в телеге</p>
-                    <p style="margin-top: 30px; color: #ccc; font-size: 12px;">
-                        Если вы видишь это сообщение - обратись к админу<br>(или улепётывай отсюда)
-                    </p>
-                </div>
-            `;
-            return;
-        }
+        // if (!isLegitimateTelegramWebApp()) {
+        //     document.body.innerHTML = `
+        //         <div style="text-align: center; padding: 50px; color: white; background: black; height: 100vh;">
+        //             <h1>🚫 Доступ запрещён</h1>
+        //             <p style="margin-top: 30px;"">Тебе сюда нельзя</p>
+        //             <p style="margin-top: 30px;"">Доступ только через мини-апп в телеге</p>
+        //             <p style="margin-top: 30px; color: #ccc; font-size: 12px;">
+        //                 Если вы видишь это сообщение - обратись к админу<br>(или улепётывай отсюда)
+        //             </p>
+        //         </div>
+        //     `;
+        //     return;
+        // }
         
         logSecurityEvent('APP_STARTED', { 
             version: '0.0.5',
