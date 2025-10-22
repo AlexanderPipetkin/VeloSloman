@@ -982,6 +982,17 @@
         .button-transform {
             animation: buttonTransform 0.3s ease;
         }
+
+        .timestamp-btn:disabled,
+        .timestamp-icon-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .timestamp-icon-btn.primary:disabled {
+            background: #666;
+            color: #999;
+        }
     </style>
 </head>
 <body>
@@ -1544,12 +1555,12 @@
                 const addr = data.address;
                 const components = [];
 
+                if (addr.city) components.push(addr.city);
                 if (addr.town) components.push(addr.town);
                 if (addr.suburb) components.push(addr.suburb);
                 if (addr.road) components.push(addr.road);
                 if (addr.house_number) components.push(addr.house_number);
                 
-                // if (addr.city) components.push(addr.city);
                 // if (addr.village) components.push(addr.village);
                 // if (addr.state) components.push(addr.state);
                 if (addr.postcode) components.push(addr.postcode);
@@ -1564,33 +1575,26 @@
     }
 
     function captureTimestampPhoto() {
-        const video = document.getElementById('timestamp-video');
-        const canvas = document.getElementById('timestamp-canvas');
+        const captureBtn = document.getElementById('timestamp-capture-btn');
         
-        // Увеличиваем качество фото
-        canvas.width = video.videoWidth * 2;
-        canvas.height = video.videoHeight * 2;
-        
-        // Рисуем с высоким качеством
-        timestampContext.imageSmoothingEnabled = true;
-        timestampContext.imageSmoothingQuality = 'high';
-        timestampContext.drawImage(video, 0, 0, canvas.width, canvas.height);
+        // Меняем текст кнопки на "Загрузка..."
+        captureBtn.textContent = 'Загрузка...';
+        captureBtn.disabled = true;
         
         // Останавливаем камеру
         if (timestampStream) {
             timestampStream.getTracks().forEach(track => track.stop());
         }
-
-        // Анимация перехода кнопок
-        animateButtonTransition();
-
-        // Обрабатываем фото с обработкой ошибок
+        
+        // Обрабатываем фото
         try {
             processTimestampPhoto();
         } catch (error) {
             console.error('Ошибка обработки фото:', error);
             showNotification('Ошибка обработки фото');
-            // В случае ошибки возвращаем кнопку "Сфотографировать"
+            // Возвращаем к состоянию съемки
+            captureBtn.textContent = 'Сфотографировать';
+            captureBtn.disabled = false;
             retakeTimestampPhoto();
         }
     }
@@ -1657,6 +1661,8 @@
         document.getElementById('timestamp-canvas').style.display = 'none';
         
         showNotification('Фото обработано');
+
+        animateButtonTransition();
     }
 
     function addMapToPhoto(ctx, width, height) {
@@ -1855,10 +1861,17 @@
     }
 
     async function sendTimestampToTelegram() {
+        const sendBtn = document.getElementById('send-telegram-btn');
+        
         if (!currentProcessedPhoto || !userCoords) {
             showNotification('Ошибка: нет фото или геопозиции');
             return;
         }
+        
+        // Делаем кнопку неактивной
+        const originalText = sendBtn.innerHTML;
+        sendBtn.innerHTML = 'Отправка...';
+        sendBtn.disabled = true;
         
         try {
             // Конвертируем dataURL в blob
@@ -1885,18 +1898,25 @@
             const userFormData = new FormData();
             userFormData.append('chat_id', userData.id);
             userFormData.append('photo', blob, 'timestamp.jpg');
-            userFormData.append('caption', 'Держи свое TimeStamp фото\n\n#timestamp');
+            userFormData.append('caption', 'Ваше TimeStamp фото');
             
             await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
                 method: 'POST',
                 body: userFormData
             });
             
-            showNotification('Фото отправлено в телегу');
+            showNotification('Фото отправлено в Telegram');
+            
+            // Оставляем кнопку неактивной после успешной отправки
+            sendBtn.innerHTML = '✓ Отправлено';
             
         } catch (error) {
             console.error('Ошибка отправки в Telegram:', error);
             showNotification('Ошибка отправки фото');
+            
+            // Восстанавливаем кнопку при ошибке
+            sendBtn.innerHTML = originalText;
+            sendBtn.disabled = false;
         }
     }
 
@@ -1916,10 +1936,13 @@
 
     function retakeTimestampPhoto() {
         // Сбрасываем состояние
+        const captureBtn = document.getElementById('timestamp-capture-btn');
+        captureBtn.textContent = 'Сфотографировать';
+        captureBtn.disabled = false;
+        
         const previewImg = document.getElementById('processed-photo-preview');
         const video = document.getElementById('timestamp-video');
         const canvas = document.getElementById('timestamp-canvas');
-        const captureBtn = document.getElementById('timestamp-capture-btn');
         const resultControls = document.getElementById('timestamp-result-controls');
         
         previewImg.style.display = 'none';
