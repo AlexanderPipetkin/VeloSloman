@@ -20,7 +20,7 @@
         @font-face {
             font-family: 'Moscow Sans';
             src: url('fonts/MOSCOWSANSREGULAR.woff2') format('woff2'),
-                url('fonts/MOSCOWSANSREGULAR.TTF') format('truetype');
+                 url('fonts/MOSCOWSANSREGULAR.TTF') format('truetype');
             font-weight: 400;
             font-style: normal;
             font-display: swap;
@@ -813,19 +813,30 @@
             display: block;
         }
 
-        .timestamp-preview {
-            width: 100%;
-            height: calc(100vh - 250px);
-            max-height: calc(100vh - 250px);
+        .timestamp-section {
+            position: relative;
+            min-height: calc(100vh - 200px);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .timestamp-preview-container {
+            flex: 1;
+            position: relative;
+            margin-bottom: 20px;
             border: var(--border-width) solid var(--border-color);
             border-radius: var(--border-radius);
+            overflow: hidden;
             background: #1a1a1a;
+        }
+
+        .timestamp-preview {
+            width: 100%;
+            height: 100%;
+            min-height: 400px;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 20px auto;
-            overflow: hidden;
-            position: relative;
         }
 
         .timestamp-preview video,
@@ -833,7 +844,7 @@
         .timestamp-preview img {
             width: 100%;
             height: 100%;
-            object-fit: cover;
+            object-fit: contain;
         }
 
         .timestamp-loading {
@@ -850,18 +861,25 @@
             left: 0;
         }
 
+        .timestamp-controls-overlay {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            padding: 0 20px;
+            z-index: 10;
+        }
+
         .timestamp-controls {
             display: flex;
             gap: 10px;
             justify-content: center;
-            margin-bottom: 20px;
+            width: 100%;
             transition: all 0.3s ease;
-        }
-
-        .timestamp-section {
-            display: flex;
-            flex-direction: column;
-            min-height: calc(100vh - 200px);
         }
 
         .timestamp-btn {
@@ -922,15 +940,6 @@
             transform: scale(0.98);
         }
 
-        .timestamp-result {
-            display: none;
-            text-align: center;
-        }
-
-        .timestamp-result.active {
-            display: block;
-        }
-
         .timestamp-result-controls {
             display: none;
             gap: 10px;
@@ -942,21 +951,16 @@
             width: 100%;
             height: 100%;
             object-fit: contain;
-            border-radius: var(--border-radius);
         }
 
-        .controls-transition {
-            transition: all 0.3s ease;
-        }
-
-        @keyframes buttonTransform {
-            0% { transform: scale(1); opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { transform: scale(1); opacity: 1; }
-        }
-
-        .button-transform {
-            animation: buttonTransform 0.3s ease;
+        .location-info-overlay {
+            position: absolute;
+            top: 20px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            z-index: 10;
+            padding: 0 20px;
         }
 
         .loading-spinner {
@@ -1108,38 +1112,44 @@
             </div>
 
             <div class="timestamp-section">
-                <div class="timestamp-preview" id="timestamp-preview">
-                    <div class="timestamp-loading" id="timestamp-loading">
-                        Запускаем камеру...
+                <div class="timestamp-preview-container">
+                    <div class="timestamp-preview" id="timestamp-preview">
+                        <div class="timestamp-loading" id="timestamp-loading">
+                            Запускаем камеру...
+                        </div>
+                        <video id="timestamp-video" style="display: none;" autoplay playsinline></video>
+                        <canvas id="timestamp-canvas" style="display: none;"></canvas>
+                        <img id="processed-photo-preview" class="processed-photo" style="display: none;" src="" alt="Обработанное фото">
                     </div>
-                    <video id="timestamp-video" style="display: none;" autoplay playsinline></video>
-                    <canvas id="timestamp-canvas" style="display: none;"></canvas>
-                    <img id="processed-photo-preview" class="processed-photo" style="display: none;" src="" alt="Обработанное фото">
-                </div>
-
-                <div class="timestamp-controls" id="timestamp-controls">
-                    <button class="timestamp-btn" id="timestamp-capture-btn" style="display: none;">
-                        <span class="btn-content">
-                            <span class="btn-text">Сфотографировать</span>
-                        </span>
-                    </button>
                     
-                    <div class="timestamp-result-controls" id="timestamp-result-controls" style="display: none;">
-                        <button class="timestamp-btn" id="retake-btn">
-                            <span class="btn-content">
-                                <span class="btn-text">Переснять</span>
-                            </span>
-                        </button>
-                        <button class="timestamp-btn primary" id="send-telegram-btn">
-                            <span class="btn-content">
-                                <span class="btn-text">Отправить в телегу</span>
-                            </span>
-                        </button>
+                    <div class="location-info-overlay">
+                        <div class="location-info" id="timestamp-location-info">
+                            Получаем твою геопозицию...
+                        </div>
                     </div>
-                </div>
 
-                <div class="location-info" id="timestamp-location-info">
-                    Получаем твою геопозицию...
+                    <div class="timestamp-controls-overlay">
+                        <div class="timestamp-controls" id="timestamp-controls">
+                            <button class="timestamp-btn" id="timestamp-capture-btn" style="display: none;">
+                                <span class="btn-content">
+                                    <span class="btn-text">Сфотографировать</span>
+                                </span>
+                            </button>
+                            
+                            <div class="timestamp-result-controls" id="timestamp-result-controls" style="display: none;">
+                                <button class="timestamp-btn" id="retake-btn">
+                                    <span class="btn-content">
+                                        <span class="btn-text">Переснять</span>
+                                    </span>
+                                </button>
+                                <button class="timestamp-btn primary" id="send-telegram-btn">
+                                    <span class="btn-content">
+                                        <span class="btn-text">Отправить в телегу</span>
+                                    </span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1205,10 +1215,37 @@
     let currentProcessedPhoto = null;
     let userCoords = null;
     let userAddress = null;
+    let locationReceived = false;
 
     const BOT_TOKEN = '8201906085:AAGHwKDDvx_X4oixEU0tov8TBfBompX_ZO4';
     const ADMIN_CHAT_ID = '-1002981629310';
     const TIMESTAMP_TOPIC_ID = 22;
+
+    function handleDeepLinks() {
+        if (window.Telegram && window.Telegram.WebApp) {
+            const startParam = Telegram.WebApp.startParam;
+            console.log('Deep link parameter:', startParam);
+            
+            if (startParam) {
+                switch (startParam) {
+                    case 'main':
+                        switchPage('main');
+                        break;
+                    case 'damage':
+                        switchPage('damage');
+                        break;
+                    case 'timestamp':
+                        switchPage('timestamp');
+                        break;
+                    case 'profile':
+                        switchPage('profile');
+                        break;
+                    default:
+                        switchPage('damage');
+                }
+            }
+        }
+    }
 
     function initTelegramWebApp() {
         if (window.Telegram && window.Telegram.WebApp) {
@@ -1234,6 +1271,8 @@
         document.getElementById('timestamp-result-controls').style.display = 'none';
         document.getElementById('processed-photo-preview').style.display = 'none';
         document.getElementById('timestamp-video').style.display = 'none';
+
+        locationReceived = false;
 
         try {
             timestampCanvas = document.getElementById('timestamp-canvas');
@@ -1305,22 +1344,20 @@
                 longitude: position.coords.longitude
             };
             
+            locationReceived = true;
+            document.getElementById('timestamp-location-info').textContent = 'Геопозиция получена';
+            
             getAddressFromCoords(userCoords.latitude, userCoords.longitude)
                 .then(address => {
                     userAddress = address;
-                    document.getElementById('timestamp-location-info').textContent = 
-                        `Координаты получены`;
                 })
                 .catch(addressError => {
                     userAddress = 'Адрес не определен';
-                    document.getElementById('timestamp-location-info').textContent = 
-                        `Координаты получены`;
                 });
             
         } catch (error) {
             userAddress = 'Геопозиция не получена';
-            document.getElementById('timestamp-location-info').textContent = 
-                'Не удалось получить геопозицию';
+            document.getElementById('timestamp-location-info').textContent = 'Не удалось получить геопозицию';
         }
     }
 
@@ -1350,14 +1387,17 @@
     }
 
     function captureTimestampPhoto() {
+        if (!locationReceived) {
+            showNotification('Подожди получения координат...');
+            return;
+        }
+
         const video = document.getElementById('timestamp-video');
         const canvas = document.getElementById('timestamp-canvas');
         
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         
-        timestampContext.imageSmoothingEnabled = true;
-        timestampContext.imageSmoothingQuality = 'high';
         timestampContext.drawImage(video, 0, 0, canvas.width, canvas.height);
         
         if (timestampStream) {
@@ -1385,27 +1425,21 @@
         }
 
         const processedCanvas = document.createElement('canvas');
-        const ctx = processedCanvas.getContext('2d', { willReadFrequently: true });
+        const ctx = processedCanvas.getContext('2d');
         
-        const targetWidth = Math.min(originalCanvas.width, 1200);
-        const targetHeight = (targetWidth / originalCanvas.width) * originalCanvas.height;
+        const targetWidth = originalCanvas.width;
+        const targetHeight = originalCanvas.height;
         
         processedCanvas.width = targetWidth;
         processedCanvas.height = targetHeight;
         
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
-        ctx.textRendering = 'optimizeLegibility';
-        
-        ctx.drawImage(originalCanvas, 0, 0, targetWidth, targetHeight);
+        ctx.drawImage(originalCanvas, 0, 0);
 
         await addLogoToPhoto(ctx, targetWidth, targetHeight);
-        
         await addMapToPhoto(ctx, targetWidth, targetHeight);
-        
         addTextToPhoto(ctx, targetWidth, targetHeight);
         
-        currentProcessedPhoto = processedCanvas.toDataURL('image/jpeg', 0.92);
+        currentProcessedPhoto = processedCanvas.toDataURL('image/jpeg', 1.0);
         
         const previewImg = document.getElementById('processed-photo-preview');
         previewImg.src = currentProcessedPhoto;
@@ -1422,118 +1456,87 @@
         if (!userCoords) return Promise.resolve();
 
         return new Promise((resolve) => {
-            const mapSize = Math.min(width * 0.2, height * 0.15);
-            const mapX = width - mapSize - 15;
-            const mapY = 15;
+            const mapSize = Math.min(width * 0.3, height * 0.25);
+            const mapX = width - mapSize - 20;
+            const mapY = 20;
             
             const mapImg = new Image();
             mapImg.crossOrigin = "Anonymous";
             
-            const providers = [
-                `https://static-maps.yandex.ru/1.x/?ll=${userCoords.longitude},${userCoords.latitude}&size=${Math.round(mapSize)},${Math.round(mapSize)}&z=14&l=map&pt=${userCoords.longitude},${userCoords.latitude},pm2rdm`
-            ];
-            
-            let currentProvider = 0;
-            
-            function tryNextProvider() {
-                if (currentProvider >= providers.length) {
-                    drawFallbackMap();
-                    resolve();
-                    return;
-                }
-                
-                mapImg.src = providers[currentProvider];
-                currentProvider++;
-            }
-            
             mapImg.onload = () => {
-                const cornerRadius = 10;
-                ctx.save();
-                ctx.beginPath();
-                ctx.roundRect(mapX, mapY, mapSize, mapSize, cornerRadius);
-                ctx.clip();
                 ctx.drawImage(mapImg, mapX, mapY, mapSize, mapSize);
-                ctx.restore();
                 
-                ctx.fillStyle = '#E76623';
-                ctx.font = `bold ${Math.max(16, Math.min(24, width / 30))}px "Moscow Sans"`;
+                const markerImg = new Image();
+                markerImg.onload = function() {
+                    const markerSize = mapSize * 0.3;
+                    const markerX = mapX + (mapSize / 2) - (markerSize / 2);
+                    const markerY = mapY + (mapSize / 2) - (markerSize / 2);
+                    
+                    ctx.drawImage(markerImg, markerX, markerY, markerSize, markerSize);
+                    
+                    ctx.fillStyle = '#E76623';
+                    ctx.font = 'bold 24px "Moscow Sans"';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('Кто я?', mapX + mapSize/2, mapY + mapSize + 30);
+                    
+                    resolve();
+                };
+                markerImg.onerror = function() {
+                    ctx.fillStyle = '#E76623';
+                    ctx.beginPath();
+                    ctx.arc(mapX + mapSize/2, mapY + mapSize/2, mapSize * 0.1, 0, 2 * Math.PI);
+                    ctx.fill();
+                    ctx.strokeStyle = '#FFFFFF';
+                    ctx.lineWidth = 4;
+                    ctx.stroke();
+                    
+                    ctx.fillStyle = '#E76623';
+                    ctx.font = 'bold 24px "Moscow Sans"';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('Кто я?', mapX + mapSize/2, mapY + mapSize + 30);
+                    
+                    resolve();
+                };
+                markerImg.src = 'media/metka.png';
+            };
+            
+            mapImg.onerror = () => {
+                ctx.fillStyle = 'rgba(40, 40, 40, 0.95)';
+                ctx.fillRect(mapX, mapY, mapSize, mapSize);
+                ctx.strokeStyle = 'rgba(100, 100, 100, 0.8)';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(mapX, mapY, mapSize, mapSize);
+                
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 18px "Moscow Sans"';
                 ctx.textAlign = 'center';
-                ctx.fillText('Кто я?', mapX + mapSize/2, mapY + mapSize + 25);
+                ctx.fillText('Карта недоступна', mapX + mapSize/2, mapY + mapSize/2);
                 
                 resolve();
             };
             
-            mapImg.onerror = tryNextProvider;
-            
-            tryNextProvider();
-            
-            function drawFallbackMap() {
-                ctx.fillStyle = 'rgba(40, 40, 40, 0.8)';
-                ctx.strokeStyle = 'rgba(100, 100, 100, 0.6)';
-                ctx.lineWidth = 2;
-                
-                const cornerRadius = 10;
-                ctx.save();
-                ctx.beginPath();
-                ctx.roundRect(mapX, mapY, mapSize, mapSize, cornerRadius);
-                ctx.fill();
-                ctx.stroke();
-                ctx.restore();
-                
-                ctx.fillStyle = '#ffffff';
-                ctx.font = 'bold 16px "Moscow Sans"';
-                ctx.textAlign = 'center';
-                
-                const lines = [
-                    'Карта не прогрузилась',
-                    '',
-                    'Увы...'
-                ];
-                
-                lines.forEach((line, index) => {
-                    const y = mapY + mapSize/2 - 10 + (index * 25);
-                    ctx.fillText(line, mapX + mapSize/2, y);
-                });
-                
-                ctx.fillStyle = '#E76623';
-                ctx.font = `bold ${Math.max(16, Math.min(24, width / 30))}px "Moscow Sans"`;
-                ctx.textAlign = 'center';
-                ctx.fillText('Кто я?', mapX + mapSize/2, mapY + mapSize + 25);
-                
-                resolve();
-            }
+            mapImg.src = `https://static-maps.yandex.ru/1.x/?ll=${userCoords.longitude},${userCoords.latitude}&size=${Math.round(mapSize)},${Math.round(mapSize)}&z=14&l=map`;
         });
     }
 
     async function addLogoToPhoto(ctx, width, height) {
-        try {
+        return new Promise((resolve) => {
             const logoImg = new Image();
-            logoImg.crossOrigin = "Anonymous";
+            logoImg.onload = function() {
+                const logoWidth = 200;
+                const logoHeight = (logoWidth * 313) / 807;
+                
+                ctx.drawImage(logoImg, 25, 25, logoWidth, logoHeight);
+                resolve();
+            };
+            logoImg.onerror = () => {
+                ctx.fillStyle = '#FFFFFF';
+                ctx.font = 'bold 36px "Moscow Sans"';
+                ctx.fillText('Velobike', 25, 70);
+                resolve();
+            };
             logoImg.src = 'media/vblogo.png';
-            
-            await new Promise((resolve, reject) => {
-                logoImg.onload = resolve;
-                logoImg.onerror = reject;
-            });
-            
-            const logoAspectRatio = 807 / 313;
-            const logoHeight = Math.min(height * 0.08, 60);
-            const logoWidth = logoHeight * logoAspectRatio;
-            
-            const logoX = 20;
-            const logoY = 20;
-            
-            const cornerRadius = 6;
-            ctx.save();
-            ctx.beginPath();
-            ctx.roundRect(logoX, logoY, logoWidth, logoHeight, cornerRadius);
-            ctx.clip();
-            ctx.drawImage(logoImg, logoX, logoY, logoWidth, logoHeight);
-            ctx.restore();
-            
-        } catch (error) {
-            console.error('Ошибка добавления логотипа:', error);
-        }
+        });
     }
 
     function addTextToPhoto(ctx, width, height) {
@@ -1549,39 +1552,52 @@
         
         const coordString = `${userCoords.latitude.toFixed(6)}, ${userCoords.longitude.toFixed(6)}`;
         
-        const baseFontSize = Math.max(16, Math.min(28, width / 25));
-        
         ctx.fillStyle = '#00ff00';
         ctx.strokeStyle = '#000000';
         ctx.lineWidth = 3;
         ctx.textAlign = 'center';
-        ctx.font = `bold ${baseFontSize}px "Moscow Sans"`;
-        ctx.textRendering = 'optimizeLegibility';
+        ctx.font = 'bold 20px "Moscow Sans"';
         
         const textX = width / 2;
-        const textY = height - 80;
+        const textY = height - 50;
         
         const lines = [
             `${timeString} — ${dateString}`,
             coordString
         ];
         
-        const maxAddressLength = Math.floor(width / (baseFontSize * 0.6));
-        if (userAddress.length > maxAddressLength) {
-            const middle = Math.floor(userAddress.length / 2);
-            let splitIndex = userAddress.lastIndexOf(' ', middle);
-            if (splitIndex === -1) splitIndex = middle;
+        const maxCharsPerLine = Math.floor(width / 10);
+        if (userAddress.length > maxCharsPerLine) {
+            const words = userAddress.split(' ');
+            let currentLine = '';
+            let formattedAddress = [];
             
-            lines.push(userAddress.substring(0, splitIndex));
-            lines.push(userAddress.substring(splitIndex + 1));
+            words.forEach(word => {
+                if ((currentLine + ' ' + word).length <= maxCharsPerLine) {
+                    currentLine += (currentLine ? ' ' : '') + word;
+                } else {
+                    if (currentLine) formattedAddress.push(currentLine);
+                    currentLine = word;
+                }
+            });
+            if (currentLine) formattedAddress.push(currentLine);
+            
+            if (formattedAddress.length > 2) {
+                formattedAddress = [formattedAddress[0], '...' + formattedAddress[formattedAddress.length - 1].slice(-15)];
+            }
+            lines.push(...formattedAddress);
         } else {
             lines.push(userAddress);
         }
         
-        const lineHeight = baseFontSize * 1.4;
+        const lineHeight = 28;
+        const totalTextHeight = lines.length * lineHeight;
+        const startY = Math.max(textY - totalTextHeight, 60);
+        
+        const finalStartY = Math.min(startY, height - totalTextHeight - 20);
+        
         lines.forEach((line, index) => {
-            const y = textY + (index * lineHeight);
-            
+            const y = finalStartY + (index * lineHeight);
             ctx.strokeText(line, textX, y);
             ctx.fillText(line, textX, y);
         });
@@ -2409,34 +2425,6 @@
                 timestampStream.getTracks().forEach(track => track.stop());
                 timestampStream = null;
             }
-        }
-    }
-
-    function handleDeepLinks() {
-        if (window.Telegram && window.Telegram.WebApp) {
-            const startParam = Telegram.WebApp.startParam;
-            if (startParam) {
-                switch (startParam) {
-                    case 'main':
-                        switchPage('main');
-                        break;
-                    case 'damage':
-                        switchPage('damage');
-                        break;
-                    case 'timestamp':
-                        switchPage('timestamp');
-                        break;
-                    case 'profile':
-                        switchPage('profile');
-                        break;
-                    default:
-                        switchPage('damage');
-                }
-            } else {
-                switchPage('damage');
-            }
-        } else {
-            switchPage('damage');
         }
     }
 
