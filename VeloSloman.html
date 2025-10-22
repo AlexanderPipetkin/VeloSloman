@@ -880,7 +880,6 @@
         }
 
         .timestamp-controls-overlay::before {
-            content: '';
             position: absolute;
             bottom: 0;
             left: 0;
@@ -903,7 +902,7 @@
 
         .timestamp-btn {
             padding: 12px 24px;
-            border: var(--border-width) solid var(--border-color);
+            border: var(--border-width) solid var(--border-color) !important;
             border-radius: var(--border-radius);
             background: transparent;
             color: var(--primary-text);
@@ -918,7 +917,7 @@
         }
 
         .timestamp-btn.primary {
-            background: var(--primary-text);
+            border: var(--border-width) solid var(--border-color) !important;
             color: var(--primary-bg);
         }
 
@@ -1670,8 +1669,7 @@
         return new Promise((resolve) => {
             const logoImg = new Image();
             logoImg.onload = function() {
-                // Увеличиваем логотип
-                const logoWidth = 250; // Было 200
+                const logoWidth = 400;
                 const logoHeight = (logoWidth * 313) / 807;
                 
                 ctx.drawImage(logoImg, 25, 25, logoWidth, logoHeight);
@@ -2600,21 +2598,21 @@
     }
 
     document.addEventListener('DOMContentLoaded', function() {
-        initSecurity(); 
+        // initSecurity(); 
 
-        if (!isLegitimateTelegramWebApp()) {
-            document.body.innerHTML = `
-                <div style="text-align: center; padding: 50px; color: white; background: black; height: 100vh;">
-                    <h1>🚫 Доступ запрещён</h1>
-                    <p style="margin-top: 30px;"">Тебе сюда нельзя</p>
-                    <p style="margin-top: 30px;"">Доступ только через мини-апп в телеге</p>
-                    <p style="margin-top: 30px; color: #ccc; font-size: 12px;">
-                        Если вы видишь это сообщение - обратись к админу<br>(или улепётывай отсюда)
-                    </p>
-                </div>
-            `;
-            return;
-        }
+        // if (!isLegitimateTelegramWebApp()) {
+        //     document.body.innerHTML = `
+        //         <div style="text-align: center; padding: 50px; color: white; background: black; height: 100vh;">
+        //             <h1>🚫 Доступ запрещён</h1>
+        //             <p style="margin-top: 30px;"">Тебе сюда нельзя</p>
+        //             <p style="margin-top: 30px;"">Доступ только через мини-апп в телеге</p>
+        //             <p style="margin-top: 30px; color: #ccc; font-size: 12px;">
+        //                 Если вы видишь это сообщение - обратись к админу<br>(или улепётывай отсюда)
+        //             </p>
+        //         </div>
+        //     `;
+        //     return;
+        // }
 
         handleDeepLinks();
         initTelegramWebApp();
