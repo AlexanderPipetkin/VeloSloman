@@ -1783,7 +1783,7 @@
             
             // Учитываем пропорции логотипа
             const logoAspectRatio = 807 / 313;
-            const logoHeight = Math.min(height * 0.35, 350); // Увеличили размер
+            const logoHeight = Math.min(height * 0.15, 150); // Увеличили размер
             const logoWidth = logoHeight * logoAspectRatio;
             
             const logoX = 30;
@@ -1822,11 +1822,11 @@
         ctx.strokeStyle = '#000000';
         ctx.lineWidth = 3;
         ctx.textAlign = 'center';
-        ctx.font = 'bold 24px "Moscow Sans"'; // Было 64px!
+        ctx.font = 'bold 38px "Moscow Sans"'; // Было 64px!
         ctx.textRendering = 'optimizeLegibility';
         
         const maxTextWidth = width - 60;
-        const lineHeight = 35; // Было 80!
+        const lineHeight = 55; // Было 80!
         
         // Разбиваем текст на строки
         const timeDateLine = `${timeString} — ${dateString}`;
