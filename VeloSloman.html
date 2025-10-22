@@ -1925,14 +1925,11 @@
         previewImg.style.display = 'none';
         previewImg.src = '';
         canvas.style.display = 'none';
+        video.style.display = 'block';
         
         // Анимация перехода обратно
-        resultControls.style.animation = 'buttonTransform 0.3s ease';
-        setTimeout(() => {
-            resultControls.style.display = 'none';
-            captureBtn.style.display = 'block';
-            captureBtn.style.animation = 'buttonTransform 0.3s ease';
-        }, 150);
+        resultControls.style.display = 'none';
+        captureBtn.style.display = 'block';
         
         // Перезапускаем камеру
         initTimestampCamera();
@@ -2530,6 +2527,24 @@
         });
     }
 
+    function stopTimestampCamera() {
+        if (timestampStream) {
+            timestampStream.getTracks().forEach(track => {
+                track.stop();
+            });
+            timestampStream = null;
+        }
+        
+        document.getElementById('timestamp-loading').style.display = 'block';
+        document.getElementById('timestamp-capture-btn').style.display = 'none';
+        document.getElementById('timestamp-result-controls').style.display = 'none';
+        document.getElementById('processed-photo-preview').style.display = 'none';
+        document.getElementById('timestamp-video').style.display = 'none';
+        document.getElementById('timestamp-canvas').style.display = 'none';
+        
+        currentProcessedPhoto = null;
+    }
+
     async function sendReportToTelegram() {
         if (!performSecurityChecks()) {
             return;
@@ -2677,6 +2692,10 @@
     }
 
     function switchPage(pageId) {
+        if (pageId !== 'timestamp') {
+            stopTimestampCamera();
+        }
+        
         document.querySelectorAll('.page').forEach(page => {
             page.classList.remove('active');
         });
@@ -2695,23 +2714,30 @@
             navItem.classList.add('active');
         }
         
-        // Инициализация TimeStamp камеры при переключении на эту страницу
         if (pageId === 'timestamp') {
-            initTimestampCamera();
+            setTimeout(() => {
+                initTimestampCamera();
+            }, 100);
         }
     }
 
     function handleDeepLinks() {
-        // Получаем параметр из URL
-        const urlParams = new URLSearchParams(window.location.search);
-        let startParam = urlParams.get('startapp');
+        let startParam = null;
         
-        // Если нет startapp, пробуем стандартный start
-        if (!startParam && window.Telegram?.WebApp?.startParam) {
+        // 1. Пробуем получить из Telegram WebApp
+        if (window.Telegram?.WebApp?.initData) {
             startParam = Telegram.WebApp.startParam;
+            console.log('Telegram startParam:', startParam);
         }
         
-        console.log('Deep link param:', startParam);
+        // 2. Если нет, пробуем из URL (для тестирования)
+        if (!startParam) {
+            const urlParams = new URLSearchParams(window.location.search);
+            startParam = urlParams.get('startapp');
+            console.log('URL startapp param:', startParam);
+        }
+        
+        console.log('Final start param:', startParam);
         
         if (startParam) {
             switch (startParam) {
@@ -2731,7 +2757,7 @@
                     switchPage('damage');
             }
         } else {
-            switchPage('damage'); // По умолчанию
+            switchPage('damage');
         }
     }
 
@@ -2740,19 +2766,19 @@
 
         handleDeepLinks();
 
-        if (!isLegitimateTelegramWebApp()) {
-            document.body.innerHTML = `
-                <div style="text-align: center; padding: 50px; color: white; background: black; height: 100vh;">
-                    <h1>🚫 Доступ запрещён</h1>
-                    <p style="margin-top: 30px;"">Тебе сюда нельзя</p>
-                    <p style="margin-top: 30px;"">Доступ только через мини-апп в телеге</p>
-                    <p style="margin-top: 30px; color: #ccc; font-size: 12px;">
-                        Если вы видишь это сообщение - обратись к админу<br>(или улепётывай отсюда)
-                    </p>
-                </div>
-            `;
-            return;
-        }
+        // if (!isLegitimateTelegramWebApp()) {
+        //     document.body.innerHTML = `
+        //         <div style="text-align: center; padding: 50px; color: white; background: black; height: 100vh;">
+        //             <h1>🚫 Доступ запрещён</h1>
+        //             <p style="margin-top: 30px;"">Тебе сюда нельзя</p>
+        //             <p style="margin-top: 30px;"">Доступ только через мини-апп в телеге</p>
+        //             <p style="margin-top: 30px; color: #ccc; font-size: 12px;">
+        //                 Если вы видишь это сообщение - обратись к админу<br>(или улепётывай отсюда)
+        //             </p>
+        //         </div>
+        //     `;
+        //     return;
+        // }
         
         logSecurityEvent('APP_STARTED', { 
             version: '0.0.5',
