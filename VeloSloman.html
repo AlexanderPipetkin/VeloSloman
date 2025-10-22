@@ -1454,6 +1454,17 @@
 
     // TimeStamp функции
     async function initTimestampCamera() {
+        if (timestampStream) {
+            timestampStream.getTracks().forEach(track => track.stop());
+            timestampStream = null;
+        }
+
+        document.getElementById('timestamp-loading').style.display = 'block';
+        document.getElementById('timestamp-capture-btn').style.display = 'none';
+        document.getElementById('timestamp-result-controls').style.display = 'none';
+        document.getElementById('processed-photo-preview').style.display = 'none';
+        document.getElementById('timestamp-video').style.display = 'block';
+
         timestampCanvas = document.getElementById('timestamp-canvas');
         timestampContext = timestampCanvas.getContext('2d', { willReadFrequently: true });
         
@@ -1564,12 +1575,19 @@
         if (timestampStream) {
             timestampStream.getTracks().forEach(track => track.stop());
         }
-        
+
         // Анимация перехода кнопок
         animateButtonTransition();
-        
-        // Обрабатываем фото
-        processTimestampPhoto();
+
+        // Обрабатываем фото с обработкой ошибок
+        try {
+            processTimestampPhoto();
+        } catch (error) {
+            console.error('Ошибка обработки фото:', error);
+            showNotification('Ошибка обработки фото');
+            // В случае ошибки возвращаем кнопку "Сфотографировать"
+            retakeTimestampPhoto();
+        }
     }
 
     function animateButtonTransition() {
@@ -1588,6 +1606,11 @@
 
     async function processTimestampPhoto() {
         const originalCanvas = document.getElementById('timestamp-canvas');
+        
+        if (!originalCanvas || originalCanvas.width === 0) {
+            throw new Error('Нет данных для обработки');
+        }
+
         const processedCanvas = document.createElement('canvas');
         const ctx = processedCanvas.getContext('2d', { willReadFrequently: true });
         
@@ -1608,7 +1631,7 @@
         ctx.drawImage(originalCanvas, x, y, originalCanvas.width * scale, originalCanvas.height * scale);
 
         // Добавляем карту (левый верхний угол)
-        // await addMapToPhoto(ctx, processedCanvas.width, processedCanvas.height);
+        await addMapToPhoto(ctx, processedCanvas.width, processedCanvas.height);
         
         // Добавляем логотип (правый верхний угол)
         await addLogoToPhoto(ctx, processedCanvas.width, processedCanvas.height);
@@ -1643,6 +1666,7 @@
             const mapUrl = `https://static-maps.yandex.ru/1.x/?ll=${userCoords.longitude},${userCoords.latitude}&z=16&size=${Math.round(mapSize)},${Math.round(mapSize)}&l=map`;
             
             const mapResponse = await fetch(mapUrl);
+            if (!mapResponse.ok) throw new Error(`HTTP error! status: ${mapResponse.status}`);
             const mapBlob = await mapResponse.blob();
             const mapImg = await createImageBitmap(mapBlob);
             
@@ -1671,8 +1695,8 @@
             // Добавляем подпись под картой
             ctx.fillStyle = '#E76623';
             ctx.font = 'bold 36px "Moscow Sans"';
-            ctx.textAlign = 'center';
-            ctx.fillText('Кто я?', width / 2, mapY + mapSize + 50);
+            ctx.textAlign = 'left';
+            ctx.fillText('Кто я?', mapX, mapY + mapSize + 50);
             
         } catch (error) {
             console.error('Ошибка добавления карты:', error);
@@ -1687,6 +1711,7 @@
             ctx.font = 'bold 24px "Moscow Sans"';
             ctx.textAlign = 'center';
             ctx.fillText('Карта', mapX + mapSize/2, mapY + mapSize/2);
+            return; 
         }
     }
 
