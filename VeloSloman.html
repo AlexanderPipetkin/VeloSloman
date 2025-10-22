@@ -1690,20 +1690,22 @@
         if (!userCoords) return Promise.resolve();
         
         return new Promise((resolve) => {
-            // УВЕЛИЧИВАЕМ РАЗМЕР КАРТЫ
-            const mapSize = Math.min(width * 0.28, height * 0.23); // Немного уменьшили чтобы влезло
-            const mapX = width - mapSize - 20; // Уменьшили отступ
+            const mapSize = Math.min(width * 0.28, height * 0.23);
+            const mapX = width - mapSize - 20;
             const mapY = 30;
             
             const mapImg = new Image();
             mapImg.crossOrigin = "Anonymous";
             
-            // УБИРАЕМ БЕЛУЮ ОБВОДКУ ПРЕДПРОСМОТРА - используем чистый размер
-            const mapUrl = `https://static-maps.yandex.ru/1.x/?ll=${userCoords.longitude},${userCoords.latitude}&z=16&size=${Math.round(mapSize)},${Math.round(mapSize)}&l=map`;
+            // Используем OpenStreetMap вместо Яндекс карт
+            const mapUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${userCoords.latitude},${userCoords.longitude}&zoom=15&size=${Math.round(mapSize)}x${Math.round(mapSize)}&markers=color:red%7C${userCoords.latitude},${userCoords.longitude}&key=AIzaSyC4eQdRkbfY6Y-b1lCGZ2aXa_6sSdCq7U0`;
+            
+            // Или альтернатива через OpenStreetMap
+            // const mapUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${userCoords.longitude-0.01},${userCoords.latitude-0.01},${userCoords.longitude+0.01},${userCoords.latitude+0.01}&layer=mapnik&marker=${userCoords.latitude},${userCoords.longitude}`;
+            
             mapImg.src = mapUrl;
             
             mapImg.onload = () => {
-                // Рисуем карту с закругленными углами
                 const cornerRadius = 10;
                 ctx.save();
                 ctx.beginPath();
@@ -1712,21 +1714,47 @@
                 ctx.drawImage(mapImg, mapX, mapY, mapSize, mapSize);
                 ctx.restore();
                 
-                // Подпись "Кто я?" - ПЕРЕМЕЩАЕМ ВНИЗ КАРТЫ чтобы не вылезало
+                // Подпись "Кто я?"
                 ctx.fillStyle = '#E76623';
-                ctx.font = 'bold 38px "Moscow Sans"'; // Немного уменьшили шрифт
+                ctx.font = 'bold 38px "Moscow Sans"';
                 ctx.textAlign = 'center';
-                ctx.fillText('Кто я?', mapX + mapSize/2, mapY + mapSize + 40); // Под картой по центру
+                ctx.fillText('Кто я?', mapX + mapSize/2, mapY + mapSize + 40);
                 
                 resolve();
             };
             
             mapImg.onerror = () => {
-                // Если карта не загрузилась - все равно показываем подпись
+                console.log('Карта не загрузилась, рисуем простой квадрат');
+                
+                // Рисуем простой квадрат если карта не загрузилась
+                ctx.fillStyle = '#2a2a2a';
+                ctx.strokeStyle = '#E76623';
+                ctx.lineWidth = 6;
+                
+                const cornerRadius = 10;
+                ctx.save();
+                ctx.beginPath();
+                ctx.roundRect(mapX, mapY, mapSize, mapSize, cornerRadius);
+                ctx.fill();
+                ctx.stroke();
+                ctx.restore();
+                
+                // Рисуем крестик в центре
+                ctx.strokeStyle = '#E76623';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(mapX + mapSize/2 - 10, mapY + mapSize/2);
+                ctx.lineTo(mapX + mapSize/2 + 10, mapY + mapSize/2);
+                ctx.moveTo(mapX + mapSize/2, mapY + mapSize/2 - 10);
+                ctx.lineTo(mapX + mapSize/2, mapY + mapSize/2 + 10);
+                ctx.stroke();
+                
+                // Подпись "Кто я?"
                 ctx.fillStyle = '#E76623';
                 ctx.font = 'bold 38px "Moscow Sans"';
                 ctx.textAlign = 'center';
                 ctx.fillText('Кто я?', mapX + mapSize/2, mapY + mapSize + 40);
+                
                 resolve();
             };
         });
@@ -1809,7 +1837,7 @@
         
         // Рисуем текст с обводкой
         lines.forEach((line, index) => {
-            const y = textY + (index * 75); // Уменьшили межстрочный интервал
+            const y = textY + (index * 75);
             
             // Обводка
             ctx.strokeText(line, textX, y);
@@ -2799,4 +2827,3 @@
 </script>
 </body>
 </html>
-
