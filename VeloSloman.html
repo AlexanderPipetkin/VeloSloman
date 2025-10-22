@@ -850,8 +850,8 @@
         /* Стили для TimeStamp Camera */
         .timestamp-preview {
             width: 100%;
-            max-width: 400px;
-            height: 300px;
+            height: 70vh;
+            max-height: 600px;
             border: var(--border-width) solid var(--border-color);
             border-radius: var(--border-radius);
             background: #1a1a1a;
@@ -861,6 +861,7 @@
             margin: 0 auto 20px;
             overflow: hidden;
             position: relative;
+            aspect-ratio: 9/16;
         }
 
         .timestamp-preview video,
@@ -883,6 +884,14 @@
             justify-content: center;
             margin-bottom: 20px;
             transition: all 0.3s ease;
+            margin-top: auto;
+            padding-bottom: 20px;
+        }
+ 
+        .timestamp-section {
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 200px);
         }
 
         .timestamp-btn {
@@ -949,10 +958,10 @@
         }
 
         .processed-photo {
-            max-width: 100%;
-            max-height: 400px;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
             border-radius: var(--border-radius);
-            margin-bottom: 15px;
         }
 
         .controls-transition {
@@ -1592,8 +1601,12 @@
         ctx.textRendering = 'optimizeLegibility';
         
         // Рисуем оригинальное фото
-        ctx.drawImage(originalCanvas, 0, 0, processedCanvas.width, processedCanvas.height);
-        
+        const scale = Math.max(processedCanvas.width / originalCanvas.width, processedCanvas.height / originalCanvas.height);
+        const x = (processedCanvas.width - originalCanvas.width * scale) / 2;
+        const y = (processedCanvas.height - originalCanvas.height * scale) / 2;
+
+        ctx.drawImage(originalCanvas, x, y, originalCanvas.width * scale, originalCanvas.height * scale);
+
         // Добавляем карту (левый верхний угол)
         await addMapToPhoto(ctx, processedCanvas.width, processedCanvas.height);
         
@@ -1623,7 +1636,7 @@
         
         try {
             // Создаем карту с Яндекс.Карт
-            const mapSize = Math.min(width * 0.25, height * 0.25);
+            const mapSize = Math.min(width * 0.35, height * 0.2);
             const mapX = 30;
             const mapY = 30;
             
@@ -1714,16 +1727,16 @@
         ctx.strokeStyle = '#000000'; // Черная обводка
         ctx.lineWidth = 4;
         ctx.textAlign = 'center';
-        ctx.font = 'bold 32px "Moscow Sans"';
+        ctx.font = 'bold 38px "Moscow Sans"';
         ctx.textRendering = 'optimizeLegibility';
         
         const textX = width / 2;
-        const textY = height - 120;
+        const textY = height - 150;
         
         const lines = [
             `${timeString} — ${dateString}`,
             coordString,
-            userAddress
+            userAddress.substring(0, 40) + (userAddress.length > 40 ? '...' : '')
         ];
         
         // Рисуем текст с обводкой
@@ -2615,7 +2628,19 @@
     document.addEventListener('DOMContentLoaded', function() {
         initSecurity(); 
 
-        
+        if (!isLegitimateTelegramWebApp()) {
+            document.body.innerHTML = `
+                <div style="text-align: center; padding: 50px; color: white; background: black; height: 100vh;">
+                    <h1>🚫 Доступ запрещён</h1>
+                    <p style="margin-top: 30px;"">Тебе сюда нельзя</p>
+                    <p style="margin-top: 30px;"">Доступ только через мини-апп в телеге</p>
+                    <p style="margin-top: 30px; color: #ccc; font-size: 12px;">
+                        Если вы видишь это сообщение - обратись к админу<br>(или улепётывай отсюда)
+                    </p>
+                </div>
+            `;
+            return;
+        }
         
         logSecurityEvent('APP_STARTED', { 
             version: '0.0.5',
