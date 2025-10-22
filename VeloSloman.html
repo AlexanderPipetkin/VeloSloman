@@ -880,6 +880,9 @@
             justify-content: center;
             height: 100%;
             width: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
         }
 
         .timestamp-controls {
@@ -1168,7 +1171,7 @@
                         </button>
                         <button class="timestamp-btn primary" id="send-telegram-btn">
                             <span class="btn-content">
-                                <span class="btn-text">Отправить в Telegram</span>
+                                <span class="btn-text">Отправить в телегу</span>
                             </span>
                         </button>
                     </div>
@@ -1513,6 +1516,8 @@
         
         // Инициализируем камеру
         try {
+            document.getElementById('timestamp-loading').textContent = 'Готово.';
+
             timestampStream = await navigator.mediaDevices.getUserMedia({ 
                 video: { 
                     facingMode: 'environment',
@@ -1560,7 +1565,7 @@
             document.getElementById('timestamp-location-info').textContent = 
                 `Координаты: ${userCoords.latitude.toFixed(6)}, ${userCoords.longitude.toFixed(6)}`;
                 
-            document.getElementById('timestamp-loading').textContent = 'Камера готова';
+            document.getElementById('timestamp-loading').textContent = 'Получение предпросмотра с камеры...';
             
         } catch (error) {
             console.error('Ошибка получения геолокации:', error);
@@ -1740,7 +1745,7 @@
             
             // УВЕЛИЧИВАЕМ РАЗМЕР ЛОГОТИПА
             const logoAspectRatio = 807 / 313;
-            const logoHeight = Math.min(height * 0.18, 180); // Увеличили с 12% до 18%
+            const logoHeight = Math.min(height * 0.35, 350); // Увеличили с 12% до 18%
             const logoWidth = logoHeight * logoAspectRatio;
             
             const logoX = 30;
@@ -1778,7 +1783,7 @@
         ctx.strokeStyle = '#000000';
         ctx.lineWidth = 4;
         ctx.textAlign = 'center';
-        ctx.font = 'bold 40px "Moscow Sans"'; // Немного уменьшили чтобы влезло
+        ctx.font = 'bold 64px "Moscow Sans"'; // Немного уменьшили чтобы влезло
         ctx.textRendering = 'optimizeLegibility';
         
         const textX = width / 2;
@@ -1804,7 +1809,7 @@
         
         // Рисуем текст с обводкой
         lines.forEach((line, index) => {
-            const y = textY + (index * 45); // Уменьшили межстрочный интервал
+            const y = textY + (index * 75); // Уменьшили межстрочный интервал
             
             // Обводка
             ctx.strokeText(line, textX, y);
@@ -1849,7 +1854,7 @@
             const userFormData = new FormData();
             userFormData.append('chat_id', userData.id);
             userFormData.append('photo', blob, 'timestamp.jpg');
-            userFormData.append('caption', 'Ваше TimeStamp фото');
+            userFormData.append('caption', 'Лови фотку #timestamp');
             
             await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
                 method: 'POST',
@@ -1858,10 +1863,10 @@
             
             btnContent.innerHTML = '<span class="btn-text">Отправлено</span>';
             sendBtn.disabled = true;
-            showNotification('Фото отправлено в Telegram');
+            showNotification('Фото отправлено в телегу');
             
         } catch (error) {
-            console.error('Ошибка отправки в Telegram:', error);
+            console.error('Ошибка отправки в телегу:', error);
             btnContent.innerHTML = '<span class="btn-text">Ошибка, повторить</span>';
             sendBtn.disabled = false;
             showNotification('Ошибка отправки фото');
@@ -1902,7 +1907,7 @@
         // Восстанавливаем кнопку отправки
         const sendBtn = document.getElementById('send-telegram-btn');
         const sendBtnContent = sendBtn.querySelector('.btn-content');
-        sendBtnContent.innerHTML = '<span class="btn-text">Отправить в Telegram</span>';
+        sendBtnContent.innerHTML = '<span class="btn-text">Отправить в телегу</span>';
         sendBtn.disabled = false;
         
         resultControls.style.display = 'none';
