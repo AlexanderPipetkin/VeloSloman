@@ -919,6 +919,7 @@
         .timestamp-btn.primary {
             border: var(--border-width) solid var(--border-color) !important;
             color: var(--primary-bg);
+            background-color: #fff;
         }
 
         .timestamp-btn:disabled {
@@ -1794,7 +1795,7 @@
             
         } catch (error) {
             console.error('Ошибка отправки в телегу:', error);
-            btnContent.innerHTML = '<span class="btn-text">Ошибка, повторить</span>';
+            btnContent.innerHTML = '<span class="btn-text">Повторить</span>';
             sendBtn.disabled = false;
             showNotification('Ошибка отправки фото');
         }
