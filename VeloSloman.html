@@ -1659,61 +1659,87 @@
         
         return new Promise((resolve) => {
             const mapSize = Math.min(width * 0.35, height * 0.2);
-            const mapX = 30; 
+            const mapX = width - mapSize - 30;
             const mapY = 50;
             
-            const mapImg = new Image();
-            mapImg.crossOrigin = "Anonymous";
-            
-            const mapUrl = `https://static-maps.yandex.ru/1.x/?ll=${userCoords.longitude},${userCoords.latitude}&z=16&size=${Math.round(mapSize)},${Math.round(mapSize)}&l=map`;
-            mapImg.src = mapUrl;
-            
-            mapImg.onload = () => {
-                // Рисуем карту с закругленными углами
-                const cornerRadius = 15;
-                ctx.save();
-                ctx.beginPath();
-                ctx.roundRect(mapX, mapY, mapSize, mapSize, cornerRadius);
-                ctx.clip();
-                ctx.drawImage(mapImg, mapX, mapY, mapSize, mapSize);
-                ctx.restore();
+            const mapServices = [
+                // Уровень 1 - Яндекс
+                `https://static-maps.yandex.ru/1.x/?ll=${userCoords.longitude},${userCoords.latitude}&z=16&size=${Math.round(mapSize)},${Math.round(mapSize)}&l=map`,
                 
-                // Добавляем метку
-                const markerImg = new Image();
-                markerImg.crossOrigin = "Anonymous";
-                markerImg.src = 'media/metka.png';
-                markerImg.onload = () => {
-                    const markerSize = mapSize * 0.25;
-                    const markerX = mapX + (mapSize - markerSize) / 2;
-                    const markerY = mapY + (mapSize - markerSize) / 2 - markerSize * 0.15;
-                    ctx.drawImage(markerImg, markerX, markerY, markerSize, markerSize);
+                // Уровень 2 - OpenStreetMap
+                `https://www.openstreetmap.org/export/embed.html?bbox=${userCoords.longitude-0.01},${userCoords.latitude-0.01},${userCoords.longitude+0.01},${userCoords.latitude+0.01}&layer=mapnik&marker=${userCoords.latitude},${userCoords.longitude}`,
+                
+                // Уровень 3 - Google Static Maps (требует ключ, но попробуем без)
+                `https://maps.googleapis.com/maps/api/staticmap?center=${userCoords.latitude},${userCoords.longitude}&zoom=16&size=${Math.round(mapSize)}x${Math.round(mapSize)}&markers=color:red%7C${userCoords.latitude},${userCoords.longitude}`,
+                
+                // Уровень 4 - LocationIQ (бесплатный)
+                `https://maps.locationiq.com/v2/staticmap?key=pk.test&center=${userCoords.latitude},${userCoords.longitude}&zoom=16&size=${Math.round(mapSize)}x${Math.round(mapSize)}&markers=icon:small-red-cutout%7C${userCoords.latitude},${userCoords.longitude}`
+            ];
+            
+            let currentService = 0;
+            
+            function tryNextService() {
+                if (currentService >= mapServices.length) {
+                    // Все сервисы провалились - только подпись
+                    ctx.fillStyle = '#E76623';
+                    ctx.font = 'bold 36px "Moscow Sans"';
+                    ctx.textAlign = 'right';
+                    ctx.fillText('Кто я?', mapX + mapSize, mapY + mapSize + 50);
+                    resolve();
+                    return;
+                }
+                
+                const mapImg = new Image();
+                mapImg.crossOrigin = "Anonymous";
+                mapImg.src = mapServices[currentService];
+                
+                mapImg.onload = () => {
+                    // Рисуем карту с закругленными углами
+                    const cornerRadius = 15;
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.roundRect(mapX, mapY, mapSize, mapSize, cornerRadius);
+                    ctx.clip();
+                    ctx.drawImage(mapImg, mapX, mapY, mapSize, mapSize);
+                    ctx.restore();
                     
-                    // ПОДПИСЬ "КТО Я?" ПОД КАРТОЙ СЛЕВА
-                    ctx.fillStyle = '#E76623';
-                    ctx.font = 'bold 36px "Moscow Sans"';
-                    ctx.textAlign = 'left';  // ВЫРАВНИВАНИЕ СЛЕВА
-                    ctx.fillText('Кто я?', mapX, mapY + mapSize + 50);
-                    resolve();
+                    // Добавляем метку (если ее нет на карте)
+                    const markerImg = new Image();
+                    markerImg.crossOrigin = "Anonymous";
+                    markerImg.src = 'media/metka.png';
+                    markerImg.onload = () => {
+                        const markerSize = mapSize * 0.25;
+                        const markerX = mapX + (mapSize - markerSize) / 2;
+                        const markerY = mapY + (mapSize - markerSize) / 2 - markerSize * 0.15;
+                        ctx.drawImage(markerImg, markerX, markerY, markerSize, markerSize);
+                        
+                        // Подпись "Кто я?"
+                        ctx.fillStyle = '#E76623';
+                        ctx.font = 'bold 36px "Moscow Sans"';
+                        ctx.textAlign = 'right';
+                        ctx.fillText('Кто я?', mapX + mapSize, mapY + mapSize + 50);
+                        resolve();
+                    };
+                    
+                    markerImg.onerror = () => {
+                        // Если метка не загрузилась - только подпись
+                        ctx.fillStyle = '#E76623';
+                        ctx.font = 'bold 36px "Moscow Sans"';
+                        ctx.textAlign = 'right';
+                        ctx.fillText('Кто я?', mapX + mapSize, mapY + mapSize + 50);
+                        resolve();
+                    };
                 };
                 
-                markerImg.onerror = () => {
-                    // ПОДПИСЬ "КТО Я?" ПОД КАРТОЙ СЛЕВА (если метка не загрузилась)
-                    ctx.fillStyle = '#E76623';
-                    ctx.font = 'bold 36px "Moscow Sans"';
-                    ctx.textAlign = 'left';  // ВЫРАВНИВАНИЕ СЛЕВА
-                    ctx.fillText('Кто я?', mapX, mapY + mapSize + 50);
-                    resolve();
+                mapImg.onerror = () => {
+                    // Пробуем следующий сервис
+                    currentService++;
+                    setTimeout(tryNextService, 100);
                 };
-            };
+            }
             
-            mapImg.onerror = () => {
-                // ПРИ ОШИБКЕ КАРТЫ - ТОЛЬКО ПОДПИСЬ "КТО Я?" СЛЕВА
-                ctx.fillStyle = '#E76623';
-                ctx.font = 'bold 36px "Moscow Sans"';
-                ctx.textAlign = 'left';  // ВЫРАВНИВАНИЕ СЛЕВА
-                ctx.fillText('Кто я?', mapX, mapY + mapSize + 50);
-                resolve();
-            };
+            // Начинаем с первого сервиса
+            tryNextService();
         });
     }
 
@@ -1733,7 +1759,7 @@
             const logoHeight = Math.min(height * 0.35, 350); // Увеличили размер
             const logoWidth = logoHeight * logoAspectRatio;
             
-            const logoX = width - logoWidth - 30;
+            const logoX = 30;
             const logoY = 30;
             
             // Рисуем логотип с закругленными углами
@@ -2699,21 +2725,21 @@
     }
 
     document.addEventListener('DOMContentLoaded', function() {
-        // initSecurity(); 
+        initSecurity(); 
 
-        // if (!isLegitimateTelegramWebApp()) {
-        //     document.body.innerHTML = `
-        //         <div style="text-align: center; padding: 50px; color: white; background: black; height: 100vh;">
-        //             <h1>🚫 Доступ запрещён</h1>
-        //             <p style="margin-top: 30px;"">Тебе сюда нельзя</p>
-        //             <p style="margin-top: 30px;"">Доступ только через мини-апп в телеге</p>
-        //             <p style="margin-top: 30px; color: #ccc; font-size: 12px;">
-        //                 Если вы видишь это сообщение - обратись к админу<br>(или улепётывай отсюда)
-        //             </p>
-        //         </div>
-        //     `;
-        //     return;
-        // }
+        if (!isLegitimateTelegramWebApp()) {
+            document.body.innerHTML = `
+                <div style="text-align: center; padding: 50px; color: white; background: black; height: 100vh;">
+                    <h1>🚫 Доступ запрещён</h1>
+                    <p style="margin-top: 30px;"">Тебе сюда нельзя</p>
+                    <p style="margin-top: 30px;"">Доступ только через мини-апп в телеге</p>
+                    <p style="margin-top: 30px; color: #ccc; font-size: 12px;">
+                        Если вы видишь это сообщение - обратись к админу<br>(или улепётывай отсюда)
+                    </p>
+                </div>
+            `;
+            return;
+        }
         
         logSecurityEvent('APP_STARTED', { 
             version: '0.0.5',
