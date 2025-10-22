@@ -1527,15 +1527,15 @@
             if (data && data.address) {
                 const addr = data.address;
                 const components = [];
-                
+
+                if (addr.town) components.push(addr.town);
+                if (addr.suburb) components.push(addr.suburb);
                 if (addr.road) components.push(addr.road);
                 if (addr.house_number) components.push(addr.house_number);
-                if (addr.suburb) components.push(addr.suburb);
-                if (addr.city) components.push(addr.city);
-                if (addr.town) components.push(addr.town);
-                if (addr.village) components.push(addr.village);
-                if (addr.state) components.push(addr.state);
-                if (addr.country) components.push(addr.country);
+                
+                // if (addr.city) components.push(addr.city);
+                // if (addr.village) components.push(addr.village);
+                // if (addr.state) components.push(addr.state);
                 if (addr.postcode) components.push(addr.postcode);
                 
                 return components.join(', ');
@@ -1636,9 +1636,9 @@
         
         try {
             // Создаем карту с Яндекс.Карт
-            const mapSize = Math.min(width * 0.35, height * 0.2);
-            const mapX = 30;
-            const mapY = 30;
+            const mapSize = Math.min(width * 0.8, height * 0.25);
+            const mapX = 50;
+            const mapY = 50;
             
             const mapUrl = `https://static-maps.yandex.ru/1.x/?ll=${userCoords.longitude},${userCoords.latitude}&z=16&size=${Math.round(mapSize)},${Math.round(mapSize)}&l=map`;
             
@@ -1670,12 +1670,23 @@
             
             // Добавляем подпись под картой
             ctx.fillStyle = '#E76623';
-            ctx.font = 'bold 28px "Moscow Sans"';
-            ctx.textAlign = 'left';
-            ctx.fillText('Кто я?', mapX, mapY + mapSize + 35);
+            ctx.font = 'bold 36px "Moscow Sans"';
+            ctx.textAlign = 'center';
+            ctx.fillText('Кто я?', width / 2, mapY + mapSize + 50);
             
         } catch (error) {
             console.error('Ошибка добавления карты:', error);
+            // Резервный вариант - рисуем простую карту
+            showNotification(error)
+            ctx.fillStyle = '#2a2a2a';
+            ctx.fillRect(mapX, mapY, mapSize, mapSize);
+            ctx.strokeStyle = '#E76623';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(mapX, mapY, mapSize, mapSize);
+            ctx.fillStyle = '#E76623';
+            ctx.font = 'bold 24px "Moscow Sans"';
+            ctx.textAlign = 'center';
+            ctx.fillText('Карта', mapX + mapSize/2, mapY + mapSize/2);
         }
     }
 
@@ -1689,14 +1700,13 @@
             
             // Учитываем пропорции логотипа 807x313
             const logoAspectRatio = 807 / 313;
-            const logoHeight = Math.min(height * 0.1, 100);
+            const logoHeight = Math.min(height * 0.15, 150);
             const logoWidth = logoHeight * logoAspectRatio;
             
             const logoX = width - logoWidth - 30;
             const logoY = 30;
             
             // Рисуем логотип с закругленными углами
-            const cornerRadius = 10;
             ctx.save();
             ctx.beginPath();
             ctx.roundRect(logoX, logoY, logoWidth, logoHeight, cornerRadius);
