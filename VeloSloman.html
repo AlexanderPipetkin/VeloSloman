@@ -1384,46 +1384,30 @@
             telegramWebApp.expand();
             
             console.log('Telegram WebApp initialized');
+            console.log('startParam:', telegramWebApp.startParam);
+            console.log('initData:', telegramWebApp.initData);
+            console.log('initDataUnsafe:', telegramWebApp.initDataUnsafe);
             
-            userData = telegramWebApp.initDataUnsafe?.user || {};
-            
-            console.log('User data:', userData);
-        } else {
-            userData = { username: 'test_user', id: 123456789 };
-        }
-    }
-
-    function showCaptureButton() {
-        const captureBtn = document.getElementById('timestamp-capture-btn');
-        if (captureBtn) {
-            captureBtn.style.display = 'block';
-            captureBtn.style.opacity = '0';
-            captureBtn.style.transition = 'opacity 0.5s ease-in-out';
-            setTimeout(() => {
-                captureBtn.style.opacity = '1';
-            }, 100);
+            if (telegramWebApp.initDataUnsafe.user) {
+                userData = telegramWebApp.initDataUnsafe.user;
+            }
         }
     }
 
     async function initTimestampCamera() {
-        // Проверяем что страница timestamp активна и видима
-        const timestampPage = document.getElementById('timestamp');
-        if (!timestampPage || !timestampPage.classList.contains('active')) {
-            console.log('Timestamp page is not active, skipping camera init');
+        // Проверяем что элементы DOM существуют
+        const video = document.getElementById('timestamp-video');
+        const loadingElement = document.getElementById('timestamp-loading');
+        
+        if (!video || !loadingElement) {
+            console.error('DOM элементы не найдены, повторяем через 500ms');
+            setTimeout(initTimestampCamera, 500);
             return;
         }
         
         if (timestampStream) {
             timestampStream.getTracks().forEach(track => track.stop());
             timestampStream = null;
-        }
-
-        const video = document.getElementById('timestamp-video');
-        const loadingElement = document.getElementById('timestamp-loading');
-        
-        if (!video || !loadingElement) {
-            console.error('DOM elements not found');
-            return;
         }
 
         loadingElement.style.display = 'flex';
@@ -1440,52 +1424,54 @@
             timestampCanvas = document.getElementById('timestamp-canvas');
             timestampContext = timestampCanvas.getContext('2d', { willReadFrequently: true });
             
-            // Упрощаем constraints для мобильных устройств
             const constraints = {
                 video: { 
-                    facingMode: 'environment'
+                    facingMode: 'environment',
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
                 }
             };
 
             timestampStream = await navigator.mediaDevices.getUserMedia(constraints);
 
             video.srcObject = timestampStream;
-            
-            // Ждем когда видео будет готово
-            const waitForVideoReady = new Promise((resolve, reject) => {
-                video.onloadedmetadata = () => resolve();
-                video.onerror = () => reject(new Error('Video error'));
-                setTimeout(() => reject(new Error('Video timeout')), 10000);
-            });
-
-            await waitForVideoReady;
-            
             video.style.display = 'block';
             
-            // Пытаемся воспроизвести видео
-            try {
-                await video.play();
-            } catch (playError) {
-                // Если autoplay заблокирован, показываем инструкцию
-                handleCameraError('Нажмите на видео чтобы запустить камеру');
-                video.addEventListener('click', function playOnClick() {
-                    video.play().then(() => {
-                        video.removeEventListener('click', playOnClick);
-                        loadingElement.style.display = 'none';
-                        showCaptureButton();
-                        getTimestampLocation();
-                    });
+            video.onloadedmetadata = () => {
+                video.play().then(() => {
+                    loadingElement.style.display = 'none';
+                    
+                    const captureBtn = document.getElementById('timestamp-capture-btn');
+                    if (captureBtn) {
+                        captureBtn.style.display = 'block';
+                        captureBtn.style.opacity = '0';
+                        captureBtn.style.transition = 'opacity 0.5s ease-in-out';
+                        setTimeout(() => {
+                            captureBtn.style.opacity = '1';
+                        }, 100);
+                    }
+                    
+                    getTimestampLocation();
+                }).catch(playError => {
+                    console.error('Ошибка воспроизведения:', playError);
+                    handleCameraError('Не удалось запустить видео. Попробуйте снова.');
                 });
-                return;
-            }
-            
-            loadingElement.style.display = 'none';
-            showCaptureButton();
-            getTimestampLocation();
+            };
+
+            video.onerror = (e) => {
+                console.error('Ошибка видео:', e);
+                handleCameraError('Ошибка видеоэлемента');
+            };
+
+            setTimeout(() => {
+                if (video.readyState < 2) {
+                    handleCameraError('Камера долго загружается');
+                }
+            }, 10000);
 
         } catch (error) {
-            console.error('Camera error:', error);
-            handleCameraError('Не удалось запустить камеру: ' + error.message);
+            console.error('Ошибка доступа к камере:', error);
+            handleCameraError('Не удалось получить доступ к камере');
         }
     }
 
@@ -1852,9 +1838,7 @@
             const response = await fetch(currentProcessedPhoto);
             const blob = await response.blob();
             
-            // Исправляем: проверяем userData и используем fallback
             const username = userData?.username || 'Неизвестен';
-            const userId = userData?.id || 'Неизвестен';
             const caption = `TimeStamp фоточка от @${username}\n\nПолучены координаты: ${userCoords.latitude.toFixed(6)}, ${userCoords.longitude.toFixed(6)}\nВыдан адрес: ${userAddress}\n\n#timestamp`;
             
             const formData = new FormData();
@@ -1868,18 +1852,15 @@
                 body: formData
             });
             
-            // Отправляем пользователю только если есть userData.id
-            if (userData && userData.id) {
-                const userFormData = new FormData();
-                userFormData.append('chat_id', userData.id);
-                userFormData.append('photo', blob, 'timestamp.jpg');
-                userFormData.append('caption', 'Лови фотку #timestamp');
-                
-                await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
-                    method: 'POST',
-                    body: userFormData
-                });
-            }
+            const userFormData = new FormData();
+            userFormData.append('chat_id', userData.id);
+            userFormData.append('photo', blob, 'timestamp.jpg');
+            userFormData.append('caption', 'Лови фотку #timestamp');
+            
+            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+                method: 'POST',
+                body: userFormData
+            });
             
             btnContent.innerHTML = '<span class="btn-text">Отправлено</span>';
             sendBtn.disabled = true;
@@ -1889,7 +1870,7 @@
             console.error('Ошибка отправки в телегу:', error);
             btnContent.innerHTML = '<span class="btn-text">Повторить</span>';
             sendBtn.disabled = false;
-            showNotification('Ошибка отправки фото: ' + error.message);
+            showNotification('Ошибка отправки фото');
         }
     }
 
@@ -2667,14 +2648,14 @@
         }
         
         if (pageId === 'timestamp') {
-            // Ждем пока страница станет видимой
+            // Ждем пока страница полностью отрендерится
             setTimeout(() => {
                 initTimestampEventListeners();
-                // Даем время для отображения страницы перед инициализацией камеры
+                // Даем дополнительное время для рендера DOM
                 setTimeout(() => {
                     initTimestampCamera();
-                }, 300);
-            }, 100);
+                }, 100);
+            }, 300);
         }
         else {
             if (timestampStream) {
