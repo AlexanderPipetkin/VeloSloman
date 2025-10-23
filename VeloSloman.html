@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Velobike Technic</title>
+    <title>Фиксация поломок велосипедов</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
     <style>
@@ -687,7 +687,7 @@
         .location-info {
             font-size: 14px;
             color: #ccc;
-            margin-bottom: 10px;
+            margin-top: 10px;
             text-align: center;
         }
 
@@ -866,7 +866,7 @@
             bottom: 20px;
             left: 0;
             right: 0;
-            display: none;
+            display: flex;
             flex-direction: column;
             align-items: center;
             gap: 15px;
@@ -888,11 +888,6 @@
             z-index: -1;
             border-radius: 12px;
             margin: 0 20px;
-        }
-
-        .timestamp-controls-overlay.show {
-            opacity: 1;
-            transform: translateY(0);
         }
 
         .timestamp-controls {
@@ -976,13 +971,16 @@
             width: 100%;
             height: 100%;
             object-fit: contain;
-            opacity: 0;
-            animation: photoFadeIn 1s ease forwards;
         }
 
-        @keyframes photoFadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
+        .location-info-overlay {
+            position: absolute;
+            top: 20px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            z-index: 10;
+            padding: 0 20px;
         }
 
         .loading-spinner {
@@ -1007,17 +1005,6 @@
             align-items: center;
             justify-content: center;
             gap: 8px;
-        }
-
-        .timestamp-capture-btn-container {
-            opacity: 0;
-            transform: translateY(20px);
-            transition: all 0.5s ease 0.3s;
-        }
-
-        .timestamp-capture-btn-container.show {
-            opacity: 1;
-            transform: translateY(0);
         }
     </style>
 </head>
@@ -1143,12 +1130,6 @@
                 <h1 class="page-title" style="font-size: 16px; line-height: 1.4; margin-bottom: 15px;">Функционал TimeStamp Camera теперь тут</h1>
             </div>
 
-            <div class="location-info-overlay">
-                <div class="location-info" id="timestamp-location-info">
-                    Получаем геопозицию...
-                </div>
-            </div>
-
             <div class="timestamp-section">
                 <div class="timestamp-preview-container">
                     <div class="timestamp-preview" id="timestamp-preview">
@@ -1159,16 +1140,20 @@
                         <canvas id="timestamp-canvas" style="display: none;"></canvas>
                         <img id="processed-photo-preview" class="processed-photo" style="display: none;" src="" alt="Обработанное фото">
                     </div>
+                    
+                    <div class="location-info-overlay">
+                        <div class="location-info" id="timestamp-location-info">
+                            Получаем геопозицию...
+                        </div>
+                    </div>
 
                     <div class="timestamp-controls-overlay" id="timestamp-controls-overlay">
                         <div class="timestamp-controls" id="timestamp-controls">
-                            <div class="timestamp-capture-btn-container" id="timestamp-capture-btn-container">
-                                <button class="timestamp-btn" id="timestamp-capture-btn" style="display: none;">
-                                    <span class="btn-content">
-                                        <span class="btn-text">Сфотографировать</span>
-                                    </span>
-                                </button>
-                            </div>
+                            <button class="timestamp-btn" id="timestamp-capture-btn" style="display: none;">
+                                <span class="btn-content">
+                                    <span class="btn-text">Сфотографировать</span>
+                                </span>
+                            </button>
                             
                             <div class="timestamp-result-controls" id="timestamp-result-controls" style="display: none;">
                                 <button class="timestamp-btn" id="retake-btn">
@@ -1404,9 +1389,8 @@
         }
     }
 
+    // TimeStamp functions
     async function initTimestampCamera() {
-        // resetTimestampButtonState();
-        
         if (timestampStream) {
             timestampStream.getTracks().forEach(track => track.stop());
             timestampStream = null;
@@ -1414,13 +1398,10 @@
 
         document.getElementById('timestamp-loading').style.display = 'flex';
         document.getElementById('timestamp-loading').textContent = 'Запускаем камеру...';
-        
         document.getElementById('timestamp-capture-btn').style.display = 'none';
         document.getElementById('timestamp-result-controls').style.display = 'none';
         document.getElementById('processed-photo-preview').style.display = 'none';
         document.getElementById('timestamp-video').style.display = 'none';
-
-        document.getElementById('timestamp-controls-overlay').style.display = 'flex';
 
         locationReceived = false;
 
@@ -1445,23 +1426,7 @@
             video.onloadedmetadata = () => {
                 video.play().then(() => {
                     document.getElementById('timestamp-loading').style.display = 'none';
-                    
-                    // ВКЛЮЧАЕМ КНОПКУ с анимацией
-                    const captureBtn = document.getElementById('timestamp-capture-btn');
-                    const captureBtnContainer = document.getElementById('timestamp-capture-btn-container');
-                    
-                    captureBtn.style.display = 'block';
-                    captureBtn.disabled = false;
-                    
-                    // Сбрасываем текст кнопки
-                    const btnContent = captureBtn.querySelector('.btn-content');
-                    btnContent.innerHTML = '<span class="btn-text">Сфотографировать</span>';
-                    
-                    // Активируем анимацию появления
-                    setTimeout(() => {
-                        captureBtnContainer.classList.add('show');
-                    }, 100);
-                    
+                    document.getElementById('timestamp-capture-btn').style.display = 'block';
                     getTimestampLocation();
                 }).catch(playError => {
                     handleCameraError('Не удалось запустить видео');
@@ -1489,43 +1454,7 @@
                 <div style="margin-bottom: 10px;">${message}</div>
                 <button onclick="initTimestampCamera()" 
                         style="padding: 10px 20px; background: white; color: black; border: none; border-radius: 8px; cursor: pointer;">
-                    Повторить
-                </button>
-            </div>
-        `;
-    }
-
-    function handleCameraError(message) {
-        document.getElementById('timestamp-loading').innerHTML = `
-            <div style="text-align: center;">
-                <div style="margin-bottom: 10px;">${message}</div>
-                <button onclick="initTimestampCamera()" 
-                        style="padding: 10px 20px; background: white; color: black; border: none; border-radius: 8px; cursor: pointer;">
                     Попробовать снова
-                </button>
-            </div>
-        `;
-    }
-
-    function handleCameraError(message) {
-        document.getElementById('timestamp-loading').innerHTML = `
-            <div style="text-align: center;">
-                <div style="margin-bottom: 10px;">${message}</div>
-                <button onclick="initTimestampCamera()" 
-                        style="padding: 10px 20px; background: white; color: black; border: none; border-radius: 8px; cursor: pointer;">
-                    Попробовать снова
-                </button>
-            </div>
-        `;
-    }
-
-    function handleLocationError(message) {
-        document.getElementById('timestamp-loading').innerHTML = `
-            <div style="text-align: center;">
-                <div style="margin-bottom: 10px;">${message}</div>
-                <button onclick="getTimestampLocation()" 
-                        style="padding: 10px 20px; background: white; color: black; border: none; border-radius: 8px; cursor: pointer;">
-                    Повторить
                 </button>
             </div>
         `;
@@ -1622,6 +1551,13 @@
         }
     }
 
+    function resetTimestampButtonState() {
+        const captureBtn = document.getElementById('timestamp-capture-btn');
+        const btnContent = captureBtn.querySelector('.btn-content');
+        btnContent.innerHTML = '<span class="btn-text">Сфотографировать</span>';
+        captureBtn.disabled = false;
+    }
+
     async function processTimestampPhoto() {
         const originalCanvas = document.getElementById('timestamp-canvas');
         
@@ -1640,13 +1576,8 @@
         
         ctx.drawImage(originalCanvas, 0, 0);
 
-        // Анимация процесса добавления элементов
         await addLogoToPhoto(ctx, targetWidth, targetHeight);
-        await new Promise(resolve => setTimeout(resolve, 200)); // Задержка для анимации
-        
         await addMapToPhoto(ctx, targetWidth, targetHeight);
-        await new Promise(resolve => setTimeout(resolve, 200)); // Задержка для анимации
-        
         addTextToPhoto(ctx, targetWidth, targetHeight);
         
         currentProcessedPhoto = processedCanvas.toDataURL('image/jpeg', 1.0);
@@ -1663,13 +1594,6 @@
         
         // Сброс состояния кнопки
         resetTimestampButtonState();
-    }
-
-    function resetTimestampButtonState() {
-        const captureBtn = document.getElementById('timestamp-capture-btn');
-        const btnContent = captureBtn.querySelector('.btn-content');
-        btnContent.innerHTML = '<span class="btn-text">Сфотографировать</span>';
-        captureBtn.disabled = false;
     }
 
     function addMapToPhoto(ctx, width, height) {
@@ -2697,21 +2621,21 @@
     }
 
     document.addEventListener('DOMContentLoaded', function() {
-        // initSecurity(); 
+        initSecurity(); 
 
-        // if (!isLegitimateTelegramWebApp()) {
-        //     document.body.innerHTML = `
-        //         <div style="text-align: center; padding: 50px; color: white; background: black; height: 100vh;">
-        //             <h1>🚫 Доступ запрещён</h1>
-        //             <p style="margin-top: 30px;"">Тебе сюда нельзя</p>
-        //             <p style="margin-top: 30px;"">Доступ только через мини-апп в телеге</p>
-        //             <p style="margin-top: 30px; color: #ccc; font-size: 12px;">
-        //                 Если вы видишь это сообщение - обратись к админу<br>(или улепётывай отсюда)
-        //             </p>
-        //         </div>
-        //     `;
-        //     return;
-        // }
+        if (!isLegitimateTelegramWebApp()) {
+            document.body.innerHTML = `
+                <div style="text-align: center; padding: 50px; color: white; background: black; height: 100vh;">
+                    <h1>🚫 Доступ запрещён</h1>
+                    <p style="margin-top: 30px;"">Тебе сюда нельзя</p>
+                    <p style="margin-top: 30px;"">Доступ только через мини-апп в телеге</p>
+                    <p style="margin-top: 30px; color: #ccc; font-size: 12px;">
+                        Если вы видишь это сообщение - обратись к админу<br>(или улепётывай отсюда)
+                    </p>
+                </div>
+            `;
+            return;
+        }
 
         initTelegramWebApp();
         const targetPage = handleDeepLinks();
