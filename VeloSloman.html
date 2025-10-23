@@ -1326,12 +1326,6 @@
             return false;
         }
         
-        const isAllowed = _a1.includes(userData.id);
-        if (!isAllowed) {
-            showNotification('Доступ ограничен. Обратись к администратору.');
-            return false;
-        }
-        
         return true;
     }
 
