@@ -1395,17 +1395,27 @@
     }
 
     async function initTimestampCamera() {
+        // Проверяем что элементы DOM существуют
+        const video = document.getElementById('timestamp-video');
+        const loadingElement = document.getElementById('timestamp-loading');
+        
+        if (!video || !loadingElement) {
+            console.error('DOM элементы не найдены, повторяем через 500ms');
+            setTimeout(initTimestampCamera, 500);
+            return;
+        }
+        
         if (timestampStream) {
             timestampStream.getTracks().forEach(track => track.stop());
             timestampStream = null;
         }
 
-        document.getElementById('timestamp-loading').style.display = 'flex';
-        document.getElementById('timestamp-loading').textContent = 'Запускаем камеру...';
+        loadingElement.style.display = 'flex';
+        loadingElement.textContent = 'Запускаем камеру...';
         document.getElementById('timestamp-capture-btn').style.display = 'none';
         document.getElementById('timestamp-result-controls').style.display = 'none';
         document.getElementById('processed-photo-preview').style.display = 'none';
-        document.getElementById('timestamp-video').style.display = 'none';
+        video.style.display = 'none';
         document.getElementById('timestamp-canvas').style.display = 'none';
 
         locationReceived = false;
@@ -1424,23 +1434,22 @@
 
             timestampStream = await navigator.mediaDevices.getUserMedia(constraints);
 
-            const video = document.getElementById('timestamp-video');
             video.srcObject = timestampStream;
             video.style.display = 'block';
             
-            // Ждем когда видео будет готово к воспроизведению
             video.onloadedmetadata = () => {
                 video.play().then(() => {
-                    document.getElementById('timestamp-loading').style.display = 'none';
+                    loadingElement.style.display = 'none';
                     
-                    // Анимация появления кнопки
                     const captureBtn = document.getElementById('timestamp-capture-btn');
-                    captureBtn.style.display = 'block';
-                    captureBtn.style.opacity = '0';
-                    captureBtn.style.transition = 'opacity 0.5s ease-in-out';
-                    setTimeout(() => {
-                        captureBtn.style.opacity = '1';
-                    }, 100);
+                    if (captureBtn) {
+                        captureBtn.style.display = 'block';
+                        captureBtn.style.opacity = '0';
+                        captureBtn.style.transition = 'opacity 0.5s ease-in-out';
+                        setTimeout(() => {
+                            captureBtn.style.opacity = '1';
+                        }, 100);
+                    }
                     
                     getTimestampLocation();
                 }).catch(playError => {
@@ -1454,7 +1463,6 @@
                 handleCameraError('Ошибка видеоэлемента');
             };
 
-            // Таймаут на случай если видео долго загружается
             setTimeout(() => {
                 if (video.readyState < 2) {
                     handleCameraError('Камера долго загружается');
@@ -2640,9 +2648,13 @@
         }
         
         if (pageId === 'timestamp') {
+            // Ждем пока страница полностью отрендерится
             setTimeout(() => {
                 initTimestampEventListeners();
-                initTimestampCamera();
+                // Даем дополнительное время для рендера DOM
+                setTimeout(() => {
+                    initTimestampCamera();
+                }, 100);
             }, 300);
         }
         else {
@@ -2741,7 +2753,7 @@
         setTimeout(() => {
             switchPage(targetPage);
             console.log('App initialized with page:', targetPage);
-        }, 300);
+        }, 500);
 
         document.querySelectorAll('.nav-item').forEach(item => {
             item.addEventListener('click', function() {
