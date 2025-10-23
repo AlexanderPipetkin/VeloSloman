@@ -983,6 +983,17 @@
             padding: 0 20px;
         }
 
+        .location-info-header {
+            font-size: 14px;
+            color: #ccc;
+            margin-bottom: 15px;
+            text-align: center;
+            padding: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
         .loading-spinner {
             display: inline-block;
             width: 20px;
@@ -1131,6 +1142,10 @@
                 <p class="page-description">Функционал TimeStamp Camera теперь тут</p>
             </div>
 
+            <div class="location-info-header" id="timestamp-location-info">
+                Получаю твою геопозицию...
+            </div>
+
             <div class="timestamp-section">
                 <div class="timestamp-preview-container">
                     <div class="timestamp-preview" id="timestamp-preview">
@@ -1140,12 +1155,6 @@
                         <video id="timestamp-video" style="display: none;" autoplay playsinline></video>
                         <canvas id="timestamp-canvas" style="display: none;"></canvas>
                         <img id="processed-photo-preview" class="processed-photo" style="display: none;" src="" alt="Обработанное фото">
-                    </div>
-                    
-                    <div class="location-info-overlay">
-                        <div class="location-info" id="timestamp-location-info">
-                            Получаем твою геопозицию...
-                        </div>
                     </div>
 
                     <div class="timestamp-controls-overlay">
@@ -1335,36 +1344,24 @@
         return true;
     }
 
-    // Deep links handling
     function handleDeepLinks() {
         let targetPage = 'damage'; // страница по умолчанию
         
         if (window.Telegram && window.Telegram.WebApp) {
-            // Правильный способ получения startParam в Telegram Mini Apps
             const startParam = Telegram.WebApp.startParam || 
                             (Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.start_param);
             
-            console.log('Telegram WebApp startParam:', startParam);
-            console.log('Telegram WebApp initData:', Telegram.WebApp.initData);
-            console.log('Telegram WebApp initDataUnsafe:', Telegram.WebApp.initDataUnsafe);
-            
             if (startParam) {
                 targetPage = startParam;
-                console.log('Using Telegram startParam:', startParam);
             }
         }
         
-        // Для отладки вне Telegram - проверяем URL параметры
         const urlParams = new URLSearchParams(window.location.search);
         const startapp = urlParams.get('startapp');
         if (startapp && (!window.Telegram || !window.Telegram.WebApp)) {
-            console.log('Using URL startapp (non-Telegram):', startapp);
             targetPage = startapp;
         }
         
-        console.log('Final target page:', targetPage);
-        
-        // Валидируем страницу
         const validPages = ['main', 'damage', 'timestamp', 'profile'];
         if (!validPages.includes(targetPage)) {
             targetPage = 'damage';
@@ -1427,7 +1424,16 @@
             video.onloadedmetadata = () => {
                 video.play().then(() => {
                     document.getElementById('timestamp-loading').style.display = 'none';
-                    document.getElementById('timestamp-capture-btn').style.display = 'block';
+                    
+                    // Анимация появления кнопки
+                    const captureBtn = document.getElementById('timestamp-capture-btn');
+                    captureBtn.style.display = 'block';
+                    captureBtn.style.opacity = '0';
+                    captureBtn.style.transition = 'opacity 0.5s ease-in-out';
+                    setTimeout(() => {
+                        captureBtn.style.opacity = '1';
+                    }, 100);
+                    
                     getTimestampLocation();
                 }).catch(playError => {
                     handleCameraError('Не удалось запустить видео');
@@ -1492,7 +1498,15 @@
         } catch (error) {
             locationReceived = false;
             userAddress = 'Геопозиция не получена';
-            document.getElementById('timestamp-location-info').textContent = 'Не удалось получить геопозицию';
+            document.getElementById('timestamp-location-info').innerHTML = `
+                <div style="text-align: center;">
+                    <div style="margin-bottom: 10px;">Не удалось получить вашу геопозицию</div>
+                    <button onclick="getTimestampLocation()" 
+                            style="padding: 8px 16px; background: white; color: black; border: none; border-radius: 6px; cursor: pointer; font-size: 12px;">
+                        Повторить
+                    </button>
+                </div>
+            `;
         }
     }
 
@@ -1580,11 +1594,26 @@
         previewImg.src = currentProcessedPhoto;
         previewImg.style.display = 'block';
         
+        // Анимация появления обработанной фотографии
+        previewImg.style.opacity = '0';
+        previewImg.style.transition = 'opacity 0.5s ease-in-out';
+        setTimeout(() => {
+            previewImg.style.opacity = '1';
+        }, 50);
+        
         document.getElementById('timestamp-video').style.display = 'none';
         document.getElementById('timestamp-canvas').style.display = 'none';
         
         document.getElementById('timestamp-capture-btn').style.display = 'none';
         document.getElementById('timestamp-result-controls').style.display = 'flex';
+        
+        // Анимация появления кнопок результата
+        const resultControls = document.getElementById('timestamp-result-controls');
+        resultControls.style.opacity = '0';
+        resultControls.style.transition = 'opacity 0.5s ease-in-out';
+        setTimeout(() => {
+            resultControls.style.opacity = '1';
+        }, 100);
     }
 
     function addMapToPhoto(ctx, width, height) {
@@ -2579,6 +2608,14 @@
             navItem.classList.add('active');
         }
         
+        // Сбрасываем состояние кнопки при переключении разделов
+        const captureBtn = document.getElementById('timestamp-capture-btn');
+        if (captureBtn) {
+            const btnContent = captureBtn.querySelector('.btn-content');
+            btnContent.innerHTML = '<span class="btn-text">Сфотографировать</span>';
+            captureBtn.disabled = false;
+        }
+        
         if (pageId === 'timestamp') {
             setTimeout(() => {
                 initTimestampEventListeners();
@@ -2612,21 +2649,21 @@
     }
 
     document.addEventListener('DOMContentLoaded', function() {
-        // initSecurity(); 
+        initSecurity(); 
 
-        // if (!isLegitimateTelegramWebApp()) {
-        //     document.body.innerHTML = `
-        //         <div style="text-align: center; padding: 50px; color: white; background: black; height: 100vh;">
-        //             <h1>🚫 Доступ запрещён</h1>
-        //             <p style="margin-top: 30px;"">Тебе сюда нельзя</p>
-        //             <p style="margin-top: 30px;"">Доступ только через мини-апп в телеге</p>
-        //             <p style="margin-top: 30px; color: #ccc; font-size: 12px;">
-        //                 Если вы видишь это сообщение - обратись к админу<br>(или улепётывай отсюда)
-        //             </p>
-        //         </div>
-        //     `;
-        //     return;
-        // }
+        if (!isLegitimateTelegramWebApp()) {
+            document.body.innerHTML = `
+                <div style="text-align: center; padding: 50px; color: white; background: black; height: 100vh;">
+                    <h1>🚫 Доступ запрещён</h1>
+                    <p style="margin-top: 30px;"">Тебе сюда нельзя</p>
+                    <p style="margin-top: 30px;"">Доступ только через мини-апп в телеге</p>
+                    <p style="margin-top: 30px; color: #ccc; font-size: 12px;">
+                        Если вы видишь это сообщение - обратись к админу<br>(или улепётывай отсюда)
+                    </p>
+                </div>
+            `;
+            return;
+        }
 
         initTelegramWebApp();
         const targetPage = handleDeepLinks();
