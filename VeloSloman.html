@@ -1440,7 +1440,15 @@
                 }
             };
 
-            timestampStream = await navigator.mediaDevices.getUserMedia(constraints);
+            // Добавляем обработку ошибки доступа к камере
+            try {
+                timestampStream = await navigator.mediaDevices.getUserMedia(constraints);
+            } catch (cameraError) {
+                console.log('Первая попытка доступа к камере не удалась, пробуем снова...');
+                // Ждем немного и пробуем снова
+                await new Promise(resolve => setTimeout(resolve, 500));
+                timestampStream = await navigator.mediaDevices.getUserMedia(constraints);
+            }
 
             const video = document.getElementById('timestamp-video');
             video.srcObject = timestampStream;
@@ -1459,23 +1467,40 @@
                     
                     getTimestampLocation();
                 }).catch(playError => {
+                    console.error('Ошибка воспроизведения видео:', playError);
                     handleCameraError('Не удалось запустить видео');
                 });
             };
 
             video.onerror = (e) => {
+                console.error('Ошибка видеоэлемента:', e);
                 handleCameraError('Ошибка видеоэлемента');
             };
 
+            // Увеличиваем таймаут для телеграма
             setTimeout(() => {
                 if (video.readyState < 2) {
+                    console.log('Камера долго загружается, пробуем перезапустить...');
                     handleCameraError('Камера долго загружается');
                 }
-            }, 8000);
+            }, 10000); // Увеличиваем до 10 секунд для телеграма
 
         } catch (error) {
+            console.error('Критическая ошибка доступа к камере:', error);
             handleCameraError('Не удалось получить доступ к камере');
         }
+    }
+
+    function handleCameraError(message) {
+        document.getElementById('timestamp-loading').innerHTML = `
+            <div style="text-align: center;">
+                <div style="margin-bottom: 10px;">${message}</div>
+                <button onclick="initTimestampCamera()" 
+                        style="padding: 10px 20px; background: white; color: black; border: none; border-radius: 8px; cursor: pointer;">
+                    Попробовать снова
+                </button>
+            </div>
+        `;
     }
 
     function handleCameraError(message) {
