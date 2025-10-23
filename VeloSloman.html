@@ -687,7 +687,7 @@
         .location-info {
             font-size: 14px;
             color: #ccc;
-            margin-top: 10px;
+            margin-bottom: 10px;
             text-align: center;
         }
 
@@ -1146,6 +1146,12 @@
                 <h1 class="page-title" style="font-size: 16px; line-height: 1.4; margin-bottom: 15px;">Функционал TimeStamp Camera теперь тут</h1>
             </div>
 
+            <div class="location-info-overlay">
+                <div class="location-info" id="timestamp-location-info">
+                    Получаем геопозицию...
+                </div>
+            </div>
+
             <div class="timestamp-section">
                 <div class="timestamp-preview-container">
                     <div class="timestamp-preview" id="timestamp-preview">
@@ -1498,6 +1504,8 @@
 
     async function getTimestampLocation() {
         try {
+            document.getElementById('timestamp-location-info').textContent = 'Получаем геопозицию...';
+            
             const position = await new Promise((resolve, reject) => {
                 navigator.geolocation.getCurrentPosition(resolve, reject, {
                     enableHighAccuracy: true,
@@ -1512,6 +1520,7 @@
             };
             
             locationReceived = true;
+            document.getElementById('timestamp-location-info').textContent = 'Геопозиция получена';
             
             getAddressFromCoords(userCoords.latitude, userCoords.longitude)
                 .then(address => {
@@ -1524,7 +1533,7 @@
         } catch (error) {
             locationReceived = false;
             userAddress = 'Геопозиция не получена';
-            handleLocationError('Не удалось получить вашу геопозицию');
+            document.getElementById('timestamp-location-info').textContent = 'Не удалось получить геопозицию';
         }
     }
 
