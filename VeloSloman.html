@@ -875,14 +875,6 @@
             background: rgba(0, 0, 0, 0.7);
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.2);
-            opacity: 0;
-            transform: translateY(20px);
-            transition: all 0.5s ease;
-        }
-
-        .timestamp-controls-overlay.show {
-            opacity: 1;
-            transform: translateY(0);
         }
 
         .timestamp-controls-overlay::before {
@@ -896,6 +888,11 @@
             z-index: -1;
             border-radius: 12px;
             margin: 0 20px;
+        }
+
+        .timestamp-controls-overlay.show {
+            opacity: 1;
+            transform: translateY(0);
         }
 
         .timestamp-controls {
@@ -1424,10 +1421,6 @@
         document.getElementById('processed-photo-preview').style.display = 'none';
         document.getElementById('timestamp-video').style.display = 'none';
 
-        // УБИРАЕМ все манипуляции с overlay и анимациями на этом этапе
-        document.getElementById('timestamp-controls-overlay').style.display = 'none';
-        document.getElementById('timestamp-capture-btn-container').style.display = 'none';
-
         locationReceived = false;
 
         try {
@@ -1452,17 +1445,6 @@
                 video.play().then(() => {
                     document.getElementById('timestamp-loading').style.display = 'none';
                     document.getElementById('timestamp-capture-btn').style.display = 'block';
-                    
-                    // ТОЛЬКО ПОСЛЕ УСПЕШНОЙ ЗАГРУЗКИ показываем контролы
-                    document.getElementById('timestamp-controls-overlay').style.display = 'flex';
-                    document.getElementById('timestamp-capture-btn-container').style.display = 'block';
-                    
-                    // И только потом добавляем анимации
-                    setTimeout(() => {
-                        document.getElementById('timestamp-controls-overlay').classList.add('show');
-                        document.getElementById('timestamp-capture-btn-container').classList.add('show');
-                    }, 50);
-                    
                     getTimestampLocation();
                 }).catch(playError => {
                     handleCameraError('Не удалось запустить видео');
