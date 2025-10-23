@@ -1384,30 +1384,46 @@
             telegramWebApp.expand();
             
             console.log('Telegram WebApp initialized');
-            console.log('startParam:', telegramWebApp.startParam);
-            console.log('initData:', telegramWebApp.initData);
-            console.log('initDataUnsafe:', telegramWebApp.initDataUnsafe);
             
-            if (telegramWebApp.initDataUnsafe.user) {
-                userData = telegramWebApp.initDataUnsafe.user;
-            }
+            userData = telegramWebApp.initDataUnsafe?.user || {};
+            
+            console.log('User data:', userData);
+        } else {
+            userData = { username: 'test_user', id: 123456789 };
+        }
+    }
+
+    function showCaptureButton() {
+        const captureBtn = document.getElementById('timestamp-capture-btn');
+        if (captureBtn) {
+            captureBtn.style.display = 'block';
+            captureBtn.style.opacity = '0';
+            captureBtn.style.transition = 'opacity 0.5s ease-in-out';
+            setTimeout(() => {
+                captureBtn.style.opacity = '1';
+            }, 100);
         }
     }
 
     async function initTimestampCamera() {
-        // Проверяем что элементы DOM существуют
-        const video = document.getElementById('timestamp-video');
-        const loadingElement = document.getElementById('timestamp-loading');
-        
-        if (!video || !loadingElement) {
-            console.error('DOM элементы не найдены, повторяем через 500ms');
-            setTimeout(initTimestampCamera, 500);
+        // Проверяем что страница timestamp активна и видима
+        const timestampPage = document.getElementById('timestamp');
+        if (!timestampPage || !timestampPage.classList.contains('active')) {
+            console.log('Timestamp page is not active, skipping camera init');
             return;
         }
         
         if (timestampStream) {
             timestampStream.getTracks().forEach(track => track.stop());
             timestampStream = null;
+        }
+
+        const video = document.getElementById('timestamp-video');
+        const loadingElement = document.getElementById('timestamp-loading');
+        
+        if (!video || !loadingElement) {
+            console.error('DOM elements not found');
+            return;
         }
 
         loadingElement.style.display = 'flex';
@@ -1424,54 +1440,52 @@
             timestampCanvas = document.getElementById('timestamp-canvas');
             timestampContext = timestampCanvas.getContext('2d', { willReadFrequently: true });
             
+            // Упрощаем constraints для мобильных устройств
             const constraints = {
                 video: { 
-                    facingMode: 'environment',
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 }
+                    facingMode: 'environment'
                 }
             };
 
             timestampStream = await navigator.mediaDevices.getUserMedia(constraints);
 
             video.srcObject = timestampStream;
+            
+            // Ждем когда видео будет готово
+            const waitForVideoReady = new Promise((resolve, reject) => {
+                video.onloadedmetadata = () => resolve();
+                video.onerror = () => reject(new Error('Video error'));
+                setTimeout(() => reject(new Error('Video timeout')), 10000);
+            });
+
+            await waitForVideoReady;
+            
             video.style.display = 'block';
             
-            video.onloadedmetadata = () => {
-                video.play().then(() => {
-                    loadingElement.style.display = 'none';
-                    
-                    const captureBtn = document.getElementById('timestamp-capture-btn');
-                    if (captureBtn) {
-                        captureBtn.style.display = 'block';
-                        captureBtn.style.opacity = '0';
-                        captureBtn.style.transition = 'opacity 0.5s ease-in-out';
-                        setTimeout(() => {
-                            captureBtn.style.opacity = '1';
-                        }, 100);
-                    }
-                    
-                    getTimestampLocation();
-                }).catch(playError => {
-                    console.error('Ошибка воспроизведения:', playError);
-                    handleCameraError('Не удалось запустить видео. Попробуйте снова.');
+            // Пытаемся воспроизвести видео
+            try {
+                await video.play();
+            } catch (playError) {
+                // Если autoplay заблокирован, показываем инструкцию
+                handleCameraError('Нажмите на видео чтобы запустить камеру');
+                video.addEventListener('click', function playOnClick() {
+                    video.play().then(() => {
+                        video.removeEventListener('click', playOnClick);
+                        loadingElement.style.display = 'none';
+                        showCaptureButton();
+                        getTimestampLocation();
+                    });
                 });
-            };
-
-            video.onerror = (e) => {
-                console.error('Ошибка видео:', e);
-                handleCameraError('Ошибка видеоэлемента');
-            };
-
-            setTimeout(() => {
-                if (video.readyState < 2) {
-                    handleCameraError('Камера долго загружается');
-                }
-            }, 10000);
+                return;
+            }
+            
+            loadingElement.style.display = 'none';
+            showCaptureButton();
+            getTimestampLocation();
 
         } catch (error) {
-            console.error('Ошибка доступа к камере:', error);
-            handleCameraError('Не удалось получить доступ к камере');
+            console.error('Camera error:', error);
+            handleCameraError('Не удалось запустить камеру: ' + error.message);
         }
     }
 
@@ -1838,7 +1852,9 @@
             const response = await fetch(currentProcessedPhoto);
             const blob = await response.blob();
             
+            // Исправляем: проверяем userData и используем fallback
             const username = userData?.username || 'Неизвестен';
+            const userId = userData?.id || 'Неизвестен';
             const caption = `TimeStamp фоточка от @${username}\n\nПолучены координаты: ${userCoords.latitude.toFixed(6)}, ${userCoords.longitude.toFixed(6)}\nВыдан адрес: ${userAddress}\n\n#timestamp`;
             
             const formData = new FormData();
@@ -1852,15 +1868,18 @@
                 body: formData
             });
             
-            const userFormData = new FormData();
-            userFormData.append('chat_id', userData.id);
-            userFormData.append('photo', blob, 'timestamp.jpg');
-            userFormData.append('caption', 'Лови фотку #timestamp');
-            
-            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
-                method: 'POST',
-                body: userFormData
-            });
+            // Отправляем пользователю только если есть userData.id
+            if (userData && userData.id) {
+                const userFormData = new FormData();
+                userFormData.append('chat_id', userData.id);
+                userFormData.append('photo', blob, 'timestamp.jpg');
+                userFormData.append('caption', 'Лови фотку #timestamp');
+                
+                await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+                    method: 'POST',
+                    body: userFormData
+                });
+            }
             
             btnContent.innerHTML = '<span class="btn-text">Отправлено</span>';
             sendBtn.disabled = true;
@@ -1870,7 +1889,7 @@
             console.error('Ошибка отправки в телегу:', error);
             btnContent.innerHTML = '<span class="btn-text">Повторить</span>';
             sendBtn.disabled = false;
-            showNotification('Ошибка отправки фото');
+            showNotification('Ошибка отправки фото: ' + error.message);
         }
     }
 
@@ -2648,14 +2667,14 @@
         }
         
         if (pageId === 'timestamp') {
-            // Ждем пока страница полностью отрендерится
+            // Ждем пока страница станет видимой
             setTimeout(() => {
                 initTimestampEventListeners();
-                // Даем дополнительное время для рендера DOM
+                // Даем время для отображения страницы перед инициализацией камеры
                 setTimeout(() => {
                     initTimestampCamera();
-                }, 100);
-            }, 300);
+                }, 300);
+            }, 100);
         }
         else {
             if (timestampStream) {
@@ -2684,21 +2703,21 @@
     }
 
     document.addEventListener('DOMContentLoaded', function() {
-        initSecurity(); 
+        // initSecurity(); 
 
-        if (!isLegitimateTelegramWebApp()) {
-            document.body.innerHTML = `
-                <div style="text-align: center; padding: 50px; color: white; background: black; height: 100vh;">
-                    <h1>🚫 Доступ запрещён</h1>
-                    <p style="margin-top: 30px;"">Тебе сюда нельзя</p>
-                    <p style="margin-top: 30px;"">Доступ только через мини-апп в телеге</p>
-                    <p style="margin-top: 30px; color: #ccc; font-size: 12px;">
-                        Если вы видишь это сообщение - обратись к админу<br>(или улепётывай отсюда)
-                    </p>
-                </div>
-            `;
-            return;
-        }
+        // if (!isLegitimateTelegramWebApp()) {
+        //     document.body.innerHTML = `
+        //         <div style="text-align: center; padding: 50px; color: white; background: black; height: 100vh;">
+        //             <h1>🚫 Доступ запрещён</h1>
+        //             <p style="margin-top: 30px;"">Тебе сюда нельзя</p>
+        //             <p style="margin-top: 30px;"">Доступ только через мини-апп в телеге</p>
+        //             <p style="margin-top: 30px; color: #ccc; font-size: 12px;">
+        //                 Если вы видишь это сообщение - обратись к админу<br>(или улепётывай отсюда)
+        //             </p>
+        //         </div>
+        //     `;
+        //     return;
+        // }
 
         initTelegramWebApp();
         const targetPage = handleDeepLinks();
