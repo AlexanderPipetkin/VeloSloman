@@ -1022,7 +1022,7 @@
         </div>
     </section>
 
-    <section id="damage" class="page active">
+    <section id="damage" class="page">
         <div class="container">
             <div class="header">
                 <h1 class="page-title">Фиксация поломок</h1>
@@ -1326,38 +1326,51 @@
             return false;
         }
         
+        const isAllowed = _a1.includes(userData.id);
+        if (!isAllowed) {
+            showNotification('Доступ ограничен. Обратись к администратору.');
+            return false;
+        }
+        
         return true;
     }
 
     // Deep links handling
     function handleDeepLinks() {
+        let targetPage = 'damage'; // страница по умолчанию
+        
         if (window.Telegram && window.Telegram.WebApp) {
-            const startParam = Telegram.WebApp.startParam;
-            console.log('Deep link parameter:', startParam);
+            // Правильный способ получения startParam в Telegram Mini Apps
+            const startParam = Telegram.WebApp.startParam || 
+                            (Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.start_param);
+            
+            console.log('Telegram WebApp startParam:', startParam);
+            console.log('Telegram WebApp initData:', Telegram.WebApp.initData);
+            console.log('Telegram WebApp initDataUnsafe:', Telegram.WebApp.initDataUnsafe);
             
             if (startParam) {
-                switch (startParam) {
-                    case 'main':
-                        switchPage('main');
-                        break;
-                    case 'damage':
-                        switchPage('damage');
-                        break;
-                    case 'timestamp':
-                        switchPage('timestamp');
-                        break;
-                    case 'profile':
-                        switchPage('profile');
-                        break;
-                    default:
-                        switchPage('damage');
-                }
-            } else {
-                switchPage('damage');
+                targetPage = startParam;
+                console.log('Using Telegram startParam:', startParam);
             }
-        } else {
-            switchPage('damage');
         }
+        
+        // Для отладки вне Telegram - проверяем URL параметры
+        const urlParams = new URLSearchParams(window.location.search);
+        const startapp = urlParams.get('startapp');
+        if (startapp && (!window.Telegram || !window.Telegram.WebApp)) {
+            console.log('Using URL startapp (non-Telegram):', startapp);
+            targetPage = startapp;
+        }
+        
+        console.log('Final target page:', targetPage);
+        
+        // Валидируем страницу
+        const validPages = ['main', 'damage', 'timestamp', 'profile'];
+        if (!validPages.includes(targetPage)) {
+            targetPage = 'damage';
+        }
+        
+        return targetPage;
     }
 
     function initTelegramWebApp() {
@@ -1365,6 +1378,11 @@
             telegramWebApp = window.Telegram.WebApp;
             telegramWebApp.ready();
             telegramWebApp.expand();
+            
+            console.log('Telegram WebApp initialized');
+            console.log('startParam:', telegramWebApp.startParam);
+            console.log('initData:', telegramWebApp.initData);
+            console.log('initDataUnsafe:', telegramWebApp.initDataUnsafe);
             
             if (telegramWebApp.initDataUnsafe.user) {
                 userData = telegramWebApp.initDataUnsafe.user;
@@ -2610,8 +2628,8 @@
         //     return;
         // }
 
-        handleDeepLinks();
         initTelegramWebApp();
+        const targetPage = handleDeepLinks();
         
         setTimeout(centerBikeSVG, 200);
         loadDamageData();
@@ -2659,6 +2677,11 @@
         setTimeout(() => {
             centerBikeSVG();
         }, 500);
+
+        setTimeout(() => {
+            switchPage(targetPage);
+            console.log('App initialized with page:', targetPage);
+        }, 300);
 
         document.querySelectorAll('.nav-item').forEach(item => {
             item.addEventListener('click', function() {
