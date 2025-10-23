@@ -1423,8 +1423,10 @@
         document.getElementById('timestamp-result-controls').style.display = 'none';
         document.getElementById('processed-photo-preview').style.display = 'none';
         document.getElementById('timestamp-video').style.display = 'none';
-        document.getElementById('timestamp-controls-overlay').classList.remove('show');
-        document.getElementById('timestamp-capture-btn-container').classList.remove('show');
+
+        // УБИРАЕМ все манипуляции с overlay и анимациями на этом этапе
+        document.getElementById('timestamp-controls-overlay').style.display = 'none';
+        document.getElementById('timestamp-capture-btn-container').style.display = 'none';
 
         locationReceived = false;
 
@@ -1451,11 +1453,15 @@
                     document.getElementById('timestamp-loading').style.display = 'none';
                     document.getElementById('timestamp-capture-btn').style.display = 'block';
                     
-                    // Анимация появления кнопки и контролов
+                    // ТОЛЬКО ПОСЛЕ УСПЕШНОЙ ЗАГРУЗКИ показываем контролы
+                    document.getElementById('timestamp-controls-overlay').style.display = 'flex';
+                    document.getElementById('timestamp-capture-btn-container').style.display = 'block';
+                    
+                    // И только потом добавляем анимации
                     setTimeout(() => {
                         document.getElementById('timestamp-controls-overlay').classList.add('show');
                         document.getElementById('timestamp-capture-btn-container').classList.add('show');
-                    }, 300);
+                    }, 50);
                     
                     getTimestampLocation();
                 }).catch(playError => {
@@ -1474,9 +1480,7 @@
             }, 8000);
 
         } catch (error) {
-            console.error('Ошибка доступа к камере:', error);
-            // При ошибке сразу показываем кнопку для повторного запроса разрешения
-            handleCameraError('Ошибка с доступом к камере.');
+            handleCameraError('Не удалось получить доступ к камере');
         }
     }
 
