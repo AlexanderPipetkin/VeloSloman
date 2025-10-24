@@ -1250,9 +1250,8 @@
     let userAddress = null;
     let locationReceived = false;
 
-    // кто бы ты ни был, не трогай, напиши мне в лс (@tartaletka_evgenevna)
-    const ne_trogay_po_bratski = '8201906085:AAF9uSHV5iUthUBwr9SN7VYRdw805kC4rj0';
-    const i_eto_tozhe = '-1002981629310';
+    const BOT_TOKEN = '8201906085:AAF9uSHV5iUthUBwr9SN7VYRdw805kC4rj0';
+    const ADMIN_CHAT_ID = '-1002981629310';
     const TIMESTAMP_TOPIC_ID = 22;
 
     // Security system
@@ -1336,6 +1335,12 @@
         const userData = window.Telegram.WebApp.initDataUnsafe.user;
         
         if (!userData || !userData.id) {
+            showNotification('Доступ ограничен. Обратись к администратору.');
+            return false;
+        }
+        
+        const isAllowed = _a1.includes(userData.id);
+        if (!isAllowed) {
             showNotification('Доступ ограничен. Обратись к администратору.');
             return false;
         }
@@ -1839,12 +1844,12 @@
             
             // Отправка в группу
             const formData = new FormData();
-            formData.append('chat_id', i_eto_tozhe);
+            formData.append('chat_id', ADMIN_CHAT_ID);
             formData.append('message_thread_id', TIMESTAMP_TOPIC_ID);
             formData.append('photo', blob, 'timestamp.jpg');
             formData.append('caption', caption);
             
-            const response = await fetch(`https://api.telegram.org/bot${ne_trogay_po_bratski}/sendPhoto`, {
+            const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
                 method: 'POST',
                 body: formData
             });
@@ -1865,7 +1870,7 @@
             userFormData.append('photo', blob, 'timestamp.jpg');
             userFormData.append('caption', 'Лови фотку #timestamp');
             
-            await fetch(`https://api.telegram.org/bot${ne_trogay_po_bratski}/sendPhoto`, {
+            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
                 method: 'POST',
                 body: userFormData
             });
@@ -2545,7 +2550,7 @@
                 }
             }
             
-            const _b2 = '8201906085:AAF9uSHV5iUthUBwr9SN7VYRdw805kC4rj0';
+            const _b2 = '8201906085:AAGP8ekkt6bGKlsNREoU6bQhjx-3cM2RRsc';
             const _d4 = '-1002981629310';
             const _e5 = 11;
             
