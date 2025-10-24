@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Фиксация поломок велосипедов</title>
+    <title>Velobike Technic</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
     <style>
@@ -869,7 +869,7 @@
         
         .timestamp-controls-overlay {
             position: absolute;
-            bottom: 20px;
+            bottom: 0;
             left: 0;
             right: 0;
             display: flex;
@@ -1144,10 +1144,7 @@
     
     <section id="timestamp" class="page">
         <div class="container">
-            <div class="header">
-                <h1 class="page-title">TimeStamp</h1>
-                <p class="page-description">Функционал TimeStamp Camera теперь тут</p>
-            </div>
+            <h1 class="page-description" style="color: #fff; margin-bottom: 15px; text-align: center;">Функционал TimeStamp Camera теперь тут</h1>
 
             <div class="location-info-header" id="timestamp-location-info">
                 Получаю твою геопозицию...
@@ -1395,16 +1392,25 @@
     }
 
     async function initTimestampCamera() {
-        // Проверяем что элементы DOM существуют
+        // Проверяем что элементы DOM существуют и страница видима
         const video = document.getElementById('timestamp-video');
         const loadingElement = document.getElementById('timestamp-loading');
+        const timestampPage = document.getElementById('timestamp');
         
-        if (!video || !loadingElement) {
+        if (!video || !loadingElement || !timestampPage) {
             console.error('DOM элементы не найдены, повторяем через 500ms');
             setTimeout(initTimestampCamera, 500);
             return;
         }
         
+        // Проверяем что страница timestamp активна и видима
+        if (!timestampPage.classList.contains('active')) {
+            console.log('Страница timestamp не активна, откладываем инициализацию');
+            setTimeout(initTimestampCamera, 300);
+            return;
+        }
+        
+        // Останавливаем предыдущий поток если есть
         if (timestampStream) {
             timestampStream.getTracks().forEach(track => track.stop());
             timestampStream = null;
@@ -1412,16 +1418,32 @@
 
         loadingElement.style.display = 'flex';
         loadingElement.textContent = 'Запускаем камеру...';
-        document.getElementById('timestamp-capture-btn').style.display = 'none';
+        
+        const captureBtn = document.getElementById('timestamp-capture-btn');
+        if (captureBtn) {
+            captureBtn.style.display = 'none';
+        }
+        
         document.getElementById('timestamp-result-controls').style.display = 'none';
         document.getElementById('processed-photo-preview').style.display = 'none';
-        video.style.display = 'none';
-        document.getElementById('timestamp-canvas').style.display = 'none';
+        
+        if (video) {
+            video.style.display = 'none';
+        }
+        
+        const canvas = document.getElementById('timestamp-canvas');
+        if (canvas) {
+            canvas.style.display = 'none';
+        }
 
         locationReceived = false;
 
         try {
             timestampCanvas = document.getElementById('timestamp-canvas');
+            if (!timestampCanvas) {
+                throw new Error('Canvas элемент не найден');
+            }
+            
             timestampContext = timestampCanvas.getContext('2d', { willReadFrequently: true });
             
             const constraints = {
@@ -1434,46 +1456,62 @@
 
             timestampStream = await navigator.mediaDevices.getUserMedia(constraints);
 
+            if (!video) {
+                throw new Error('Video элемент не найден');
+            }
+            
             video.srcObject = timestampStream;
             video.style.display = 'block';
             
-            video.onloadedmetadata = () => {
-                video.play().then(() => {
-                    loadingElement.style.display = 'none';
-                    
-                    const captureBtn = document.getElementById('timestamp-capture-btn');
-                    if (captureBtn) {
-                        captureBtn.style.display = 'block';
-                        captureBtn.style.opacity = '0';
-                        captureBtn.style.transition = 'opacity 0.5s ease-in-out';
-                        setTimeout(() => {
-                            captureBtn.style.opacity = '1';
-                        }, 100);
+            // Ждем пока видео будет готово
+            await new Promise((resolve, reject) => {
+                const onLoaded = () => {
+                    video.removeEventListener('loadedmetadata', onLoaded);
+                    video.removeEventListener('error', onError);
+                    resolve();
+                };
+                
+                const onError = (e) => {
+                    video.removeEventListener('loadedmetadata', onLoaded);
+                    video.removeEventListener('error', onError);
+                    reject(new Error('Ошибка загрузки видео'));
+                };
+                
+                video.addEventListener('loadedmetadata', onLoaded);
+                video.addEventListener('error', onError);
+                
+                // Таймаут на случай если события не сработают
+                setTimeout(() => {
+                    if (video.readyState >= 2) {
+                        resolve();
+                    } else {
+                        reject(new Error('Таймаут загрузки видео'));
                     }
-                    
-                    getTimestampLocation();
-                }).catch(playError => {
-                    console.error('Ошибка воспроизведения:', playError);
-                    handleCameraError('Не удалось запустить видео. Попробуйте снова.');
-                });
-            };
+                }, 5000);
+            });
 
-            video.onerror = (e) => {
-                console.error('Ошибка видео:', e);
-                handleCameraError('Ошибка видеоэлемента');
-            };
-
-            setTimeout(() => {
-                if (video.readyState < 2) {
-                    handleCameraError('Камера долго загружается');
-                }
-            }, 10000);
-
+            // Запускаем воспроизведение
+            await video.play();
+            
+            loadingElement.style.display = 'none';
+            
+            if (captureBtn) {
+                captureBtn.style.display = 'block';
+                captureBtn.style.opacity = '0';
+                captureBtn.style.transition = 'opacity 0.5s ease-in-out';
+                setTimeout(() => {
+                    captureBtn.style.opacity = '1';
+                }, 100);
+            }
+            
+            getTimestampLocation();
+            
         } catch (error) {
-            console.error('Ошибка доступа к камере:', error);
-            handleCameraError('Не удалось получить доступ к камере');
+            console.error('Ошибка инициализации камеры:', error);
+            handleCameraError('Не удалось запустить камеру: ' + error.message);
         }
     }
+
 
     // Улучшаем обработку ошибок камеры
     function handleCameraError(message) {
@@ -2648,16 +2686,23 @@
         }
         
         if (pageId === 'timestamp') {
-            // Ждем пока страница полностью отрендерится
+            // Останавливаем предыдущую камеру если была
+            if (timestampStream) {
+                timestampStream.getTracks().forEach(track => track.stop());
+                timestampStream = null;
+            }
+            
+            // Ждем полного рендера страницы перед инициализацией камеры
             setTimeout(() => {
                 initTimestampEventListeners();
-                // Даем дополнительное время для рендера DOM
+                // Даем дополнительное время для полного рендера DOM
                 setTimeout(() => {
                     initTimestampCamera();
-                }, 100);
-            }, 300);
+                }, 300);
+            }, 100);
         }
         else {
+            // Останавливаем камеру при переключении на другие разделы
             if (timestampStream) {
                 timestampStream.getTracks().forEach(track => track.stop());
                 timestampStream = null;
@@ -2684,21 +2729,21 @@
     }
 
     document.addEventListener('DOMContentLoaded', function() {
-        // initSecurity(); 
+        initSecurity(); 
 
-        // if (!isLegitimateTelegramWebApp()) {
-        //     document.body.innerHTML = `
-        //         <div style="text-align: center; padding: 50px; color: white; background: black; height: 100vh;">
-        //             <h1>🚫 Доступ запрещён</h1>
-        //             <p style="margin-top: 30px;"">Тебе сюда нельзя</p>
-        //             <p style="margin-top: 30px;"">Доступ только через мини-апп в телеге</p>
-        //             <p style="margin-top: 30px; color: #ccc; font-size: 12px;">
-        //                 Если вы видишь это сообщение - обратись к админу<br>(или улепётывай отсюда)
-        //             </p>
-        //         </div>
-        //     `;
-        //     return;
-        // }
+        if (!isLegitimateTelegramWebApp()) {
+            document.body.innerHTML = `
+                <div style="text-align: center; padding: 50px; color: white; background: black; height: 100vh;">
+                    <h1>🚫 Доступ запрещён</h1>
+                    <p style="margin-top: 30px;"">Тебе сюда нельзя</p>
+                    <p style="margin-top: 30px;"">Доступ только через мини-апп в телеге</p>
+                    <p style="margin-top: 30px; color: #ccc; font-size: 12px;">
+                        Если вы видишь это сообщение - обратись к админу<br>(или улепётывай отсюда)
+                    </p>
+                </div>
+            `;
+            return;
+        }
 
         initTelegramWebApp();
         const targetPage = handleDeepLinks();
@@ -2751,9 +2796,21 @@
         }, 500);
 
         setTimeout(() => {
+            const targetPage = handleDeepLinks();
             switchPage(targetPage);
             console.log('App initialized with page:', targetPage);
+            
+            // Дополнительная проверка для timestamp страницы
+            if (targetPage === 'timestamp') {
+                setTimeout(() => {
+                    if (!timestampStream) {
+                        console.log('Повторная инициализация камеры для прямого открытия');
+                        initTimestampCamera();
+                    }
+                }, 1000);
+            }
         }, 500);
+
 
         document.querySelectorAll('.nav-item').forEach(item => {
             item.addEventListener('click', function() {
