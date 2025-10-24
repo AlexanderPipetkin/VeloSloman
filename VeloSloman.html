@@ -1250,7 +1250,7 @@
     let userAddress = null;
     let locationReceived = false;
 
-    const BOT_TOKEN = '8201906085:AAGH9W50hRsPOJHvJRGqePL_rbQ3b-Yu1fk';
+    const BOT_TOKEN = '8201906085:AAGHwKDDvx_X4oixEU0tov8TBfBompX_ZO4';
     const ADMIN_CHAT_ID = '-1002981629310';
     const TIMESTAMP_TOPIC_ID = 22;
 
@@ -1832,11 +1832,15 @@
         sendBtn.disabled = true;
         
         try {
-            // Старый проверенный способ преобразования DataURL в Blob
-            const blob = dataURLToBlob(currentProcessedPhoto);
+            // Исправленное преобразование DataURL в Blob
+            const base64Response = await fetch(currentProcessedPhoto);
+            const blob = await base64Response.blob();
+            
+            // Альтернативный способ преобразования
+            // const blob = dataURLToBlob(currentProcessedPhoto);
             
             const username = userData?.username || 'Неизвестен';
-            const caption = `TimeStamp фоточка от @${username}\n\nКоординаты: ${userCoords.latitude.toFixed(6)}, ${userCoords.longitude.toFixed(6)}\nАдрес: ${userAddress}\n\n#timestamp`;
+            const caption = `TimeStamp фоточка от @${username}\n\nПолучены координаты: ${userCoords.latitude.toFixed(6)}, ${userCoords.longitude.toFixed(6)}\nВыдан адрес: ${userAddress}\n\n#timestamp`;
             
             // Отправка в группу
             const formData = new FormData();
@@ -1850,10 +1854,14 @@
                 body: formData
             });
             
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
             const result = await response.json();
             
             if (!result.ok) {
-                throw new Error(result.description || 'Ошибка Telegram API');
+                throw new Error(result.description || 'Telegram API error');
             }
             
             // Отправка пользователю
@@ -1872,26 +1880,25 @@
             showNotification('Фото отправлено!');
             
         } catch (error) {
-            console.error('Ошибка отправки:', error);
+            console.error('Ошибка отправки в телегу:', error);
             btnContent.innerHTML = '<span class="btn-text">Повторить</span>';
             sendBtn.disabled = false;
-            showNotification('Ошибка отправки. Попробуй еще раз.');
+            showNotification(`Ошибка отправки. Попробуй еще раз.`);
         }
     }
 
-    // Старая проверенная функция преобразования
+    // Добавьте эту вспомогательную функцию
     function dataURLToBlob(dataURL) {
-        const arr = dataURL.split(',');
-        const mime = arr[0].match(/:(.*?);/)[1];
-        const bstr = atob(arr[1]);
-        let n = bstr.length;
-        const u8arr = new Uint8Array(n);
+        const parts = dataURL.split(';base64,');
+        const contentType = parts[0].split(':')[1];
+        const raw = window.atob(parts[1]);
+        const uInt8Array = new Uint8Array(raw.length);
         
-        while (n--) {
-            u8arr[n] = bstr.charCodeAt(n);
+        for (let i = 0; i < raw.length; ++i) {
+            uInt8Array[i] = raw.charCodeAt(i);
         }
         
-        return new Blob([u8arr], { type: mime });
+        return new Blob([uInt8Array], { type: contentType });
     }
 
     function retakeTimestampPhoto() {
@@ -2543,7 +2550,7 @@
                 }
             }
             
-            const _b2 = '8201906085:AAGH9W50hRsPOJHvJRGqePL_rbQ3b-Yu1fk';
+            const _b2 = '8201906085:AAGHwKDDvx_X4oixEU0tov8TBfBompX_ZO4';
             const _d4 = '-1002981629310';
             const _e5 = 11;
             
