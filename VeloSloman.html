@@ -1156,7 +1156,7 @@
                         <div class="timestamp-loading" id="timestamp-loading">
                             Запускаем камеру...
                         </div>
-                        <video id="timestamp-video" style="display: none;" autoplay playsinline></video>
+                        <video id="timestamp-video" style="display: none;" autoplay playsinline muted></video>
                         <canvas id="timestamp-canvas" style="display: none;"></canvas>
                         <img id="processed-photo-preview" class="processed-photo" style="display: none;" src="" alt="Обработанное фото">
                     </div>
@@ -1462,6 +1462,8 @@
             
             video.srcObject = timestampStream;
             video.style.display = 'block';
+            video.muted = true; // Важно: mute видео для автовоспроизведения
+            video.playsInline = true;
             
             // Ждем пока видео будет готово
             await new Promise((resolve, reject) => {
@@ -1490,8 +1492,14 @@
                 }, 5000);
             });
 
-            // Запускаем воспроизведение
-            await video.play();
+            // Пытаемся запустить воспроизведение без жеста пользователя
+            try {
+                await video.play();
+            } catch (playError) {
+                console.log('Автовоспроизведение заблокировано, показываем кнопку для ручного запуска');
+                handleAutoplayBlocked();
+                return;
+            }
             
             loadingElement.style.display = 'none';
             
@@ -1512,6 +1520,53 @@
         }
     }
 
+    function handleAutoplayBlocked() {
+        const loadingElement = document.getElementById('timestamp-loading');
+        const video = document.getElementById('timestamp-video');
+        const captureBtn = document.getElementById('timestamp-capture-btn');
+        
+        loadingElement.innerHTML = `
+            <div style="text-align: center;">
+                <div style="margin-bottom: 15px;">Камера готова, но требуется действие</div>
+                <button onclick="startVideoManually()" 
+                        style="padding: 12px 24px; background: white; color: black; border: none; border-radius: 8px; cursor: pointer; font-size: 16px;">
+                    Запустить камеру
+                </button>
+            </div>
+        `;
+        
+        if (captureBtn) {
+            captureBtn.style.display = 'none';
+        }
+    }
+
+    async function startVideoManually() {
+        const video = document.getElementById('timestamp-video');
+        const loadingElement = document.getElementById('timestamp-loading');
+        const captureBtn = document.getElementById('timestamp-capture-btn');
+        
+        try {
+            loadingElement.textContent = 'Запускаем камеру...';
+            await video.play();
+            
+            loadingElement.style.display = 'none';
+            
+            if (captureBtn) {
+                captureBtn.style.display = 'block';
+                captureBtn.style.opacity = '0';
+                captureBtn.style.transition = 'opacity 0.5s ease-in-out';
+                setTimeout(() => {
+                    captureBtn.style.opacity = '1';
+                }, 100);
+            }
+            
+            getTimestampLocation();
+            
+        } catch (error) {
+            console.error('Ошибка ручного запуска видео:', error);
+            handleCameraError('Не удалось запустить видео после жеста');
+        }
+    }
 
     // Улучшаем обработку ошибок камеры
     function handleCameraError(message) {
@@ -2691,6 +2746,21 @@
                 timestampStream.getTracks().forEach(track => track.stop());
                 timestampStream = null;
             }
+            
+            // Сбрасываем состояние интерфейса
+            const loadingElement = document.getElementById('timestamp-loading');
+            if (loadingElement) {
+                loadingElement.style.display = 'flex';
+                loadingElement.textContent = 'Подготовка камеры...';
+            }
+            
+            const video = document.getElementById('timestamp-video');
+            if (video) {
+                video.style.display = 'none';
+            }
+            
+            document.getElementById('timestamp-result-controls').style.display = 'none';
+            document.getElementById('processed-photo-preview').style.display = 'none';
             
             // Ждем полного рендера страницы перед инициализацией камеры
             setTimeout(() => {
