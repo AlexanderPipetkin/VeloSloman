@@ -1249,6 +1249,7 @@
     let userCoords = null;
     let userAddress = null;
     let locationReceived = false;
+    let isLocationRequestActive = false;
 
     const BOT_TOKEN = '8201906085:AAGHwKDDvx_X4oixEU0tov8TBfBompX_ZO4';
     const ADMIN_CHAT_ID = '-1002981629310';
@@ -1592,6 +1593,13 @@
     }
 
     async function getTimestampLocation() {
+        if (isLocationRequestActive) {
+            console.log('Location request already in progress');
+            return;
+        }
+        
+        isLocationRequestActive = true;
+        
         try {
             document.getElementById('timestamp-location-info').textContent = 'Получаем твою геопозицию...';
             
@@ -1618,7 +1626,7 @@
                 .catch(addressError => {
                     userAddress = 'Адрес не определен';
                 });
-            
+                
         } catch (error) {
             locationReceived = false;
             userAddress = 'Геопозиция не получена';
@@ -1631,6 +1639,8 @@
                     </button>
                 </div>
             `;
+        } finally {
+            isLocationRequestActive = false;
         }
     }
 
@@ -2579,14 +2589,21 @@
         submitBtn.textContent = 'Отправка...';
         
         try {
-            try {
-                userLocation = await getLocation();
+            // ВМЕСТО повторного запроса геолокации - используем уже полученные координаты
+            if (userLocation) {
                 document.getElementById('location-info').textContent = 
                     `Координаты: ${userLocation.latitude.toFixed(6)}, ${userLocation.longitude.toFixed(6)}`;
-            } catch (error) {
-                console.error('Ошибка получения координат:', error);
-                document.getElementById('location-info').textContent = 
-                    'Координаты не получены';
+            } else {
+                // Если координат нет, пробуем получить один раз
+                try {
+                    userLocation = await getLocation();
+                    document.getElementById('location-info').textContent = 
+                        `Координаты: ${userLocation.latitude.toFixed(6)}, ${userLocation.longitude.toFixed(6)}`;
+                } catch (error) {
+                    console.error('Ошибка получения координат:', error);
+                    document.getElementById('location-info').textContent = 
+                        'Координаты не получены';
+                }
             }
             
             let messageText = `Новая заявка на ремонт\n`;
