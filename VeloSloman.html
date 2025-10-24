@@ -1156,7 +1156,7 @@
                         <div class="timestamp-loading" id="timestamp-loading">
                             Запускаем камеру...
                         </div>
-                        <video id="timestamp-video" style="display: none;" autoplay playsinline muted></video>
+                        <video id="timestamp-video" style="display: none;" autoplay playsinline></video>
                         <canvas id="timestamp-canvas" style="display: none;"></canvas>
                         <img id="processed-photo-preview" class="processed-photo" style="display: none;" src="" alt="Обработанное фото">
                     </div>
@@ -1249,7 +1249,6 @@
     let userCoords = null;
     let userAddress = null;
     let locationReceived = false;
-    let isLocationRequestActive = false;
 
     const BOT_TOKEN = '8201906085:AAGHwKDDvx_X4oixEU0tov8TBfBompX_ZO4';
     const ADMIN_CHAT_ID = '-1002981629310';
@@ -1393,25 +1392,16 @@
     }
 
     async function initTimestampCamera() {
-        // Проверяем что элементы DOM существуют и страница видима
+        // Проверяем что элементы DOM существуют
         const video = document.getElementById('timestamp-video');
         const loadingElement = document.getElementById('timestamp-loading');
-        const timestampPage = document.getElementById('timestamp');
         
-        if (!video || !loadingElement || !timestampPage) {
+        if (!video || !loadingElement) {
             console.error('DOM элементы не найдены, повторяем через 500ms');
             setTimeout(initTimestampCamera, 500);
             return;
         }
         
-        // Проверяем что страница timestamp активна и видима
-        if (!timestampPage.classList.contains('active')) {
-            console.log('Страница timestamp не активна, откладываем инициализацию');
-            setTimeout(initTimestampCamera, 300);
-            return;
-        }
-        
-        // Останавливаем предыдущий поток если есть
         if (timestampStream) {
             timestampStream.getTracks().forEach(track => track.stop());
             timestampStream = null;
@@ -1419,32 +1409,16 @@
 
         loadingElement.style.display = 'flex';
         loadingElement.textContent = 'Запускаем камеру...';
-        
-        const captureBtn = document.getElementById('timestamp-capture-btn');
-        if (captureBtn) {
-            captureBtn.style.display = 'none';
-        }
-        
+        document.getElementById('timestamp-capture-btn').style.display = 'none';
         document.getElementById('timestamp-result-controls').style.display = 'none';
         document.getElementById('processed-photo-preview').style.display = 'none';
-        
-        if (video) {
-            video.style.display = 'none';
-        }
-        
-        const canvas = document.getElementById('timestamp-canvas');
-        if (canvas) {
-            canvas.style.display = 'none';
-        }
+        video.style.display = 'none';
+        document.getElementById('timestamp-canvas').style.display = 'none';
 
         locationReceived = false;
 
         try {
             timestampCanvas = document.getElementById('timestamp-canvas');
-            if (!timestampCanvas) {
-                throw new Error('Canvas элемент не найден');
-            }
-            
             timestampContext = timestampCanvas.getContext('2d', { willReadFrequently: true });
             
             const constraints = {
@@ -1457,115 +1431,44 @@
 
             timestampStream = await navigator.mediaDevices.getUserMedia(constraints);
 
-            if (!video) {
-                throw new Error('Video элемент не найден');
-            }
-            
             video.srcObject = timestampStream;
             video.style.display = 'block';
-            video.muted = true; // Важно: mute видео для автовоспроизведения
-            video.playsInline = true;
             
-            // Ждем пока видео будет готово
-            await new Promise((resolve, reject) => {
-                const onLoaded = () => {
-                    video.removeEventListener('loadedmetadata', onLoaded);
-                    video.removeEventListener('error', onError);
-                    resolve();
-                };
-                
-                const onError = (e) => {
-                    video.removeEventListener('loadedmetadata', onLoaded);
-                    video.removeEventListener('error', onError);
-                    reject(new Error('Ошибка загрузки видео'));
-                };
-                
-                video.addEventListener('loadedmetadata', onLoaded);
-                video.addEventListener('error', onError);
-                
-                // Таймаут на случай если события не сработают
-                setTimeout(() => {
-                    if (video.readyState >= 2) {
-                        resolve();
-                    } else {
-                        reject(new Error('Таймаут загрузки видео'));
+            video.onloadedmetadata = () => {
+                video.play().then(() => {
+                    loadingElement.style.display = 'none';
+                    
+                    const captureBtn = document.getElementById('timestamp-capture-btn');
+                    if (captureBtn) {
+                        captureBtn.style.display = 'block';
+                        captureBtn.style.opacity = '0';
+                        captureBtn.style.transition = 'opacity 0.5s ease-in-out';
+                        setTimeout(() => {
+                            captureBtn.style.opacity = '1';
+                        }, 100);
                     }
-                }, 5000);
-            });
+                    
+                    getTimestampLocation();
+                }).catch(playError => {
+                    console.error('Ошибка воспроизведения:', playError);
+                    handleCameraError('Не удалось запустить видео. Попробуйте снова.');
+                });
+            };
 
-            // Пытаемся запустить воспроизведение без жеста пользователя
-            try {
-                await video.play();
-            } catch (playError) {
-                console.log('Автовоспроизведение заблокировано, показываем кнопку для ручного запуска');
-                handleAutoplayBlocked();
-                return;
-            }
-            
-            loadingElement.style.display = 'none';
-            
-            if (captureBtn) {
-                captureBtn.style.display = 'block';
-                captureBtn.style.opacity = '0';
-                captureBtn.style.transition = 'opacity 0.5s ease-in-out';
-                setTimeout(() => {
-                    captureBtn.style.opacity = '1';
-                }, 100);
-            }
-            
-            getTimestampLocation();
-            
+            video.onerror = (e) => {
+                console.error('Ошибка видео:', e);
+                handleCameraError('Ошибка видеоэлемента');
+            };
+
+            setTimeout(() => {
+                if (video.readyState < 2) {
+                    handleCameraError('Камера долго загружается');
+                }
+            }, 10000);
+
         } catch (error) {
-            console.error('Ошибка инициализации камеры:', error);
-            handleCameraError('Не удалось запустить камеру: ' + error.message);
-        }
-    }
-
-    function handleAutoplayBlocked() {
-        const loadingElement = document.getElementById('timestamp-loading');
-        const video = document.getElementById('timestamp-video');
-        const captureBtn = document.getElementById('timestamp-capture-btn');
-        
-        loadingElement.innerHTML = `
-            <div style="text-align: center;">
-                <div style="margin-bottom: 15px;">Камера готова, но требуется действие</div>
-                <button onclick="startVideoManually()" 
-                        style="padding: 12px 24px; background: white; color: black; border: none; border-radius: 8px; cursor: pointer; font-size: 16px;">
-                    Запустить камеру
-                </button>
-            </div>
-        `;
-        
-        if (captureBtn) {
-            captureBtn.style.display = 'none';
-        }
-    }
-
-    async function startVideoManually() {
-        const video = document.getElementById('timestamp-video');
-        const loadingElement = document.getElementById('timestamp-loading');
-        const captureBtn = document.getElementById('timestamp-capture-btn');
-        
-        try {
-            loadingElement.textContent = 'Запускаем камеру...';
-            await video.play();
-            
-            loadingElement.style.display = 'none';
-            
-            if (captureBtn) {
-                captureBtn.style.display = 'block';
-                captureBtn.style.opacity = '0';
-                captureBtn.style.transition = 'opacity 0.5s ease-in-out';
-                setTimeout(() => {
-                    captureBtn.style.opacity = '1';
-                }, 100);
-            }
-            
-            getTimestampLocation();
-            
-        } catch (error) {
-            console.error('Ошибка ручного запуска видео:', error);
-            handleCameraError('Не удалось запустить видео после жеста');
+            console.error('Ошибка доступа к камере:', error);
+            handleCameraError('Не удалось получить доступ к камере');
         }
     }
 
@@ -1593,13 +1496,6 @@
     }
 
     async function getTimestampLocation() {
-        if (isLocationRequestActive) {
-            console.log('Location request already in progress');
-            return;
-        }
-        
-        isLocationRequestActive = true;
-        
         try {
             document.getElementById('timestamp-location-info').textContent = 'Получаем твою геопозицию...';
             
@@ -1626,7 +1522,7 @@
                 .catch(addressError => {
                     userAddress = 'Адрес не определен';
                 });
-                
+            
         } catch (error) {
             locationReceived = false;
             userAddress = 'Геопозиция не получена';
@@ -1639,8 +1535,6 @@
                     </button>
                 </div>
             `;
-        } finally {
-            isLocationRequestActive = false;
         }
     }
 
@@ -2589,21 +2483,14 @@
         submitBtn.textContent = 'Отправка...';
         
         try {
-            // ВМЕСТО повторного запроса геолокации - используем уже полученные координаты
-            if (userLocation) {
+            try {
+                userLocation = await getLocation();
                 document.getElementById('location-info').textContent = 
                     `Координаты: ${userLocation.latitude.toFixed(6)}, ${userLocation.longitude.toFixed(6)}`;
-            } else {
-                // Если координат нет, пробуем получить один раз
-                try {
-                    userLocation = await getLocation();
-                    document.getElementById('location-info').textContent = 
-                        `Координаты: ${userLocation.latitude.toFixed(6)}, ${userLocation.longitude.toFixed(6)}`;
-                } catch (error) {
-                    console.error('Ошибка получения координат:', error);
-                    document.getElementById('location-info').textContent = 
-                        'Координаты не получены';
-                }
+            } catch (error) {
+                console.error('Ошибка получения координат:', error);
+                document.getElementById('location-info').textContent = 
+                    'Координаты не получены';
             }
             
             let messageText = `Новая заявка на ремонт\n`;
@@ -2758,38 +2645,16 @@
         }
         
         if (pageId === 'timestamp') {
-            // Останавливаем предыдущую камеру если была
-            if (timestampStream) {
-                timestampStream.getTracks().forEach(track => track.stop());
-                timestampStream = null;
-            }
-            
-            // Сбрасываем состояние интерфейса
-            const loadingElement = document.getElementById('timestamp-loading');
-            if (loadingElement) {
-                loadingElement.style.display = 'flex';
-                loadingElement.textContent = 'Подготовка камеры...';
-            }
-            
-            const video = document.getElementById('timestamp-video');
-            if (video) {
-                video.style.display = 'none';
-            }
-            
-            document.getElementById('timestamp-result-controls').style.display = 'none';
-            document.getElementById('processed-photo-preview').style.display = 'none';
-            
-            // Ждем полного рендера страницы перед инициализацией камеры
+            // Ждем пока страница полностью отрендерится
             setTimeout(() => {
                 initTimestampEventListeners();
-                // Даем дополнительное время для полного рендера DOM
+                // Даем дополнительное время для рендера DOM
                 setTimeout(() => {
                     initTimestampCamera();
-                }, 300);
-            }, 100);
+                }, 100);
+            }, 300);
         }
         else {
-            // Останавливаем камеру при переключении на другие разделы
             if (timestampStream) {
                 timestampStream.getTracks().forEach(track => track.stop());
                 timestampStream = null;
@@ -2883,21 +2748,9 @@
         }, 500);
 
         setTimeout(() => {
-            const targetPage = handleDeepLinks();
             switchPage(targetPage);
             console.log('App initialized with page:', targetPage);
-            
-            // Дополнительная проверка для timestamp страницы
-            if (targetPage === 'timestamp') {
-                setTimeout(() => {
-                    if (!timestampStream) {
-                        console.log('Повторная инициализация камеры для прямого открытия');
-                        initTimestampCamera();
-                    }
-                }, 1000);
-            }
         }, 500);
-
 
         document.querySelectorAll('.nav-item').forEach(item => {
             item.addEventListener('click', function() {
