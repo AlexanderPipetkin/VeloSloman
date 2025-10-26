@@ -1349,6 +1349,16 @@
     const i_eto_tozhe = '-1002981629310';
     const TIMESTAMP_TOPIC_ID = 22;
 
+    function initTimestampCanvas() {
+        timestampCanvas = document.getElementById('timestamp-canvas');
+        if (timestampCanvas) {
+            timestampContext = timestampCanvas.getContext('2d');
+            console.log('Timestamp canvas initialized');
+        } else {
+            console.error('Timestamp canvas not found');
+        }
+    }
+
     // Security system
     let securityLogs = [];
     let requestLimits = new Map();
@@ -1487,6 +1497,8 @@
     }
 
     async function initTimestampCamera() {
+        console.log('Initializing timestamp camera...');
+        
         const video = document.getElementById('timestamp-video');
         const loading = document.getElementById('timestamp-loading');
         const captureBtn = document.getElementById('timestamp-capture-btn');
@@ -1494,7 +1506,10 @@
         const resultControls = document.getElementById('timestamp-result-controls');
         const canvasEl = document.getElementById('timestamp-canvas');
 
-        if (!video) return;
+        if (!video) {
+            console.error('Timestamp video element not found');
+            return;
+        }
 
         // Сброс состояния UI
         [captureBtn, previewImg, resultControls].forEach(el => {
@@ -1508,39 +1523,67 @@
 
         // Останавливаем предыдущий поток
         if (timestampStream) {
-            try { timestampStream.getTracks().forEach(t => t.stop()); } catch {}
+            try { 
+                timestampStream.getTracks().forEach(track => track.stop()); 
+            } catch(e) {} 
             timestampStream = null;
         }
 
         try {
-            video.setAttribute('playsinline', true);
-            video.setAttribute('muted', true);
-            video.muted = true;
-            video.autoplay = true;
-
+            // Сбрасываем srcObject
+            video.srcObject = null;
+            
             const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: { ideal: 'environment' } },
+                video: { 
+                    facingMode: { ideal: 'environment' },
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                },
                 audio: false
             });
 
             timestampStream = stream;
             video.srcObject = stream;
+            video.style.display = 'block';
 
-            // Пробуем воспроизвести "в жесте"
-            requestAnimationFrame(() => {
+            // Ждем когда видео будет готово
+            video.onloadedmetadata = () => {
+                console.log('Video metadata loaded');
                 video.play().then(() => {
+                    console.log('Video playback started');
                     loading.style.display = 'none';
                     captureBtn.style.display = 'block';
-                    video.muted = false;
                     getTimestampLocation();
                 }).catch(err => {
-                    console.warn('Автозапуск не удался:', err);
-                    showCameraStartButton(video, captureBtn, loading);
+                    console.error('Video play failed:', err);
+                    loading.innerHTML = `
+                        <div style="text-align: center;">
+                            <div style="margin-bottom: 10px;">Не удалось запустить видео</div>
+                            <button onclick="initTimestampCamera()" 
+                                    style="padding: 10px 20px; background: white; color: black; border: none; border-radius: 8px; cursor: pointer;">
+                                Попробовать снова
+                            </button>
+                        </div>
+                    `;
                 });
-            });
+            };
+
+            video.onerror = (err) => {
+                console.error('Video error:', err);
+                loading.textContent = 'Ошибка видео';
+            };
+
         } catch (err) {
-            console.error('Ошибка камеры:', err);
-            loading.textContent = 'Ошибка доступа к камере';
+            console.error('Camera access error:', err);
+            loading.innerHTML = `
+                <div style="text-align: center;">
+                    <div style="margin-bottom: 10px;">Ошибка доступа к камере: ${err.message}</div>
+                    <button onclick="initTimestampCamera()" 
+                            style="padding: 10px 20px; background: white; color: black; border: none; border-radius: 8px; cursor: pointer;">
+                        Попробовать снова
+                    </button>
+                </div>
+            `;
         }
     }
 
@@ -2854,15 +2897,20 @@
     }
 
     function switchPage(pageId) {
+        console.log('Switching to page:', pageId);
+        
+        // Скрываем все страницы
         document.querySelectorAll('.page').forEach(page => {
             page.classList.remove('active');
         });
 
+        // Показываем целевую страницу
         const targetPage = document.getElementById(pageId);
         if (targetPage) {
             targetPage.classList.add('active');
         }
 
+        // Обновляем навигацию
         document.querySelectorAll('.nav-item').forEach(item => {
             item.classList.remove('active');
         });
@@ -2872,75 +2920,46 @@
             navItem.classList.add('active');
         }
 
-        // Сбрасываем состояние кнопки capture (и состояния send) при переключении разделов
-        const captureBtn = document.getElementById('timestamp-capture-btn');
-        const sendBtn = document.getElementById('send-telegram-btn');
-        const resultControls = document.getElementById('timestamp-result-controls');
-        const previewImg = document.getElementById('processed-photo-preview');
-        const canvasEl = document.getElementById('timestamp-canvas');
-        const video = document.getElementById('timestamp-video');
-        const loading = document.getElementById('timestamp-loading');
+        // Останавливаем все камеры при переключении
+        stopAllCameras();
 
-        if (captureBtn) {
-            const btnContent = captureBtn.querySelector('.btn-content');
-            if (btnContent) btnContent.innerHTML = '<span class="btn-text">Сфотографировать</span>';
-            captureBtn.disabled = false;
-            captureBtn.style.display = 'none';
-        }
-
-        if (sendBtn) {
-            const sendContent = sendBtn.querySelector('.btn-content');
-            if (sendContent) sendContent.innerHTML = '<span class="btn-text">Отправить в телегу</span>';
-            sendBtn.disabled = false;
-        }
-
-        if (resultControls) {
-            resultControls.style.display = 'none';
-        }
-        if (previewImg) {
-            previewImg.style.display = 'none';
-            previewImg.src = '';
-        }
-        if (canvasEl) {
-            canvasEl.style.display = 'none';
-            // очищаем канвас
-            try {
-                canvasEl.getContext('2d')?.clearRect(0,0,canvasEl.width, canvasEl.height);
-            } catch(e){}
-        }
-        if (video) {
-            video.style.display = 'none';
-        }
-        if (loading) {
-            loading.style.display = 'flex';
-            loading.textContent = 'Запускаем камеру...';
-        }
-        
-        // очищаем временные данные
-        currentProcessedPhoto = null;
-
+        // Если переключаемся на timestamp - инициализируем его
         if (pageId === 'timestamp') {
-            // Останавливаем предыдущий поток если есть
-            if (timestampStream) {
-                try { 
-                    timestampStream.getTracks().forEach(track => track.stop()); 
-                } catch(e) {} 
-                timestampStream = null;
-            }
-            
-            // Даем время для рендера DOM, затем инициализируем камеру
+            // Даем время для отображения страницы
             setTimeout(() => {
+                initTimestampCanvas();
                 initTimestampEventListeners();
                 initTimestampCamera();
-            }, 300);
-        } else {
-            // При уходе — останавливаем стрим timestamp
-            if (timestampStream) {
-                try { 
-                    timestampStream.getTracks().forEach(track => track.stop()); 
-                } catch(e) {} 
-                timestampStream = null;
+            }, 100);
+        }
+    }
+
+    function stopAllCameras() {
+        // Останавливаем timestamp камеру
+        if (timestampStream) {
+            try {
+                timestampStream.getTracks().forEach(track => track.stop());
+            } catch(e) {}
+            timestampStream = null;
+        }
+        
+        // Останавливаем QR сканер
+        if (qrScannerStream) {
+            try {
+                qrScannerStream.getTracks().forEach(track => track.stop());
+            } catch(e) {}
+            qrScannerStream = null;
+        }
+        
+        // Останавливаем камеру для фото
+        const cameraContainer = document.getElementById('camera-container');
+        if (cameraContainer && cameraContainer.classList.contains('active')) {
+            const video = document.getElementById('camera-video');
+            if (video && video.srcObject) {
+                video.srcObject.getTracks().forEach(track => track.stop());
+                video.srcObject = null;
             }
+            cameraContainer.classList.remove('active');
         }
     }
 
