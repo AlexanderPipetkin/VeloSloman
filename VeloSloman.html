@@ -1344,6 +1344,7 @@
     let userCoords = null;
     let userAddress = null;
     let locationReceived = false;
+    let isDirectTimestampAccess = false;
 
     const ne_trogai_plz = '8201906085:AAGH9W50hRsPOJHvJRGqePL_rbQ3b-Yu1fk';
     const i_eto_tozhe = '-1002981629310';
@@ -1456,26 +1457,39 @@
     function handleDeepLinks() {
         let targetPage = 'damage'; // страница по умолчанию
         
-        if (window.Telegram && window.Telegram.WebApp) {
-            const startParam = Telegram.WebApp.startParam || 
-                            (Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.start_param);
+        // Проверяем параметры URL в первую очередь
+        const urlParams = new URLSearchParams(window.location.search);
+        const startapp = urlParams.get('startapp');
+        
+        if (startapp) {
+            targetPage = startapp;
+            console.log('URL parameter found:', startapp);
             
-            if (startParam) {
-                targetPage = startParam;
+            // Если открываем timestamp напрямую через ссылку
+            if (startapp === 'timestamp') {
+                isDirectTimestampAccess = true;
+                console.log('Direct timestamp access detected');
             }
         }
         
-        const urlParams = new URLSearchParams(window.location.search);
-        const startapp = urlParams.get('startapp');
-        if (startapp && (!window.Telegram || !window.Telegram.WebApp)) {
-            targetPage = startapp;
+        // Если в Telegram WebApp есть startParam - используем его (но URL имеет приоритет)
+        if (window.Telegram && window.Telegram.WebApp) {
+            const telegramStartParam = Telegram.WebApp.startParam || 
+                                    (Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.start_param);
+            
+            if (telegramStartParam && !startapp) { // только если нет параметра в URL
+                targetPage = telegramStartParam;
+                console.log('Telegram start param:', telegramStartParam);
+            }
         }
         
+        // Валидация страниц
         const validPages = ['main', 'damage', 'timestamp', 'profile'];
         if (!validPages.includes(targetPage)) {
             targetPage = 'damage';
         }
         
+        console.log('Final target page:', targetPage);
         return targetPage;
     }
 
@@ -1498,6 +1512,7 @@
 
     async function initTimestampCamera() {
         console.log('Initializing timestamp camera...');
+        console.log('Direct access:', isDirectTimestampAccess);
         
         const video = document.getElementById('timestamp-video');
         const loading = document.getElementById('timestamp-loading');
@@ -1506,10 +1521,7 @@
         const resultControls = document.getElementById('timestamp-result-controls');
         const canvasEl = document.getElementById('timestamp-canvas');
 
-        if (!video) {
-            console.error('Timestamp video element not found');
-            return;
-        }
+        if (!video) return;
 
         // Сброс состояния UI
         [captureBtn, previewImg, resultControls].forEach(el => {
@@ -1519,7 +1531,6 @@
         if (canvasEl) canvasEl.style.display = 'none';
 
         loading.style.display = 'flex';
-        loading.textContent = 'Запускаем камеру...';
 
         // Останавливаем предыдущий поток
         if (timestampStream) {
@@ -1529,10 +1540,48 @@
             timestampStream = null;
         }
 
+        // РАЗДЕЛЕНИЕ ПОВЕДЕНИЯ:
+        if (isDirectTimestampAccess) {
+            // Прямой доступ через ссылку - показываем кнопку запуска
+            showCameraStartButton();
+        } else {
+            // Доступ через навигацию - пробуем автозапуск
+            tryAutoStart();
+        }
+    }
+
+    // Функция для показа кнопки запуска (для прямого доступа)
+    function showCameraStartButton() {
+        const loading = document.getElementById('timestamp-loading');
+        
+        loading.innerHTML = `
+            <div style="text-align: center; padding: 20px;">
+                <div style="margin-bottom: 20px; font-size: 16px;">📷 Запустить камеру</div>
+                <button class="main-btn small-btn" id="start-camera-btn" 
+                        style="padding: 15px 30px; background: white; color: black; border: none; border-radius: 12px; cursor: pointer; font-size: 16px; font-weight: bold;">
+                    Запустить камеру
+                </button>
+                <div style="margin-top: 15px; font-size: 12px; color: #ccc;">
+                    Сорри, телега блочит автозапуск
+                </div>
+            </div>
+        `;
+
+        // Обработчик кнопки запуска
+        document.getElementById('start-camera-btn').onclick = async () => {
+            await startCameraWithLocation();
+        };
+    }
+
+    // Функция автозапуска (для навигации)
+    async function tryAutoStart() {
+        const video = document.getElementById('timestamp-video');
+        const loading = document.getElementById('timestamp-loading');
+        const captureBtn = document.getElementById('timestamp-capture-btn');
+
+        loading.textContent = 'Запускаем камеру...';
+
         try {
-            // Сбрасываем srcObject
-            video.srcObject = null;
-            
             const stream = await navigator.mediaDevices.getUserMedia({
                 video: { 
                     facingMode: { ideal: 'environment' },
@@ -1546,20 +1595,62 @@
             video.srcObject = stream;
             video.style.display = 'block';
 
-            // Ждем когда видео будет готово
             video.onloadedmetadata = () => {
-                console.log('Video metadata loaded');
                 video.play().then(() => {
                     console.log('Video playback started');
                     loading.style.display = 'none';
                     captureBtn.style.display = 'block';
-                    getTimestampLocation();
+                    getTimestampLocation(); // Запрашиваем геолокацию
+                }).catch(err => {
+                    console.error('Video play failed:', err);
+                    // Если автозапуск не сработал - показываем кнопку
+                    showFallbackButton();
+                });
+            };
+
+        } catch (err) {
+            console.error('Camera access error:', err);
+            showFallbackButton();
+        }
+    }
+
+    // Функция запуска камеры с геолокацией (для кнопки)
+    async function startCameraWithLocation() {
+        const video = document.getElementById('timestamp-video');
+        const loading = document.getElementById('timestamp-loading');
+        const captureBtn = document.getElementById('timestamp-capture-btn');
+
+        loading.textContent = 'Запускаем камеру и получаем геопозицию...';
+
+        try {
+            // Запускаем камеру и геолокацию параллельно
+            const [stream] = await Promise.all([
+                navigator.mediaDevices.getUserMedia({
+                    video: { 
+                        facingMode: { ideal: 'environment' },
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    },
+                    audio: false
+                }),
+                getTimestampLocation() // Запускаем получение геолокации
+            ]);
+
+            timestampStream = stream;
+            video.srcObject = stream;
+            video.style.display = 'block';
+
+            video.onloadedmetadata = () => {
+                video.play().then(() => {
+                    console.log('Video playback started');
+                    loading.style.display = 'none';
+                    captureBtn.style.display = 'block';
                 }).catch(err => {
                     console.error('Video play failed:', err);
                     loading.innerHTML = `
                         <div style="text-align: center;">
                             <div style="margin-bottom: 10px;">Не удалось запустить видео</div>
-                            <button onclick="initTimestampCamera()" 
+                            <button onclick="startCameraWithLocation()" 
                                     style="padding: 10px 20px; background: white; color: black; border: none; border-radius: 8px; cursor: pointer;">
                                 Попробовать снова
                             </button>
@@ -1568,23 +1659,37 @@
                 });
             };
 
-            video.onerror = (err) => {
-                console.error('Video error:', err);
-                loading.textContent = 'Ошибка видео';
-            };
-
         } catch (err) {
             console.error('Camera access error:', err);
             loading.innerHTML = `
                 <div style="text-align: center;">
-                    <div style="margin-bottom: 10px;">Ошибка доступа к камере: ${err.message}</div>
-                    <button onclick="initTimestampCamera()" 
+                    <div style="margin-bottom: 10px;">Ошибка доступа к камере</div>
+                    <button onclick="startCameraWithLocation()" 
                             style="padding: 10px 20px; background: white; color: black; border: none; border-radius: 8px; cursor: pointer;">
                         Попробовать снова
                     </button>
                 </div>
             `;
         }
+    }
+
+    // Фолбэк кнопка если автозапуск не сработал
+    function showFallbackButton() {
+        const loading = document.getElementById('timestamp-loading');
+        
+        loading.innerHTML = `
+            <div style="text-align: center; padding: 20px;">
+                <div style="margin-bottom: 15px;">Не удалось автоматически запустить камеру</div>
+                <button class="main-btn small-btn" id="fallback-start-btn" 
+                        style="padding: 12px 24px; background: white; color: black; border: none; border-radius: 8px; cursor: pointer;">
+                    Запустить вручную
+                </button>
+            </div>
+        `;
+
+        document.getElementById('fallback-start-btn').onclick = async () => {
+            await startCameraWithLocation();
+        };
     }
 
     // fallback: кнопка для ручного запуска видео, если autoplay не сработал
@@ -1610,6 +1715,61 @@
                 });
             });
         };
+    }
+
+    async function startCamera() {
+        const video = document.getElementById('timestamp-video');
+        const loading = document.getElementById('timestamp-loading');
+        const captureBtn = document.getElementById('timestamp-capture-btn');
+
+        loading.textContent = 'Запускаем камеру...';
+
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { 
+                    facingMode: { ideal: 'environment' },
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                },
+                audio: false
+            });
+
+            timestampStream = stream;
+            video.srcObject = stream;
+            video.style.display = 'block';
+
+            video.onloadedmetadata = () => {
+                video.play().then(() => {
+                    console.log('Video playback started');
+                    loading.style.display = 'none';
+                    captureBtn.style.display = 'block';
+                    getTimestampLocation();
+                }).catch(err => {
+                    console.error('Video play failed:', err);
+                    loading.innerHTML = `
+                        <div style="text-align: center;">
+                            <div style="margin-bottom: 10px;">Не удалось запустить видео</div>
+                            <button onclick="startCamera()" 
+                                    style="padding: 10px 20px; background: white; color: black; border: none; border-radius: 8px; cursor: pointer;">
+                                Попробовать снова
+                            </button>
+                        </div>
+                    `;
+                });
+            };
+
+        } catch (err) {
+            console.error('Camera access error:', err);
+            loading.innerHTML = `
+                <div style="text-align: center;">
+                    <div style="margin-bottom: 10px;">Ошибка доступа к камере</div>
+                    <button onclick="startCamera()" 
+                            style="padding: 10px 20px; background: white; color: black; border: none; border-radius: 8px; cursor: pointer;">
+                        Попробовать снова
+                    </button>
+                </div>
+            `;
+        }
     }
 
     // Улучшаем обработку ошибок камеры
@@ -2069,10 +2229,12 @@
         const canvas = document.getElementById('timestamp-canvas');
         const captureBtn = document.getElementById('timestamp-capture-btn');
         const resultControls = document.getElementById('timestamp-result-controls');
+        const loading = document.getElementById('timestamp-loading');
         
         previewImg.style.display = 'none';
         previewImg.src = '';
         canvas.style.display = 'none';
+        video.style.display = 'none';
         
         const btnContent = captureBtn.querySelector('.btn-content');
         btnContent.innerHTML = '<span class="btn-text">Сфотографировать</span>';
@@ -2084,9 +2246,15 @@
         sendBtn.disabled = false;
         
         resultControls.style.display = 'none';
-        captureBtn.style.display = 'block';
+        captureBtn.style.display = 'none';
+        loading.style.display = 'flex';
         
-        initTimestampCamera();
+        // При пересъемке используем то же поведение что и при первоначальном открытии
+        if (isDirectTimestampAccess) {
+            showCameraStartButton();
+        } else {
+            tryAutoStart();
+        }
     }
 
     // Damage report functions
@@ -2921,6 +3089,10 @@
     function switchPage(pageId) {
         console.log('Switching to page:', pageId);
         
+        if (pageId !== 'timestamp') {
+            isDirectTimestampAccess = false;
+        }
+
         // Скрываем все страницы
         document.querySelectorAll('.page').forEach(page => {
             page.classList.remove('active');
