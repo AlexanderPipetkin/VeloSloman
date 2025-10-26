@@ -1503,13 +1503,17 @@
         const loading = document.getElementById('timestamp-loading');
         const video = document.getElementById('timestamp-video');
         
-        startBtn.style.display = 'none';
-        captureBtn.style.display = 'none';
-        loading.style.display = 'flex';
+        if (!timestampStream) {
+            startBtn.style.display = 'none';
+            captureBtn.style.display = 'none';
+            loading.style.display = 'flex';
+        }
         
         try {
-            loading.textContent = 'Запрашиваем камеру...';
-            await startTimestampCamera();
+            if (!timestampStream) {
+                loading.textContent = 'Запрашиваем камеру...';
+                await startTimestampCamera();
+            }
 
             loading.textContent = 'Запрашиваем геопозицию...';
             await getTimestampLocation();
@@ -1594,9 +1598,22 @@
             
             userAddress = await getAddressFromCoords(userCoords.latitude, userCoords.longitude);
             
+            const captureBtn = document.getElementById('timestamp-capture-btn');
+            if (captureBtn.style.display !== 'none') {
+                captureBtn.disabled = false;
+                captureBtn.querySelector('.btn-text').textContent = 'Сфотографировать';
+            }
+            
         } catch (error) {
             locationReceived = false;
             userAddress = 'Геопозиция не получена';
+            
+            const captureBtn = document.getElementById('timestamp-capture-btn');
+            if (captureBtn.style.display !== 'none') {
+                captureBtn.disabled = true;
+                captureBtn.querySelector('.btn-text').textContent = 'Нет геопозиции';
+            }
+            
             document.getElementById('timestamp-location-info').innerHTML = `
                 <div style="text-align: center;">
                     <div style="margin-bottom: 10px;">Не удалось получить твою геопозицию</div>
@@ -1623,7 +1640,6 @@
                 if (addr.suburb) components.push(addr.suburb);
                 if (addr.road) components.push(addr.road);
                 if (addr.house_number) components.push(addr.house_number);
-                
                 if (addr.postcode) components.push(addr.postcode);
                 
                 return components.join(', ');
@@ -1637,7 +1653,7 @@
 
     function captureTimestampPhoto() {
         if (!locationReceived) {
-            showNotification('Геопозиция не получена. Без гео никак :(');
+            showNotification('Подожди получения геопозиции...');
             return;
         }
 
@@ -1986,9 +2002,6 @@
         }
         
         currentProcessedPhoto = null;
-        userCoords = null;
-        userAddress = null;
-        locationReceived = false;
         
         startBtn.style.display = 'block';
         startBtn.disabled = false;
@@ -2002,6 +2015,9 @@
         resultControls.style.display = 'none';
         previewImg.style.display = 'none';
         
+        userCoords = null;
+        userAddress = null;
+        locationReceived = false;
         document.getElementById('timestamp-location-info').textContent = 'Нажми "Начать фотосессию" для запуска';
     }
 
@@ -2838,9 +2854,52 @@
             setTimeout(() => {
                 initTimestampCanvas();
                 initTimestampEventListeners();
-                retakeTimestampPhoto();
+                restoreTimestampState();
                 isTimestampInitialized = true;
             }, 100);
+        }
+    }
+
+    function restoreTimestampState() {
+        const previewImg = document.getElementById('processed-photo-preview');
+        const video = document.getElementById('timestamp-video');
+        const loading = document.getElementById('timestamp-loading');
+        const startBtn = document.getElementById('start-timestamp-btn');
+        const captureBtn = document.getElementById('timestamp-capture-btn');
+        const resultControls = document.getElementById('timestamp-result-controls');
+        
+        if (currentProcessedPhoto) {
+            previewImg.src = currentProcessedPhoto;
+            previewImg.style.display = 'block';
+            video.style.display = 'none';
+            loading.style.display = 'none';
+            startBtn.style.display = 'none';
+            captureBtn.style.display = 'none';
+            resultControls.style.display = 'flex';
+        } else if (timestampStream && locationReceived) {
+            video.style.display = 'block';
+            loading.style.display = 'none';
+            startBtn.style.display = 'none';
+            captureBtn.style.display = 'block';
+            captureBtn.disabled = false;
+            captureBtn.querySelector('.btn-text').textContent = 'Сфотографировать';
+            resultControls.style.display = 'none';
+        } else if (timestampStream) {
+            video.style.display = 'block';
+            loading.style.display = 'none';
+            startBtn.style.display = 'none';
+            captureBtn.style.display = 'block';
+            captureBtn.disabled = true;
+            captureBtn.querySelector('.btn-text').textContent = 'Нет геопозиции';
+            resultControls.style.display = 'none';
+        } else {
+            startBtn.style.display = 'block';
+            loading.style.display = 'flex';
+            loading.textContent = 'Нажмите кнопку ниже чтобы начать';
+            video.style.display = 'none';
+            captureBtn.style.display = 'none';
+            resultControls.style.display = 'none';
+            previewImg.style.display = 'none';
         }
     }
 
