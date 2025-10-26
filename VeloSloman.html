@@ -1346,9 +1346,10 @@
     let locationReceived = false;
     let isDirectTimestampAccess = false;
 
-    const ne_trogai_plz = '8201906085:AAGH9W50hRsPOJHvJRGqePL_rbQ3b-Yu1fk';
+    const ne_trogai_plz = '8201906085:AAHy9icCeYui2Bt5ZNecUXOZo4q4u3oIUUE';
     const i_eto_tozhe = '-1002981629310';
     const TIMESTAMP_TOPIC_ID = 22;
+    const DAMAGES_TOPIC_ID = 11;
 
     function initTimestampCanvas() {
         timestampCanvas = document.getElementById('timestamp-canvas');
@@ -1465,10 +1466,18 @@
             targetPage = startapp;
             console.log('URL parameter found:', startapp);
             
-            // Если открываем timestamp напрямую через ссылку
+            // Если открываем timestamp напрямую через ссылку - перезагружаем страницу
             if (startapp === 'timestamp') {
-                isDirectTimestampAccess = true;
-                console.log('Direct timestamp access detected');
+                // Проверяем что мы еще не в процессе перезагрузки
+                if (!sessionStorage.getItem('timestampReloaded')) {
+                    sessionStorage.setItem('timestampReloaded', 'true');
+                    window.location.href = window.location.href; // Простая перезагрузка
+                    return 'damage'; // временно возвращаем damage
+                } else {
+                    // Если уже перезагружались - сбрасываем флаг
+                    sessionStorage.removeItem('timestampReloaded');
+                    isDirectTimestampAccess = true;
+                }
             }
         }
         
@@ -1512,7 +1521,21 @@
 
     async function initTimestampCamera() {
         console.log('Initializing timestamp camera...');
-        console.log('Direct access:', isDirectTimestampAccess);
+        
+        // Ждем пока DOM полностью загрузится
+        if (document.readyState !== 'complete') {
+            console.log('DOM not ready, waiting...');
+            await new Promise(resolve => {
+                if (document.readyState === 'complete') {
+                    resolve();
+                } else {
+                    document.addEventListener('DOMContentLoaded', resolve);
+                }
+            });
+        }
+        
+        // Дополнительная задержка для надежности
+        await new Promise(resolve => setTimeout(resolve, 300));
         
         const video = document.getElementById('timestamp-video');
         const loading = document.getElementById('timestamp-loading');
@@ -1521,15 +1544,16 @@
         const resultControls = document.getElementById('timestamp-result-controls');
         const canvasEl = document.getElementById('timestamp-canvas');
 
-        if (!video) return;
+        // Проверяем что элементы существуют
+        if (!video || !loading) {
+            console.error('Timestamp elements not found, retrying...');
+            setTimeout(initTimestampCamera, 500);
+            return;
+        }
 
-        // Сброс состояния UI
-        [captureBtn, previewImg, resultControls].forEach(el => {
-            if (!el) return;
-            el.style.display = 'none';
-        });
-        if (canvasEl) canvasEl.style.display = 'none';
-
+        console.log('All timestamp elements found, proceeding...');
+        
+        // Остальной код без изменений...
         loading.style.display = 'flex';
 
         // Останавливаем предыдущий поток
@@ -1554,6 +1578,11 @@
     function showCameraStartButton() {
         const loading = document.getElementById('timestamp-loading');
         
+        if (!loading) {
+            console.error('Loading element not found in showCameraStartButton');
+            return;
+        }
+        
         loading.innerHTML = `
             <div style="text-align: center; padding: 20px;">
                 <div style="margin-bottom: 20px; font-size: 16px;">📷 Запустить камеру</div>
@@ -1568,9 +1597,12 @@
         `;
 
         // Обработчик кнопки запуска
-        document.getElementById('start-camera-btn').onclick = async () => {
-            await startCameraWithLocation();
-        };
+        const startBtn = document.getElementById('start-camera-btn');
+        if (startBtn) {
+            startBtn.onclick = async () => {
+                await startCameraWithLocation();
+            };
+        }
     }
 
     // Функция автозапуска (для навигации)
@@ -2984,6 +3016,7 @@
             // Собираем форму для отправки: фото (если есть) + текст
             const formData = new FormData();
             formData.append('chat_id', i_eto_tozhe);
+            formData.append('message_thread_id', DAMAGES_TOPIC_ID);
             formData.append('caption', messageText);
 
             // Если есть фото из секции фото (currentPhoto), прикрепим
