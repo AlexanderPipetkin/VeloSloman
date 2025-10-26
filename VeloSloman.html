@@ -1505,10 +1505,13 @@
         startBtn.querySelector('.btn-text').textContent = 'Запускаем камеру...';
         
         try {
-            loading.textContent = 'Запускаем камеру...';
+            startBtn.querySelector('.btn-text').textContent = 'Запрашиваем геопозицию...';
+            loading.textContent = 'Запрашиваем геопозицию...';
+            await getTimestampLocation();
             
-            startTimestampCamera(),
-            getTimestampLocation()
+            startBtn.querySelector('.btn-text').textContent = 'Запрашиваем камеру...';
+            loading.textContent = 'Запрашиваем камеру...';
+            await startTimestampCamera();
             
             startBtn.style.display = 'none';
             
@@ -2974,4 +2977,3 @@
 </script>
 </body>
 </html>
-
