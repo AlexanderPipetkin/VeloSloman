@@ -82,13 +82,6 @@
         }
 
         .input-label {
-            display: block;
-            font-size: 16px;
-            margin-bottom: 10px;
-            font-weight: bold;
-        }
-
-        .input-label {
             font-size: 14px;
             color: rgba(255,255,255,0.7);
             margin-left: 2px;
@@ -123,11 +116,6 @@
             height: 44px;
             min-height: 44px;
             resize: none;
-        }
-
-        .styled-input:focus {
-            border-color: rgba(255,255,255,0.25);
-            box-shadow: 0 0 0 2px rgba(255,255,255,0.1);
         }
 
         .main-btn.small-btn {
@@ -239,15 +227,6 @@
             opacity: 1;
             transform: scale(0.95);
             transition: transform 0.5s ease;
-        }
-
-        .bike-svg.centered {
-            transform: scale(1);
-        }
-
-        .bike-svg.loaded {
-            opacity: 1;
-            transform: scale(1);
         }
 
         .bike-container::-webkit-scrollbar {
@@ -1109,6 +1088,24 @@
             justify-content: center;
             gap: 8px;
         }
+
+        .version-info {
+            text-align: center;
+            margin-top: 40px;
+            padding: 20px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .version-number {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .version-update {
+            font-size: 14px;
+            color: #ccc;
+        }
     </style>
 </head>
 <body>
@@ -1242,14 +1239,14 @@
             <h1 class="page-description" style="color: #fff; margin-bottom: 15px; text-align: center;">Функционал TimeStamp Camera теперь тут</h1>
 
             <div class="location-info-header" id="timestamp-location-info">
-                Получаю твою геопозицию...
+                Нажми "Начать создание фото" для запуска
             </div>
 
             <div class="timestamp-section">
                 <div class="timestamp-preview-container">
                     <div class="timestamp-preview" id="timestamp-preview">
                         <div class="timestamp-loading" id="timestamp-loading">
-                            Запускаем камеру...
+                            Нажмите кнопку ниже чтобы начать
                         </div>
                         <video id="timestamp-video" style="display: none;" autoplay playsinline></video>
                         <canvas id="timestamp-canvas" style="display: none;"></canvas>
@@ -1258,6 +1255,12 @@
 
                     <div class="timestamp-controls-overlay">
                         <div class="timestamp-controls" id="timestamp-controls">
+                            <button class="timestamp-btn primary" id="start-timestamp-btn">
+                                <span class="btn-content">
+                                    <span class="btn-text">Начать создание фото</span>
+                                </span>
+                            </button>
+                            
                             <button class="timestamp-btn" id="timestamp-capture-btn" style="display: none;">
                                 <span class="btn-content">
                                     <span class="btn-text">Сфотографировать</span>
@@ -1292,6 +1295,10 @@
             <div class="under-construction">
                 <h2>Раздел в разработке</h2>
                 <p>Обновление этого раздела планируется 28.10.2025</p>
+            </div>
+            <div class="version-info">
+                <div class="version-number">Версия: 0.0.6</div>
+                <div class="version-update">Новая версия: скоро...</div>
             </div>
         </div>
     </section>
@@ -1344,7 +1351,7 @@
     let userCoords = null;
     let userAddress = null;
     let locationReceived = false;
-    let isDirectTimestampAccess = false;
+    let isTimestampInitialized = false;
 
     const ne_trogai_plz = '8201906085:AAHy9icCeYui2Bt5ZNecUXOZo4q4u3oIUUE';
     const i_eto_tozhe = '-1002981629310';
@@ -1355,13 +1362,9 @@
         timestampCanvas = document.getElementById('timestamp-canvas');
         if (timestampCanvas) {
             timestampContext = timestampCanvas.getContext('2d');
-            console.log('Timestamp canvas initialized');
-        } else {
-            console.error('Timestamp canvas not found');
         }
     }
 
-    // Security system
     let securityLogs = [];
     let requestLimits = new Map();
     const _a1 = [1618025244, 6310949297];
@@ -1434,71 +1437,51 @@
     }
 
     function performSecurityChecks() {
-        //if (!isLegitimateTelegramWebApp()) {
-        //     showNotification('Доступ только через мини-апп в телеге');
-        //     return false;
-        // }
+        if (!isLegitimateTelegramWebApp()) {
+             showNotification('Доступ только через мини-апп в телеге');
+             return false;
+        }
         
-        // const userData = window.Telegram.WebApp.initDataUnsafe.user;
+        const userData = window.Telegram.WebApp.initDataUnsafe.user;
         
-        // if (!userData || !userData.id) {
-        //     showNotification('Доступ ограничен. Обратись к администратору.');
-        //     return false;
-        // }
+        if (!userData || !userData.id) {
+            showNotification('Доступ ограничен. Обратись к администратору.');
+            return false;
+        }
         
-        // const isAllowed = _a1.includes(userData.id);
-        // if (!isAllowed) {
-        //     showNotification('Доступ ограничен. Обратись к администратору.');
-        //     return false;
-        // }
+        const isAllowed = _a1.includes(userData.id);
+        if (!isAllowed) {
+            showNotification('Доступ ограничен. Обратись к администратору.');
+            return false;
+        }
         
         return true;
     }
 
     function handleDeepLinks() {
-        let targetPage = 'damage'; // страница по умолчанию
+        let targetPage = 'damage';
         
-        // Проверяем параметры URL в первую очередь
         const urlParams = new URLSearchParams(window.location.search);
         const startapp = urlParams.get('startapp');
         
         if (startapp) {
             targetPage = startapp;
-            console.log('URL parameter found:', startapp);
-            
-            // Если открываем timestamp напрямую через ссылку - перезагружаем страницу
-            if (startapp === 'timestamp') {
-                // Проверяем что мы еще не в процессе перезагрузки
-                if (!sessionStorage.getItem('timestampReloaded')) {
-                    sessionStorage.setItem('timestampReloaded', 'true');
-                    window.location.href = window.location.href; // Простая перезагрузка
-                    return 'damage'; // временно возвращаем damage
-                } else {
-                    // Если уже перезагружались - сбрасываем флаг
-                    sessionStorage.removeItem('timestampReloaded');
-                    isDirectTimestampAccess = true;
-                }
-            }
         }
         
-        // Если в Telegram WebApp есть startParam - используем его (но URL имеет приоритет)
         if (window.Telegram && window.Telegram.WebApp) {
             const telegramStartParam = Telegram.WebApp.startParam || 
                                     (Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.start_param);
             
-            if (telegramStartParam && !startapp) { // только если нет параметра в URL
+            if (telegramStartParam && !startapp) {
                 targetPage = telegramStartParam;
-                console.log('Telegram start param:', telegramStartParam);
             }
         }
         
-        // Валидация страниц
         const validPages = ['main', 'damage', 'timestamp', 'profile'];
         if (!validPages.includes(targetPage)) {
             targetPage = 'damage';
         }
         
-        console.log('Final target page:', targetPage);
         return targetPage;
     }
 
@@ -1508,110 +1491,42 @@
             telegramWebApp.ready();
             telegramWebApp.expand();
             
-            console.log('Telegram WebApp initialized');
-            console.log('startParam:', telegramWebApp.startParam);
-            console.log('initData:', telegramWebApp.initData);
-            console.log('initDataUnsafe:', telegramWebApp.initDataUnsafe);
-            
             if (telegramWebApp.initDataUnsafe.user) {
                 userData = telegramWebApp.initDataUnsafe.user;
             }
         }
     }
 
-    async function initTimestampCamera() {
-        console.log('Initializing timestamp camera...');
-        
-        // Ждем пока DOM полностью загрузится
-        if (document.readyState !== 'complete') {
-            console.log('DOM not ready, waiting...');
-            await new Promise(resolve => {
-                if (document.readyState === 'complete') {
-                    resolve();
-                } else {
-                    document.addEventListener('DOMContentLoaded', resolve);
-                }
-            });
-        }
-        
-        // Дополнительная задержка для надежности
-        await new Promise(resolve => setTimeout(resolve, 300));
-        
-        const video = document.getElementById('timestamp-video');
+    async function startTimestampProcess() {
+        const startBtn = document.getElementById('start-timestamp-btn');
         const loading = document.getElementById('timestamp-loading');
-        const captureBtn = document.getElementById('timestamp-capture-btn');
-        const previewImg = document.getElementById('processed-photo-preview');
-        const resultControls = document.getElementById('timestamp-result-controls');
-        const canvasEl = document.getElementById('timestamp-canvas');
-
-        // Проверяем что элементы существуют
-        if (!video || !loading) {
-            console.error('Timestamp elements not found, retrying...');
-            setTimeout(initTimestampCamera, 500);
-            return;
-        }
-
-        console.log('All timestamp elements found, proceeding...');
         
-        // Остальной код без изменений...
-        loading.style.display = 'flex';
-
-        // Останавливаем предыдущий поток
-        if (timestampStream) {
-            try { 
-                timestampStream.getTracks().forEach(track => track.stop()); 
-            } catch(e) {} 
-            timestampStream = null;
-        }
-
-        // РАЗДЕЛЕНИЕ ПОВЕДЕНИЯ:
-        if (isDirectTimestampAccess) {
-            // Прямой доступ через ссылку - показываем кнопку запуска
-            showCameraStartButton();
-        } else {
-            // Доступ через навигацию - пробуем автозапуск
-            tryAutoStart();
+        startBtn.disabled = true;
+        startBtn.querySelector('.btn-text').textContent = 'Получаем геопозицию...';
+        
+        try {
+            loading.textContent = 'Получаем геопозицию...';
+            await getTimestampLocation();
+            
+            startBtn.querySelector('.btn-text').textContent = 'Запускаем камеру...';
+            loading.textContent = 'Запускаем камеру...';
+            
+            await startTimestampCamera();
+            
+            startBtn.style.display = 'none';
+            
+        } catch (error) {
+            console.error('Timestamp process error:', error);
+            startBtn.disabled = false;
+            startBtn.querySelector('.btn-text').textContent = 'Начать создание фото';
+            loading.textContent = 'Ошибка запуска. Попробуйте еще раз.';
         }
     }
 
-    // Функция для показа кнопки запуска (для прямого доступа)
-    function showCameraStartButton() {
-        const loading = document.getElementById('timestamp-loading');
-        
-        if (!loading) {
-            console.error('Loading element not found in showCameraStartButton');
-            return;
-        }
-        
-        loading.innerHTML = `
-            <div style="text-align: center; padding: 20px;">
-                <div style="margin-bottom: 20px; font-size: 16px;">📷 Запустить камеру</div>
-                <button class="main-btn small-btn" id="start-camera-btn" 
-                        style="padding: 15px 30px; background: white; color: black; border: none; border-radius: 12px; cursor: pointer; font-size: 16px; font-weight: bold;">
-                    Запустить камеру
-                </button>
-                <div style="margin-top: 15px; font-size: 12px; color: #ccc;">
-                    Сорри, телега блочит автозапуск
-                </div>
-            </div>
-        `;
-
-        // Обработчик кнопки запуска
-        const startBtn = document.getElementById('start-camera-btn');
-        if (startBtn) {
-            startBtn.onclick = async () => {
-                await startCameraWithLocation();
-            };
-        }
-    }
-
-    // Функция автозапуска (для навигации)
-    async function tryAutoStart() {
+    async function startTimestampCamera() {
         const video = document.getElementById('timestamp-video');
         const loading = document.getElementById('timestamp-loading');
         const captureBtn = document.getElementById('timestamp-capture-btn');
-
-        loading.textContent = 'Запускаем камеру...';
 
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
@@ -1627,203 +1542,39 @@
             video.srcObject = stream;
             video.style.display = 'block';
 
-            video.onloadedmetadata = () => {
-                video.play().then(() => {
-                    console.log('Video playback started');
-                    loading.style.display = 'none';
-                    captureBtn.style.display = 'block';
-                    getTimestampLocation(); // Запрашиваем геолокацию
-                }).catch(err => {
-                    console.error('Video play failed:', err);
-                    // Если автозапуск не сработал - показываем кнопку
-                    showFallbackButton();
-                });
-            };
-
-        } catch (err) {
-            console.error('Camera access error:', err);
-            showFallbackButton();
-        }
-    }
-
-    // Функция запуска камеры с геолокацией (для кнопки)
-    async function startCameraWithLocation() {
-        const video = document.getElementById('timestamp-video');
-        const loading = document.getElementById('timestamp-loading');
-        const captureBtn = document.getElementById('timestamp-capture-btn');
-
-        loading.textContent = 'Запускаем камеру и получаем геопозицию...';
-
-        try {
-            // Запускаем камеру и геолокацию параллельно
-            const [stream] = await Promise.all([
-                navigator.mediaDevices.getUserMedia({
-                    video: { 
-                        facingMode: { ideal: 'environment' },
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 }
-                    },
-                    audio: false
-                }),
-                getTimestampLocation() // Запускаем получение геолокации
-            ]);
-
-            timestampStream = stream;
-            video.srcObject = stream;
-            video.style.display = 'block';
-
-            video.onloadedmetadata = () => {
-                video.play().then(() => {
-                    console.log('Video playback started');
-                    loading.style.display = 'none';
-                    captureBtn.style.display = 'block';
-                }).catch(err => {
-                    console.error('Video play failed:', err);
-                    loading.innerHTML = `
-                        <div style="text-align: center;">
-                            <div style="margin-bottom: 10px;">Не удалось запустить видео</div>
-                            <button onclick="startCameraWithLocation()" 
-                                    style="padding: 10px 20px; background: white; color: black; border: none; border-radius: 8px; cursor: pointer;">
-                                Попробовать снова
-                            </button>
-                        </div>
-                    `;
-                });
-            };
+            await new Promise((resolve) => {
+                video.onloadedmetadata = () => {
+                    video.play().then(() => {
+                        loading.style.display = 'none';
+                        captureBtn.style.display = 'block';
+                        resolve();
+                    }).catch(err => {
+                        console.error('Video play failed:', err);
+                        loading.innerHTML = `
+                            <div style="text-align: center;">
+                                <div style="margin-bottom: 10px;">Не удалось запустить видео</div>
+                                <button onclick="startTimestampCamera()" 
+                                        style="padding: 10px 20px; background: white; color: black; border: none; border-radius: 8px; cursor: pointer;">
+                                    Попробовать снова
+                                </button>
+                            </div>
+                        `;
+                    });
+                };
+            });
 
         } catch (err) {
             console.error('Camera access error:', err);
             loading.innerHTML = `
                 <div style="text-align: center;">
                     <div style="margin-bottom: 10px;">Ошибка доступа к камере</div>
-                    <button onclick="startCameraWithLocation()" 
+                    <button onclick="startTimestampCamera()" 
                             style="padding: 10px 20px; background: white; color: black; border: none; border-radius: 8px; cursor: pointer;">
                         Попробовать снова
                     </button>
                 </div>
             `;
-        }
-    }
-
-    // Фолбэк кнопка если автозапуск не сработал
-    function showFallbackButton() {
-        const loading = document.getElementById('timestamp-loading');
-        
-        loading.innerHTML = `
-            <div style="text-align: center; padding: 20px;">
-                <div style="margin-bottom: 15px;">Не удалось автоматически запустить камеру</div>
-                <button class="main-btn small-btn" id="fallback-start-btn" 
-                        style="padding: 12px 24px; background: white; color: black; border: none; border-radius: 8px; cursor: pointer;">
-                    Запустить вручную
-                </button>
-            </div>
-        `;
-
-        document.getElementById('fallback-start-btn').onclick = async () => {
-            await startCameraWithLocation();
-        };
-    }
-
-    // fallback: кнопка для ручного запуска видео, если autoplay не сработал
-    function showCameraStartButton(video, captureBtn, loading) {
-        loading.innerHTML = `
-            <button id="manual-start" class="main-btn small-btn">
-                Разрешить запуск камеры
-            </button>
-        `;
-        const manualBtn = document.getElementById('manual-start');
-        manualBtn.onclick = () => {
-            manualBtn.disabled = true;
-            manualBtn.textContent = 'Запускаем...';
-            requestAnimationFrame(() => {
-                video.play().then(() => {
-                    loading.style.display = 'none';
-                    captureBtn.style.display = 'block';
-                    video.muted = false;
-                    getTimestampLocation();
-                }).catch(e => {
-                    loading.textContent = 'Не удалось запустить камеру';
-                    console.error(e);
-                });
-            });
-        };
-    }
-
-    async function startCamera() {
-        const video = document.getElementById('timestamp-video');
-        const loading = document.getElementById('timestamp-loading');
-        const captureBtn = document.getElementById('timestamp-capture-btn');
-
-        loading.textContent = 'Запускаем камеру...';
-
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: { 
-                    facingMode: { ideal: 'environment' },
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 }
-                },
-                audio: false
-            });
-
-            timestampStream = stream;
-            video.srcObject = stream;
-            video.style.display = 'block';
-
-            video.onloadedmetadata = () => {
-                video.play().then(() => {
-                    console.log('Video playback started');
-                    loading.style.display = 'none';
-                    captureBtn.style.display = 'block';
-                    getTimestampLocation();
-                }).catch(err => {
-                    console.error('Video play failed:', err);
-                    loading.innerHTML = `
-                        <div style="text-align: center;">
-                            <div style="margin-bottom: 10px;">Не удалось запустить видео</div>
-                            <button onclick="startCamera()" 
-                                    style="padding: 10px 20px; background: white; color: black; border: none; border-radius: 8px; cursor: pointer;">
-                                Попробовать снова
-                            </button>
-                        </div>
-                    `;
-                });
-            };
-
-        } catch (err) {
-            console.error('Camera access error:', err);
-            loading.innerHTML = `
-                <div style="text-align: center;">
-                    <div style="margin-bottom: 10px;">Ошибка доступа к камере</div>
-                    <button onclick="startCamera()" 
-                            style="padding: 10px 20px; background: white; color: black; border: none; border-radius: 8px; cursor: pointer;">
-                        Попробовать снова
-                    </button>
-                </div>
-            `;
-        }
-    }
-
-    // Улучшаем обработку ошибок камеры
-    function handleCameraError(message) {
-        const loadingElement = document.getElementById('timestamp-loading');
-        loadingElement.innerHTML = `
-            <div style="text-align: center;">
-                <div style="margin-bottom: 10px;">${message}</div>
-                <button onclick="initTimestampCamera()" 
-                        style="padding: 10px 20px; background: white; color: black; border: none; border-radius: 8px; cursor: pointer;">
-                    Попробовать снова
-                </button>
-            </div>
-        `;
-        
-        // Сбрасываем состояние кнопки
-        const captureBtn = document.getElementById('timestamp-capture-btn');
-        if (captureBtn) {
-            const btnContent = captureBtn.querySelector('.btn-content');
-            btnContent.innerHTML = '<span class="btn-text">Сфотографировать</span>';
-            captureBtn.disabled = false;
-            captureBtn.style.display = 'none';
+            throw err;
         }
     }
 
@@ -1847,13 +1598,7 @@
             locationReceived = true;
             document.getElementById('timestamp-location-info').textContent = 'Геопозиция получена';
             
-            getAddressFromCoords(userCoords.latitude, userCoords.longitude)
-                .then(address => {
-                    userAddress = address;
-                })
-                .catch(addressError => {
-                    userAddress = 'Адрес не определен';
-                });
+            userAddress = await getAddressFromCoords(userCoords.latitude, userCoords.longitude);
             
         } catch (error) {
             locationReceived = false;
@@ -1867,6 +1612,7 @@
                     </button>
                 </div>
             `;
+            throw error;
         }
     }
 
@@ -1896,10 +1642,8 @@
     }
 
     function captureTimestampPhoto() {
-        console.log('Capturing timestamp photo...');
-        
         if (!locationReceived) {
-            showNotification('Подожди получения координат...');
+            showNotification('Геопозиция не получена. Без гео никак :(');
             return;
         }
 
@@ -1921,7 +1665,6 @@
         
         timestampContext.drawImage(video, 0, 0, canvas.width, canvas.height);
         
-        // Останавливаем камеру после захвата
         if (timestampStream) {
             timestampStream.getTracks().forEach(track => track.stop());
             timestampStream = null;
@@ -1932,7 +1675,6 @@
         btnContent.innerHTML = '<span class="loading-spinner"></span><span class="btn-text">Обработка...</span>';
         captureBtn.disabled = true;
 
-        // Обрабатываем фото
         setTimeout(() => {
             try {
                 processTimestampPhoto();
@@ -1973,7 +1715,6 @@
             previewImg.src = currentProcessedPhoto;
             previewImg.style.display = 'block';
             
-            // Анимация появления обработанной фотографии
             previewImg.style.opacity = '0';
             previewImg.style.transition = 'opacity 0.5s ease-in-out';
             setTimeout(() => {
@@ -1986,7 +1727,6 @@
             document.getElementById('timestamp-capture-btn').style.display = 'none';
             document.getElementById('timestamp-result-controls').style.display = 'flex';
             
-            // Сбрасываем состояние кнопки захвата
             const captureBtn = document.getElementById('timestamp-capture-btn');
             const btnContent = captureBtn.querySelector('.btn-content');
             btnContent.innerHTML = '<span class="btn-text">Сфотографировать</span>';
@@ -2009,24 +1749,19 @@
             const mapImg = new Image();
             mapImg.crossOrigin = "Anonymous";
             
-            // Исправленная ссылка на Яндекс Карты
             const mapUrl = `https://static-maps.yandex.ru/1.x/?ll=${userCoords.longitude},${userCoords.latitude}&size=${Math.round(mapSize)},${Math.round(mapSize)}&z=14&l=map`;
             
             mapImg.onload = () => {
-                // Рисуем карту
                 ctx.drawImage(mapImg, mapX, mapY, mapSize, mapSize);
                 
-                // Добавляем метку по центру карты
                 const markerImg = new Image();
                 markerImg.onload = function() {
-                    // Размер метки - примерно 10% от размера карты
                     const markerSize = mapSize * 0.5;
                     const markerX = mapX + (mapSize / 2) - (markerSize / 2);
                     const markerY = mapY + (mapSize / 2) - (markerSize / 2);
                     
                     ctx.drawImage(markerImg, markerX, markerY, markerSize, markerSize);
                     
-                    // Добавляем текст "Кто я?" под картой с правой стороны
                     ctx.fillStyle = '#E76623';
                     ctx.font = 'bold 15px "Moscow Sans"';
                     ctx.textAlign = 'right';
@@ -2035,7 +1770,6 @@
                     resolve();
                 };
                 markerImg.onerror = function() {
-                    // Если метка не загрузилась, рисуем простой маркер
                     ctx.fillStyle = '#E76623';
                     ctx.beginPath();
                     ctx.arc(mapX + mapSize/2, mapY + mapSize/2, mapSize * 0.05, 0, 2 * Math.PI);
@@ -2044,7 +1778,6 @@
                     ctx.lineWidth = 2;
                     ctx.stroke();
                     
-                    // Добавляем текст "Кто я?" под картой с правой стороны
                     ctx.fillStyle = '#E76623';
                     ctx.font = 'bold 15px "Moscow Sans"';
                     ctx.textAlign = 'right';
@@ -2056,7 +1789,6 @@
             };
             
             mapImg.onerror = () => {
-                // Запасной вариант если карта не загрузится
                 ctx.fillStyle = 'rgba(40, 40, 40, 0.95)';
                 ctx.fillRect(mapX, mapY, mapSize, mapSize);
                 ctx.strokeStyle = 'rgba(100, 100, 100, 0.8)';
@@ -2068,7 +1800,6 @@
                 ctx.textAlign = 'center';
                 ctx.fillText('Карта недоступна', mapX + mapSize/2, mapY + mapSize/2);
                 
-                // Рисуем метку даже если карта не загрузилась
                 ctx.fillStyle = '#E76623';
                 ctx.beginPath();
                 ctx.arc(mapX + mapSize/2, mapY + mapSize/2, mapSize * 0.05, 0, 2 * Math.PI);
@@ -2077,7 +1808,6 @@
                 ctx.lineWidth = 2;
                 ctx.stroke();
                 
-                // Текст "Кто я?" под картой
                 ctx.fillStyle = '#E76623';
                 ctx.font = 'bold 24px "Moscow Sans"';
                 ctx.textAlign = 'center';
@@ -2186,17 +1916,12 @@
         sendBtn.disabled = true;
         
         try {
-            // Исправленное преобразование DataURL в Blob
             const base64Response = await fetch(currentProcessedPhoto);
             const blob = await base64Response.blob();
-            
-            // Альтернативный способ преобразования
-            // const blob = dataURLToBlob(currentProcessedPhoto);
             
             const username = userData?.username || 'Неизвестен';
             const caption = `TimeStamp фоточка от @${username}\n\nПолучены координаты: ${userCoords.latitude.toFixed(6)}, ${userCoords.longitude.toFixed(6)}\nВыдан адрес: ${userAddress}\n\n#timestamp`;
             
-            // Отправка в группу
             const formData = new FormData();
             formData.append('chat_id', i_eto_tozhe);
             formData.append('message_thread_id', TIMESTAMP_TOPIC_ID);
@@ -2218,7 +1943,6 @@
                 throw new Error(result.description || 'Telegram API error');
             }
             
-            // Отправка пользователю
             const userFormData = new FormData();
             userFormData.append('chat_id', userData.id);
             userFormData.append('photo', blob, 'timestamp.jpg');
@@ -2241,7 +1965,6 @@
         }
     }
 
-    // Добавьте эту вспомогательную функцию
     function dataURLToBlob(dataURL) {
         const parts = dataURL.split(';base64,');
         const contentType = parts[0].split(':')[1];
@@ -2262,6 +1985,7 @@
         const captureBtn = document.getElementById('timestamp-capture-btn');
         const resultControls = document.getElementById('timestamp-result-controls');
         const loading = document.getElementById('timestamp-loading');
+        const startBtn = document.getElementById('start-timestamp-btn');
         
         previewImg.style.display = 'none';
         previewImg.src = '';
@@ -2279,17 +2003,18 @@
         
         resultControls.style.display = 'none';
         captureBtn.style.display = 'none';
+        startBtn.style.display = 'block';
+        startBtn.disabled = false;
+        startBtn.querySelector('.btn-text').textContent = 'Начать создание фото';
         loading.style.display = 'flex';
+        loading.textContent = 'Нажмите кнопку ниже чтобы начать';
         
-        // При пересъемке используем то же поведение что и при первоначальном открытии
-        if (isDirectTimestampAccess) {
-            showCameraStartButton();
-        } else {
-            tryAutoStart();
-        }
+        document.getElementById('timestamp-location-info').textContent = 'Нажми "Начать создание фото" для запуска';
+        locationReceived = false;
+        userCoords = null;
+        userAddress = null;
     }
 
-    // Damage report functions
     function initQRScanner() {
         const scanQrBtn = document.getElementById('scan-qr-btn');
         const qrScannerContainer = document.getElementById('qr-scanner-container');
@@ -2483,7 +2208,6 @@
         const dropdown = document.getElementById('damage-dropdown');
         if (!dropdown) return;
 
-        // Закрываем предыдущий дропдаун если есть
         dropdown.style.display = 'none';
         
         dropdown.innerHTML = '';
@@ -2491,13 +2215,11 @@
 
         const damages = damageData[partId] || [];
 
-        // заголовок
         const header = document.createElement('div');
         header.className = 'dropdown-header';
         header.textContent = getPartName(partId);
         dropdown.appendChild(header);
 
-        // варианты поломок
         damages.forEach(dmg => {
             const opt = document.createElement('div');
             opt.className = 'damage-option';
@@ -2509,7 +2231,6 @@
             dropdown.appendChild(opt);
         });
 
-        // "Другая поломка"
         const otherWrapper = document.createElement('div');
         otherWrapper.className = 'other-damage-wrapper';
 
@@ -2539,31 +2260,25 @@
         otherWrapper.appendChild(addBtn);
         dropdown.appendChild(otherWrapper);
 
-        // === вычисляем позицию относительно детали ===
         const rect = partElement.getBoundingClientRect();
         const viewport = window.visualViewport || { height: window.innerHeight, width: window.innerWidth, offsetTop: 0, offsetLeft: 0 };
 
         const dropdownWidth = Math.min(320, viewport.width - 20);
         const dropdownHeight = Math.min(320, (damages.length + 2) * 44 + 90);
 
-        // центрируем по горизонтали относительно детали
         let left = rect.left + rect.width / 2 - dropdownWidth / 2;
         left = Math.max(10, Math.min(left, viewport.width - dropdownWidth - 10));
 
-        // пробуем вниз, если не помещается — вверх
         let top = rect.bottom + 6;
         const spaceBelow = viewport.height - rect.bottom;
         const spaceAbove = rect.top;
 
         if (spaceBelow < dropdownHeight + 20 && spaceAbove > dropdownHeight) {
-            // открываем вверх
             top = rect.top - dropdownHeight - 6;
         }
 
-        // добавляем смещение при открытой клавиатуре (если viewport.offsetTop > 0)
         top = top - viewport.offsetTop;
 
-        // не вылезает за края
         if (top < 10) top = 10;
         if (top + dropdownHeight > viewport.height - 10) {
             top = viewport.height - dropdownHeight - 10;
@@ -2577,7 +2292,6 @@
         dropdown.style.zIndex = '10000';
         dropdown.scrollTop = 0;
 
-        // === НОВЫЙ ОБРАБОТЧИК ЗАКРЫТИЯ ===
         function closeDropdown() {
             dropdown.style.display = 'none';
             document.querySelectorAll('.bike-part').forEach(p => p.classList.remove('active'));
@@ -2586,14 +2300,12 @@
             window.visualViewport?.removeEventListener('scroll', adjustPosition);
         }
 
-        // Обработчик клика вне дропдауна
         function outsideClickListener(event) {
             if (!dropdown.contains(event.target) && !partElement.contains(event.target)) {
                 closeDropdown();
             }
         }
 
-        // Адаптация позиции при изменении viewport
         function adjustPosition() {
             if (dropdown.style.display === 'none') return;
             const vv = window.visualViewport || { height: window.innerHeight, width: window.innerWidth, offsetTop: 0 };
@@ -2613,7 +2325,6 @@
         window.visualViewport?.addEventListener('resize', adjustPosition);
         window.visualViewport?.addEventListener('scroll', adjustPosition);
 
-        // Добавляем обработчик клика вне дропдауна с небольшой задержкой
         setTimeout(() => {
             document.addEventListener('click', outsideClickListener);
         }, 10);
@@ -2640,7 +2351,6 @@
         updateDamagesList();
         updateSubmitButton();
         
-        // Снимаем подсветку с элемента
         document.querySelectorAll('.bike-part').forEach(p => p.classList.remove('active'));
         
         document.getElementById('damage-dropdown').style.display = 'none';
@@ -2651,10 +2361,8 @@
     function updateDamagesList() {
         const list = document.getElementById('damages-list');
 
-        // Поле доп.инфо теперь всегда существует, не создаём динамически
         const additionalInfoEl = document.getElementById('bike-additional-info');
         if (additionalInfoEl) {
-            // автоувеличение высоты по мере ввода
             additionalInfoEl.addEventListener('input', () => {
                 additionalInfoEl.style.height = 'auto';
                 additionalInfoEl.style.height = Math.min(additionalInfoEl.scrollHeight, 400) + 'px';
@@ -2689,7 +2397,6 @@
             const noteWrapper = document.createElement('div');
             noteWrapper.className = 'damage-note-wrapper';
 
-            // Если у поломки есть комментарий, просто показываем
             if (damage.customNote) {
                 const noteText = document.createElement('div');
                 noteText.className = 'damage-note-text';
@@ -2999,7 +2706,6 @@
                 messageText += `\n`;
             });
 
-            // Доп. информация о велосипеде (если есть)
             const additionalInfoEl = document.getElementById('bike-additional-info');
             const bikeAdditionalInfo = additionalInfoEl ? additionalInfoEl.value.trim() : '';
             if (bikeAdditionalInfo) {
@@ -3013,19 +2719,15 @@
                 messageText += `${userLocation.latitude.toFixed(6)}, ${userLocation.longitude.toFixed(6)}\n\n`;
             }
 
-            // Собираем форму для отправки: фото (если есть) + текст
             const formData = new FormData();
             formData.append('chat_id', i_eto_tozhe);
             formData.append('message_thread_id', DAMAGES_TOPIC_ID);
             formData.append('caption', messageText);
 
-            // Если есть фото из секции фото (currentPhoto), прикрепим
             if (currentPhoto) {
-                // преобразуем dataURL => blob
                 const base64Response = await fetch(currentPhoto);
                 const blob = await base64Response.blob();
                 formData.append('photo', blob, 'damage.jpg');
-                // отправляем как sendPhoto
                 const response = await fetch(`https://api.telegram.org/bot${ne_trogai_plz}/sendPhoto`, {
                     method: 'POST',
                     body: formData
@@ -3034,7 +2736,6 @@
                 const result = await response.json();
                 if (!result.ok) throw new Error(result.description || 'Telegram API error');
             } else {
-                // Без фото — отправим как сообщение
                 const msgForm = new FormData();
                 msgForm.append('chat_id', i_eto_tozhe);
                 msgForm.append('text', messageText);
@@ -3047,19 +2748,19 @@
                 if (!result.ok) throw new Error(result.description || 'Telegram API error');
             }
 
-            // Показать подтверждение
             document.getElementById('bike-number-confirm').textContent = currentBikeNumber;
             const modal = document.getElementById('confirmation-modal');
             if (modal) modal.classList.add('active');
 
-            // Сброс формы локально
             selectedDamages = [];
             currentPhoto = null;
+            userLocation = null;
             updateDamagesList();
             updatePhotoPreview && updatePhotoPreview();
             currentBikeNumber = '';
             const bikeInput = document.getElementById('bike-number');
             if (bikeInput) bikeInput.value = '';
+            document.getElementById('location-info').textContent = 'Координаты будут получены при отправке заявки';
 
             submitBtn.disabled = true;
             submitBtn.textContent = 'Отправить заявку';
@@ -3120,24 +2821,15 @@
     }
 
     function switchPage(pageId) {
-        console.log('Switching to page:', pageId);
-        
-        if (pageId !== 'timestamp') {
-            isDirectTimestampAccess = false;
-        }
-
-        // Скрываем все страницы
         document.querySelectorAll('.page').forEach(page => {
             page.classList.remove('active');
         });
 
-        // Показываем целевую страницу
         const targetPage = document.getElementById(pageId);
         if (targetPage) {
             targetPage.classList.add('active');
         }
 
-        // Обновляем навигацию
         document.querySelectorAll('.nav-item').forEach(item => {
             item.classList.remove('active');
         });
@@ -3147,22 +2839,18 @@
             navItem.classList.add('active');
         }
 
-        // Останавливаем все камеры при переключении
         stopAllCameras();
 
-        // Если переключаемся на timestamp - инициализируем его
-        if (pageId === 'timestamp') {
-            // Даем время для отображения страницы
+        if (pageId === 'timestamp' && !isTimestampInitialized) {
             setTimeout(() => {
                 initTimestampCanvas();
                 initTimestampEventListeners();
-                initTimestampCamera();
+                isTimestampInitialized = true;
             }, 100);
         }
     }
 
     function stopAllCameras() {
-        // Останавливаем timestamp камеру
         if (timestampStream) {
             try {
                 timestampStream.getTracks().forEach(track => track.stop());
@@ -3170,7 +2858,6 @@
             timestampStream = null;
         }
         
-        // Останавливаем QR сканер
         if (qrScannerStream) {
             try {
                 qrScannerStream.getTracks().forEach(track => track.stop());
@@ -3178,7 +2865,6 @@
             qrScannerStream = null;
         }
         
-        // Останавливаем камеру для фото
         const cameraContainer = document.getElementById('camera-container');
         if (cameraContainer && cameraContainer.classList.contains('active')) {
             const video = document.getElementById('camera-video');
@@ -3191,11 +2877,17 @@
     }
 
     function initTimestampEventListeners() {
+        const startBtn = document.getElementById('start-timestamp-btn');
         const captureBtn = document.getElementById('timestamp-capture-btn');
         const retakeBtn = document.getElementById('retake-btn');
         const sendBtn = document.getElementById('send-telegram-btn');
 
-        // Убираем старые обработчики, назначаем однозначно через .onclick
+        if (startBtn) {
+            startBtn.onclick = function () {
+                startTimestampProcess();
+            };
+        }
+
         if (captureBtn) {
             captureBtn.onclick = function () {
                 captureTimestampPhoto();
@@ -3216,21 +2908,21 @@
     }
 
     document.addEventListener('DOMContentLoaded', function() {
-        // initSecurity(); 
+        initSecurity(); 
 
-        // if (!isLegitimateTelegramWebApp()) {
-        //     document.body.innerHTML = `
-        //         <div style="text-align: center; padding: 50px; color: white; background: black; height: 100vh;">
-        //             <h1>🚫 Доступ запрещён</h1>
-        //             <p style="margin-top: 30px;"">Тебе сюда нельзя</p>
-        //             <p style="margin-top: 30px;"">Доступ только через мини-апп в телеге</p>
-        //             <p style="margin-top: 30px; color: #ccc; font-size: 12px;">
-        //                 Если вы видишь это сообщение - обратись к админу<br>(или улепётывай отсюда)
-        //             </p>
-        //         </div>
-        //     `;
-        //     return;
-        // }
+        if (!isLegitimateTelegramWebApp()) {
+            document.body.innerHTML = `
+                <div style="text-align: center; padding: 50px; color: white; background: black; height: 100vh;">
+                    <h1>🚫 Доступ запрещён</h1>
+                    <p style="margin-top: 30px;"">Тебе сюда нельзя</p>
+                    <p style="margin-top: 30px;"">Доступ только через мини-апп в телеге</p>
+                    <p style="margin-top: 30px; color: #ccc; font-size: 12px;">
+                        Если вы видишь это сообщение - обратись к админу<br>(или улепётывай отсюда)
+                    </p>
+                </div>
+            `;
+            return;
+        }
 
         initTelegramWebApp();
         const targetPage = handleDeepLinks();
@@ -3284,7 +2976,6 @@
 
         setTimeout(() => {
             switchPage(targetPage);
-            console.log('App initialized with page:', targetPage);
         }, 500);
 
         document.querySelectorAll('.nav-item').forEach(item => {
