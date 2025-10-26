@@ -1246,7 +1246,7 @@
                 <div class="timestamp-preview-container">
                     <div class="timestamp-preview" id="timestamp-preview">
                         <div class="timestamp-loading" id="timestamp-loading">
-                            Нажмите кнопку ниже чтобы начать
+                            Нажми кнопку ниже чтобы начать
                         </div>
                         <video id="timestamp-video" style="display: none;" autoplay playsinline></video>
                         <canvas id="timestamp-canvas" style="display: none;"></canvas>
@@ -1611,7 +1611,7 @@
             const captureBtn = document.getElementById('timestamp-capture-btn');
             if (captureBtn.style.display !== 'none') {
                 captureBtn.disabled = true;
-                captureBtn.querySelector('.btn-text').textContent = 'Нет геопозиции';
+                captureBtn.querySelector('.btn-text').textContent = 'Без гео никак :(';
             }
             
             document.getElementById('timestamp-location-info').innerHTML = `
@@ -1666,7 +1666,7 @@
         }
 
         if (video.videoWidth === 0 || video.videoHeight === 0) {
-            showNotification('Камера не готова. Подождите...');
+            showNotification('Камера не готова. Подожди...');
             return;
         }
         
@@ -2890,12 +2890,12 @@
             startBtn.style.display = 'none';
             captureBtn.style.display = 'block';
             captureBtn.disabled = true;
-            captureBtn.querySelector('.btn-text').textContent = 'Нет геопозиции';
+            captureBtn.querySelector('.btn-text').textContent = 'Без гео никак :(';
             resultControls.style.display = 'none';
         } else {
             startBtn.style.display = 'block';
             loading.style.display = 'flex';
-            loading.textContent = 'Нажмите кнопку ниже чтобы начать';
+            loading.textContent = 'Нажми кнопку ниже чтобы начать';
             video.style.display = 'none';
             captureBtn.style.display = 'none';
             resultControls.style.display = 'none';
