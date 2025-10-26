@@ -1499,26 +1499,34 @@
 
     async function startTimestampProcess() {
         const startBtn = document.getElementById('start-timestamp-btn');
+        const captureBtn = document.getElementById('timestamp-capture-btn');
         const loading = document.getElementById('timestamp-loading');
+        const video = document.getElementById('timestamp-video');
         
-        startBtn.disabled = true;
-        startBtn.querySelector('.btn-text').textContent = 'Запускаем камеру...';
+        startBtn.style.display = 'none';
+        captureBtn.style.display = 'none';
+        loading.style.display = 'flex';
         
         try {
-            startBtn.querySelector('.btn-text').textContent = 'Запрашиваем камеру...';
             loading.textContent = 'Запрашиваем камеру...';
             await startTimestampCamera();
 
-            startBtn.querySelector('.btn-text').textContent = 'Запрашиваем геопозицию...';
             loading.textContent = 'Запрашиваем геопозицию...';
             await getTimestampLocation();
             
-            startBtn.style.display = 'none';
+            loading.style.display = 'none';
+            video.style.display = 'block';
+            captureBtn.style.display = 'block';
+            captureBtn.disabled = false;
+            captureBtn.querySelector('.btn-text').textContent = 'Сфотографировать';
             
         } catch (error) {
             console.error('Timestamp process error:', error);
-            retakeTimestampPhoto();
             loading.textContent = 'Ошибка запуска. Нажмите "Начать фотосессию" еще раз.';
+            startBtn.style.display = 'block';
+            startBtn.disabled = false;
+            startBtn.querySelector('.btn-text').textContent = 'Начать фотосессию';
+            captureBtn.style.display = 'none';
         }
     }
 
@@ -1972,32 +1980,29 @@
         const captureBtn = document.getElementById('timestamp-capture-btn');
         const resultControls = document.getElementById('timestamp-result-controls');
         
-        if (currentProcessedPhoto) {
-            previewImg.src = currentProcessedPhoto;
-            previewImg.style.display = 'block';
-            video.style.display = 'none';
-            loading.style.display = 'none';
-            startBtn.style.display = 'none';
-            captureBtn.style.display = 'none';
-            resultControls.style.display = 'flex';
-        } 
-        else if (timestampStream) {
-            startBtn.style.display = 'none';
-            captureBtn.style.display = 'block';
-            video.style.display = 'block';
-            loading.style.display = 'none';
+        if (timestampStream) {
+            timestampStream.getTracks().forEach(track => track.stop());
+            timestampStream = null;
         }
-        else {
-            startBtn.style.display = 'block';
-            startBtn.disabled = false;
-            startBtn.querySelector('.btn-text').textContent = 'Начать фотосессию';
-            loading.style.display = 'flex';
-            loading.textContent = 'Нажмите кнопку ниже чтобы начать';
-            video.style.display = 'none';
-            captureBtn.style.display = 'none';
-            resultControls.style.display = 'none';
-            previewImg.style.display = 'none';
-        }
+        
+        currentProcessedPhoto = null;
+        userCoords = null;
+        userAddress = null;
+        locationReceived = false;
+        
+        startBtn.style.display = 'block';
+        startBtn.disabled = false;
+        startBtn.querySelector('.btn-text').textContent = 'Начать фотосессию';
+        
+        loading.style.display = 'flex';
+        loading.textContent = 'Нажмите кнопку ниже чтобы начать';
+        
+        video.style.display = 'none';
+        captureBtn.style.display = 'none';
+        resultControls.style.display = 'none';
+        previewImg.style.display = 'none';
+        
+        document.getElementById('timestamp-location-info').textContent = 'Нажми "Начать фотосессию" для запуска';
     }
 
     function initQRScanner() {
@@ -2833,7 +2838,7 @@
             setTimeout(() => {
                 initTimestampCanvas();
                 initTimestampEventListeners();
-                restoreTimestampState();
+                retakeTimestampPhoto();
                 isTimestampInitialized = true;
             }, 100);
         }
@@ -2897,21 +2902,21 @@
     }
 
     document.addEventListener('DOMContentLoaded', function() {
-        initSecurity(); 
+        // initSecurity(); 
 
-        if (!isLegitimateTelegramWebApp()) {
-            document.body.innerHTML = `
-                <div style="text-align: center; padding: 50px; color: white; background: black; height: 100vh;">
-                    <h1>🚫 Доступ запрещён</h1>
-                    <p style="margin-top: 30px;"">Тебе сюда нельзя</p>
-                    <p style="margin-top: 30px;"">Доступ только через мини-апп в телеге</p>
-                    <p style="margin-top: 30px; color: #ccc; font-size: 12px;">
-                        Если вы видишь это сообщение - обратись к админу<br>(или улепётывай отсюда)
-                    </p>
-                </div>
-            `;
-            return;
-        }
+        // if (!isLegitimateTelegramWebApp()) {
+        //     document.body.innerHTML = `
+        //         <div style="text-align: center; padding: 50px; color: white; background: black; height: 100vh;">
+        //             <h1>🚫 Доступ запрещён</h1>
+        //             <p style="margin-top: 30px;"">Тебе сюда нельзя</p>
+        //             <p style="margin-top: 30px;"">Доступ только через мини-апп в телеге</p>
+        //             <p style="margin-top: 30px; color: #ccc; font-size: 12px;">
+        //                 Если вы видишь это сообщение - обратись к админу<br>(или улепётывай отсюда)
+        //             </p>
+        //         </div>
+        //     `;
+        //     return;
+        // }
 
         initTelegramWebApp();
         const targetPage = handleDeepLinks();
