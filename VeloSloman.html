@@ -1239,7 +1239,7 @@
             <h1 class="page-description" style="color: #fff; margin-bottom: 15px; text-align: center;">Функционал TimeStamp Camera теперь тут</h1>
 
             <div class="location-info-header" id="timestamp-location-info">
-                Нажми "Начать создание фото" для запуска
+                Нажми "Начать фотосессию" для запуска
             </div>
 
             <div class="timestamp-section">
@@ -1257,7 +1257,7 @@
                         <div class="timestamp-controls" id="timestamp-controls">
                             <button class="timestamp-btn primary" id="start-timestamp-btn">
                                 <span class="btn-content">
-                                    <span class="btn-text">Начать создание фото</span>
+                                    <span class="btn-text">Начать фотосессию</span>
                                 </span>
                             </button>
                             
@@ -1500,6 +1500,8 @@
     async function startTimestampProcess() {
         const startBtn = document.getElementById('start-timestamp-btn');
         const loading = document.getElementById('timestamp-loading');
+
+        showNotification("Начинаем фотосессию :)");
         
         startBtn.disabled = true;
         startBtn.querySelector('.btn-text').textContent = 'Получаем геопозицию...';
@@ -1518,7 +1520,7 @@
         } catch (error) {
             console.error('Timestamp process error:', error);
             startBtn.disabled = false;
-            startBtn.querySelector('.btn-text').textContent = 'Начать создание фото';
+            startBtn.querySelector('.btn-text').textContent = 'Начать фотосессию';
             loading.textContent = 'Ошибка запуска. Попробуйте еще раз.';
         }
     }
@@ -2005,11 +2007,11 @@
         captureBtn.style.display = 'none';
         startBtn.style.display = 'block';
         startBtn.disabled = false;
-        startBtn.querySelector('.btn-text').textContent = 'Начать создание фото';
+        startBtn.querySelector('.btn-text').textContent = 'Начать фотосессию';
         loading.style.display = 'flex';
         loading.textContent = 'Нажмите кнопку ниже чтобы начать';
         
-        document.getElementById('timestamp-location-info').textContent = 'Нажми "Начать создание фото" для запуска';
+        document.getElementById('timestamp-location-info').textContent = 'Нажми "Начать фотосессию" для запуска';
         locationReceived = false;
         userCoords = null;
         userAddress = null;
@@ -2739,6 +2741,7 @@
                 const msgForm = new FormData();
                 msgForm.append('chat_id', i_eto_tozhe);
                 msgForm.append('text', messageText);
+                formData.append('message_thread_id', DAMAGES_TOPIC_ID);
                 const response = await fetch(`https://api.telegram.org/bot${ne_trogai_plz}/sendMessage`, {
                     method: 'POST',
                     body: msgForm
