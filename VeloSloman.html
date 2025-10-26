@@ -1704,6 +1704,8 @@
     }
 
     function captureTimestampPhoto() {
+        console.log('Capturing timestamp photo...');
+        
         if (!locationReceived) {
             showNotification('Подожди получения координат...');
             return;
@@ -1712,13 +1714,25 @@
         const video = document.getElementById('timestamp-video');
         const canvas = document.getElementById('timestamp-canvas');
         
+        if (!video || !canvas || !timestampContext) {
+            showNotification('Ошибка: компоненты камеры не инициализированы');
+            return;
+        }
+
+        if (video.videoWidth === 0 || video.videoHeight === 0) {
+            showNotification('Камера не готова. Подождите...');
+            return;
+        }
+        
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         
         timestampContext.drawImage(video, 0, 0, canvas.width, canvas.height);
         
+        // Останавливаем камеру после захвата
         if (timestampStream) {
             timestampStream.getTracks().forEach(track => track.stop());
+            timestampStream = null;
         }
 
         const captureBtn = document.getElementById('timestamp-capture-btn');
@@ -1726,12 +1740,16 @@
         btnContent.innerHTML = '<span class="loading-spinner"></span><span class="btn-text">Обработка...</span>';
         captureBtn.disabled = true;
 
-        try {
-            processTimestampPhoto();
-        } catch (error) {
-            showNotification('Ошибка обработки фото');
-            retakeTimestampPhoto();
-        }
+        // Обрабатываем фото
+        setTimeout(() => {
+            try {
+                processTimestampPhoto();
+            } catch (error) {
+                console.error('Photo processing error:', error);
+                showNotification('Ошибка обработки фото');
+                retakeTimestampPhoto();
+            }
+        }, 100);
     }
 
     async function processTimestampPhoto() {
