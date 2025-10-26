@@ -1505,13 +1505,13 @@
         startBtn.querySelector('.btn-text').textContent = 'Запускаем камеру...';
         
         try {
-            startBtn.querySelector('.btn-text').textContent = 'Запрашиваем геопозицию...';
-            loading.textContent = 'Запрашиваем геопозицию...';
-            await getTimestampLocation();
-            
             startBtn.querySelector('.btn-text').textContent = 'Запрашиваем камеру...';
             loading.textContent = 'Запрашиваем камеру...';
             await startTimestampCamera();
+
+            startBtn.querySelector('.btn-text').textContent = 'Запрашиваем геопозицию...';
+            loading.textContent = 'Запрашиваем геопозицию...';
+            await getTimestampLocation();
             
             startBtn.style.display = 'none';
             
