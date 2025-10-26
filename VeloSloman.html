@@ -2218,8 +2218,11 @@
         const dropdown = document.getElementById('damage-dropdown');
         if (!dropdown) return;
 
+        // Закрываем предыдущий дропдаун если есть
+        dropdown.style.display = 'none';
+        
         dropdown.innerHTML = '';
-        dropdown.style.position = 'fixed'; // фиксированное позиционирование — ключ к стабильности
+        dropdown.style.position = 'fixed';
 
         const damages = damageData[partId] || [];
 
@@ -2309,8 +2312,24 @@
         dropdown.style.zIndex = '10000';
         dropdown.scrollTop = 0;
 
-        // === адаптация при изменении viewport (например, клавиатура) ===
-        const adjustPosition = () => {
+        // === НОВЫЙ ОБРАБОТЧИК ЗАКРЫТИЯ ===
+        function closeDropdown() {
+            dropdown.style.display = 'none';
+            document.querySelectorAll('.bike-part').forEach(p => p.classList.remove('active'));
+            document.removeEventListener('click', outsideClickListener);
+            window.visualViewport?.removeEventListener('resize', adjustPosition);
+            window.visualViewport?.removeEventListener('scroll', adjustPosition);
+        }
+
+        // Обработчик клика вне дропдауна
+        function outsideClickListener(event) {
+            if (!dropdown.contains(event.target) && !partElement.contains(event.target)) {
+                closeDropdown();
+            }
+        }
+
+        // Адаптация позиции при изменении viewport
+        function adjustPosition() {
             if (dropdown.style.display === 'none') return;
             const vv = window.visualViewport || { height: window.innerHeight, width: window.innerWidth, offsetTop: 0 };
             let newTop = rect.bottom + 6 - vv.offsetTop;
@@ -2324,35 +2343,15 @@
                 newTop = vv.height - dropdown.offsetHeight - 10;
             }
             dropdown.style.top = `${newTop}px`;
-        };
+        }
 
         window.visualViewport?.addEventListener('resize', adjustPosition);
         window.visualViewport?.addEventListener('scroll', adjustPosition);
 
-        // === закрытие при клике вне ===
+        // Добавляем обработчик клика вне дропдауна с небольшой задержкой
         setTimeout(() => {
-            document.addEventListener('click', function handler(e) {
-                if (!dropdown.contains(e.target) && e.target !== partElement) {
-                    closeDropdown();
-                    document.removeEventListener('click', handler);
-                }
-            });
+            document.addEventListener('click', outsideClickListener);
         }, 10);
-
-        function closeDropdown() {
-            dropdown.style.display = 'none';
-            window.visualViewport?.removeEventListener('resize', adjustPosition);
-            window.visualViewport?.removeEventListener('scroll', adjustPosition);
-        }
-    }
-
-    function closeDropdownOnClickOutside(event) {
-        const dropdown = document.getElementById('damage-dropdown');
-        if (!dropdown.contains(event.target) && !event.target.closest('.bike-part')) {
-            dropdown.style.display = 'none';
-            document.querySelectorAll('.bike-part').forEach(p => p.classList.remove('active'));
-            document.removeEventListener('click', closeDropdownOnClickOutside);
-        }
     }
 
     function selectDamage(damage, partId) {
@@ -2376,9 +2375,10 @@
         updateDamagesList();
         updateSubmitButton();
         
-        document.getElementById('damage-dropdown').style.display = 'none';
+        // Снимаем подсветку с элемента
         document.querySelectorAll('.bike-part').forEach(p => p.classList.remove('active'));
-        document.removeEventListener('click', closeDropdownOnClickOutside);
+        
+        document.getElementById('damage-dropdown').style.display = 'none';
         
         showNotification('Поломка добавлена');
     }
@@ -2795,7 +2795,7 @@
             const bikeInput = document.getElementById('bike-number');
             if (bikeInput) bikeInput.value = '';
 
-            submitBtn.disabled = false;
+            submitBtn.disabled = true;
             submitBtn.textContent = 'Отправить заявку';
             showNotification('Заявка отправлена!');
             if (additionalInfoEl) additionalInfoEl.value = '';
@@ -2878,6 +2878,8 @@
         const resultControls = document.getElementById('timestamp-result-controls');
         const previewImg = document.getElementById('processed-photo-preview');
         const canvasEl = document.getElementById('timestamp-canvas');
+        const video = document.getElementById('timestamp-video');
+        const loading = document.getElementById('timestamp-loading');
 
         if (captureBtn) {
             const btnContent = captureBtn.querySelector('.btn-content');
@@ -2906,22 +2908,37 @@
                 canvasEl.getContext('2d')?.clearRect(0,0,canvasEl.width, canvasEl.height);
             } catch(e){}
         }
+        if (video) {
+            video.style.display = 'none';
+        }
+        if (loading) {
+            loading.style.display = 'flex';
+            loading.textContent = 'Запускаем камеру...';
+        }
+        
         // очищаем временные данные
         currentProcessedPhoto = null;
 
         if (pageId === 'timestamp') {
-            // Ждем пока страница полностью отрендерится
+            // Останавливаем предыдущий поток если есть
+            if (timestampStream) {
+                try { 
+                    timestampStream.getTracks().forEach(track => track.stop()); 
+                } catch(e) {} 
+                timestampStream = null;
+            }
+            
+            // Даем время для рендера DOM, затем инициализируем камеру
             setTimeout(() => {
                 initTimestampEventListeners();
-                // Даем дополнительное время для рендера DOM, затем инициализируем камеру
-                setTimeout(() => {
-                    initTimestampCamera();
-                }, 150);
-            }, 200);
+                initTimestampCamera();
+            }, 300);
         } else {
             // При уходе — останавливаем стрим timestamp
             if (timestampStream) {
-                try { timestampStream.getTracks().forEach(track => track.stop()); } catch(e) {}
+                try { 
+                    timestampStream.getTracks().forEach(track => track.stop()); 
+                } catch(e) {} 
                 timestampStream = null;
             }
         }
