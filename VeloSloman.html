@@ -1759,47 +1759,51 @@
             throw new Error('Нет данных для обработки');
         }
 
-        const processedCanvas = document.createElement('canvas');
-        const ctx = processedCanvas.getContext('2d');
-        
-        const targetWidth = originalCanvas.width;
-        const targetHeight = originalCanvas.height;
-        
-        processedCanvas.width = targetWidth;
-        processedCanvas.height = targetHeight;
-        
-        ctx.drawImage(originalCanvas, 0, 0);
+        try {
+            const processedCanvas = document.createElement('canvas');
+            const ctx = processedCanvas.getContext('2d');
+            
+            const targetWidth = originalCanvas.width;
+            const targetHeight = originalCanvas.height;
+            
+            processedCanvas.width = targetWidth;
+            processedCanvas.height = targetHeight;
+            
+            ctx.drawImage(originalCanvas, 0, 0);
 
-        await addLogoToPhoto(ctx, targetWidth, targetHeight);
-        await addMapToPhoto(ctx, targetWidth, targetHeight);
-        addTextToPhoto(ctx, targetWidth, targetHeight);
-        
-        currentProcessedPhoto = processedCanvas.toDataURL('image/jpeg', 1.0);
-        
-        const previewImg = document.getElementById('processed-photo-preview');
-        previewImg.src = currentProcessedPhoto;
-        previewImg.style.display = 'block';
-        
-        // Анимация появления обработанной фотографии
-        previewImg.style.opacity = '0';
-        previewImg.style.transition = 'opacity 0.5s ease-in-out';
-        setTimeout(() => {
-            previewImg.style.opacity = '1';
-        }, 50);
-        
-        document.getElementById('timestamp-video').style.display = 'none';
-        document.getElementById('timestamp-canvas').style.display = 'none';
-        
-        document.getElementById('timestamp-capture-btn').style.display = 'none';
-        document.getElementById('timestamp-result-controls').style.display = 'flex';
-        
-        // Анимация появления кнопок результата
-        const resultControls = document.getElementById('timestamp-result-controls');
-        resultControls.style.opacity = '0';
-        resultControls.style.transition = 'opacity 0.5s ease-in-out';
-        setTimeout(() => {
-            resultControls.style.opacity = '1';
-        }, 100);
+            await addLogoToPhoto(ctx, targetWidth, targetHeight);
+            await addMapToPhoto(ctx, targetWidth, targetHeight);
+            addTextToPhoto(ctx, targetWidth, targetHeight);
+            
+            currentProcessedPhoto = processedCanvas.toDataURL('image/jpeg', 1.0);
+            
+            const previewImg = document.getElementById('processed-photo-preview');
+            previewImg.src = currentProcessedPhoto;
+            previewImg.style.display = 'block';
+            
+            // Анимация появления обработанной фотографии
+            previewImg.style.opacity = '0';
+            previewImg.style.transition = 'opacity 0.5s ease-in-out';
+            setTimeout(() => {
+                previewImg.style.opacity = '1';
+            }, 50);
+            
+            document.getElementById('timestamp-video').style.display = 'none';
+            document.getElementById('timestamp-canvas').style.display = 'none';
+            
+            document.getElementById('timestamp-capture-btn').style.display = 'none';
+            document.getElementById('timestamp-result-controls').style.display = 'flex';
+            
+            // Сбрасываем состояние кнопки захвата
+            const captureBtn = document.getElementById('timestamp-capture-btn');
+            const btnContent = captureBtn.querySelector('.btn-content');
+            btnContent.innerHTML = '<span class="btn-text">Сфотографировать</span>';
+            captureBtn.disabled = false;
+            
+        } catch (error) {
+            console.error('Process photo error:', error);
+            throw error;
+        }
     }
 
     function addMapToPhoto(ctx, width, height) {
