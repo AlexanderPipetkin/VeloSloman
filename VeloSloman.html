@@ -1487,117 +1487,86 @@
     }
 
     async function initTimestampCamera() {
-        // Проверяем что элементы DOM существуют
         const video = document.getElementById('timestamp-video');
-        const loadingElement = document.getElementById('timestamp-loading');
+        const loading = document.getElementById('timestamp-loading');
+        const captureBtn = document.getElementById('timestamp-capture-btn');
+        const previewImg = document.getElementById('processed-photo-preview');
+        const resultControls = document.getElementById('timestamp-result-controls');
+        const canvasEl = document.getElementById('timestamp-canvas');
 
-        if (!video || !loadingElement) {
-            console.error('DOM элементы не найдены, повторяем через 500ms');
-            setTimeout(initTimestampCamera, 500);
-            return;
-        }
+        if (!video) return;
 
-        // Останавливаем предыдущий стрим, если есть
+        // Сброс состояния UI
+        [captureBtn, previewImg, resultControls].forEach(el => {
+            if (!el) return;
+            el.style.display = 'none';
+        });
+        if (canvasEl) canvasEl.style.display = 'none';
+
+        loading.style.display = 'flex';
+        loading.textContent = 'Запускаем камеру...';
+
+        // Останавливаем предыдущий поток
         if (timestampStream) {
-            try { timestampStream.getTracks().forEach(track => track.stop()); } catch(e) {}
+            try { timestampStream.getTracks().forEach(t => t.stop()); } catch {}
             timestampStream = null;
         }
 
-        // Сброс UI перед стартом
-        loadingElement.style.display = 'flex';
-        loadingElement.textContent = 'Запускаем камеру...';
-        const captureBtn = document.getElementById('timestamp-capture-btn');
-        const resultControls = document.getElementById('timestamp-result-controls');
-        const previewImg = document.getElementById('processed-photo-preview');
-        const canvasEl = document.getElementById('timestamp-canvas');
-
-        if (captureBtn) {
-            captureBtn.style.display = 'none';
-            const btnContent = captureBtn.querySelector('.btn-content');
-            if (btnContent) btnContent.innerHTML = '<span class="btn-text">Сфотографировать</span>';
-            captureBtn.disabled = false;
-        }
-        if (resultControls) resultControls.style.display = 'none';
-        if (previewImg) { previewImg.style.display = 'none'; previewImg.src = ''; }
-        if (canvasEl) canvasEl.style.display = 'none';
-
-        locationReceived = false;
-
         try {
-            timestampCanvas = canvasEl;
-            timestampContext = timestampCanvas.getContext && timestampCanvas.getContext('2d', { willReadFrequently: true });
+            video.setAttribute('playsinline', true);
+            video.setAttribute('muted', true);
+            video.muted = true;
+            video.autoplay = true;
 
-            const constraints = {
-                video: {
-                    facingMode: { ideal: 'environment' },
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 }
-                },
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: { ideal: 'environment' } },
                 audio: false
-            };
+            });
 
-            // Запрашиваем камеру
-            timestampStream = await navigator.mediaDevices.getUserMedia(constraints);
+            timestampStream = stream;
+            video.srcObject = stream;
 
-            // Безопасный способ поставить поток в видео и попытаться воспроизвести
-            video.muted = true; // разрешаем автоплей без жеста
-            video.playsInline = true;
-            video.srcObject = timestampStream;
-            video.style.display = 'block';
-
-            // Попытка воспроизведения
-            const tryPlay = () => {
-                return video.play().then(() => {
-                    // Если play успешен — снимаем mute, скрываем лоадер, показываем кнопку
-                    try { video.muted = false; } catch(e) {}
-                    loadingElement.style.display = 'none';
-
-                    if (captureBtn) {
-                        captureBtn.style.display = 'block';
-                        captureBtn.style.opacity = '0';
-                        captureBtn.style.transition = 'opacity 0.5s ease-in-out';
-                        setTimeout(() => { captureBtn.style.opacity = '1'; }, 100);
-                    }
-                    // запрашиваем локацию параллельно
+            // Пробуем воспроизвести "в жесте"
+            requestAnimationFrame(() => {
+                video.play().then(() => {
+                    loading.style.display = 'none';
+                    captureBtn.style.display = 'block';
+                    video.muted = false;
                     getTimestampLocation();
-                }).catch(playError => {
-                    // Если play упал — оставляем кнопку скрытой и показываем кнопку "Попробовать снова"
-                    console.warn('Ошибка play():', playError);
-                    handleCameraError('Не удалось запустить видео. Попробуйте снова.');
+                }).catch(err => {
+                    console.warn('Автозапуск не удался:', err);
+                    showCameraStartButton(video, captureBtn, loading);
                 });
-            };
-
-            video.onloadedmetadata = () => {
-                // добавочный guard: если readyState позволяет — пробуем play
-                setTimeout(() => {
-                    try {
-                        if (video.readyState >= 2) {
-                            tryPlay();
-                        } else {
-                            tryPlay();
-                        }
-                    } catch(e) {
-                        handleCameraError('Ошибка воспроизведения видео');
-                    }
-                }, 50);
-            };
-
-            video.onerror = (e) => {
-                console.error('Ошибка видео:', e);
-                handleCameraError('Ошибка видеоэлемента');
-            };
-
-            // Защита: если за 10s камера не готова — предупредим
-            setTimeout(() => {
-                if (video.readyState < 2 && loadingElement.style.display !== 'none') {
-                    handleCameraError('Камера долго загружается');
-                }
-            }, 10000);
-
-        } catch (error) {
-            console.error('Ошибка доступа к камере:', error);
-            handleCameraError('Не удалось получить доступ к камере');
+            });
+        } catch (err) {
+            console.error('Ошибка камеры:', err);
+            loading.textContent = 'Ошибка доступа к камере';
         }
+    }
+
+    // fallback: кнопка для ручного запуска видео, если autoplay не сработал
+    function showCameraStartButton(video, captureBtn, loading) {
+        loading.innerHTML = `
+            <button id="manual-start" class="main-btn small-btn">
+                Разрешить запуск камеры
+            </button>
+        `;
+        const manualBtn = document.getElementById('manual-start');
+        manualBtn.onclick = () => {
+            manualBtn.disabled = true;
+            manualBtn.textContent = 'Запускаем...';
+            requestAnimationFrame(() => {
+                video.play().then(() => {
+                    loading.style.display = 'none';
+                    captureBtn.style.display = 'block';
+                    video.muted = false;
+                    getTimestampLocation();
+                }).catch(e => {
+                    loading.textContent = 'Не удалось запустить камеру';
+                    console.error(e);
+                });
+            });
+        };
     }
 
     // Улучшаем обработку ошибок камеры
@@ -2247,67 +2216,32 @@
 
     function showDamageDropdown(partId, partElement) {
         const dropdown = document.getElementById('damage-dropdown');
-        const rect = partElement.getBoundingClientRect();
-        const viewport = { width: window.innerWidth, height: window.innerHeight };
+        if (!dropdown) return;
 
-        let left = rect.left;
-        let top = rect.bottom + 5;
-
-        const dropdownWidth = Math.min(320, viewport.width - 40);
-        const dropdownMaxHeight = 250;
-
-        if (left + dropdownWidth > viewport.width - 10) {
-            left = viewport.width - dropdownWidth - 10;
-        }
-        if (left < 10) left = 10;
+        dropdown.innerHTML = '';
+        dropdown.style.position = 'fixed'; // фиксированное позиционирование — ключ к стабильности
 
         const damages = damageData[partId] || [];
-        const estimatedHeight = Math.min(dropdownMaxHeight, (damages.length + 2) * 44 + 80);
-        if (top + estimatedHeight > viewport.height - 10) {
-            top = rect.top - estimatedHeight - 5;
-        }
 
-        dropdown.style.left = left + 'px';
-        dropdown.style.top = top + 'px';
-        dropdown.style.width = dropdownWidth + 'px';
-        dropdown.style.maxHeight = dropdownMaxHeight + 'px';
-        dropdown.style.display = 'block';
-        dropdown.style.zIndex = '1000';
-        dropdown.innerHTML = '';
-
+        // заголовок
         const header = document.createElement('div');
         header.className = 'dropdown-header';
         header.textContent = getPartName(partId);
         dropdown.appendChild(header);
 
-        if (damages.length === 0) {
-            const option = document.createElement('div');
-            option.className = 'damage-option';
-            option.textContent = 'Нет данных о поломках';
-            dropdown.appendChild(option);
-        } else {
-            const existingDamagesForPart = selectedDamages
-                .filter(d => d.part === partId)
-                .map(d => d.description);
-
-            damages.forEach(damage => {
-                const option = document.createElement('div');
-                option.className = 'damage-option';
-                option.textContent = damage;
-                if (existingDamagesForPart.includes(damage)) {
-                    option.classList.add('disabled');
-                } else {
-                    option.addEventListener('click', () => selectDamage(damage, partId));
-                }
-                dropdown.appendChild(option);
+        // варианты поломок
+        damages.forEach(dmg => {
+            const opt = document.createElement('div');
+            opt.className = 'damage-option';
+            opt.textContent = dmg;
+            opt.addEventListener('click', () => {
+                selectDamage(dmg, partId);
+                closeDropdown();
             });
-        }
+            dropdown.appendChild(opt);
+        });
 
-        // ——— "Другая" поломка с текстбоксом и кнопкой ———
-        const separator = document.createElement('div');
-        separator.style.height = '8px';
-        dropdown.appendChild(separator);
-
+        // "Другая поломка"
         const otherWrapper = document.createElement('div');
         otherWrapper.className = 'other-damage-wrapper';
 
@@ -2317,37 +2251,99 @@
         otherInput.className = 'styled-input small-input';
         otherInput.maxLength = 30;
 
-        const otherBtn = document.createElement('button');
-        otherBtn.textContent = 'Добавить';
-        otherBtn.className = 'main-btn small-btn';
-        otherBtn.addEventListener('click', () => {
-            const text = otherInput.value && otherInput.value.trim();
-            if (!text) {
-                showNotification('Введите текст поломки');
-                return;
-            }
+        const addBtn = document.createElement('button');
+        addBtn.textContent = 'Добавить';
+        addBtn.className = 'main-btn small-btn';
+        addBtn.onclick = () => {
+            const text = otherInput.value.trim();
+            if (!text) return showNotification('Введите текст поломки');
             selectedDamages.push({
                 id: Date.now(),
                 part: partId,
                 description: text,
-                custom: true,
-                customNote: ''
+                custom: true
             });
             updateDamagesList();
-            updateSubmitButton();
-            dropdown.style.display = 'none';
-            document.querySelectorAll('.bike-part').forEach(p => p.classList.remove('active'));
-            document.removeEventListener('click', closeDropdownOnClickOutside);
-            showNotification('Поломка добавлена');
-        });
+            closeDropdown();
+        };
 
         otherWrapper.appendChild(otherInput);
-        otherWrapper.appendChild(otherBtn);
+        otherWrapper.appendChild(addBtn);
         dropdown.appendChild(otherWrapper);
 
+        // === вычисляем позицию относительно детали ===
+        const rect = partElement.getBoundingClientRect();
+        const viewport = window.visualViewport || { height: window.innerHeight, width: window.innerWidth, offsetTop: 0, offsetLeft: 0 };
+
+        const dropdownWidth = Math.min(320, viewport.width - 20);
+        const dropdownHeight = Math.min(320, (damages.length + 2) * 44 + 90);
+
+        // центрируем по горизонтали относительно детали
+        let left = rect.left + rect.width / 2 - dropdownWidth / 2;
+        left = Math.max(10, Math.min(left, viewport.width - dropdownWidth - 10));
+
+        // пробуем вниз, если не помещается — вверх
+        let top = rect.bottom + 6;
+        const spaceBelow = viewport.height - rect.bottom;
+        const spaceAbove = rect.top;
+
+        if (spaceBelow < dropdownHeight + 20 && spaceAbove > dropdownHeight) {
+            // открываем вверх
+            top = rect.top - dropdownHeight - 6;
+        }
+
+        // добавляем смещение при открытой клавиатуре (если viewport.offsetTop > 0)
+        top = top - viewport.offsetTop;
+
+        // не вылезает за края
+        if (top < 10) top = 10;
+        if (top + dropdownHeight > viewport.height - 10) {
+            top = viewport.height - dropdownHeight - 10;
+        }
+
+        dropdown.style.left = `${left}px`;
+        dropdown.style.top = `${top}px`;
+        dropdown.style.width = `${dropdownWidth}px`;
+        dropdown.style.maxHeight = `${dropdownHeight}px`;
+        dropdown.style.display = 'block';
+        dropdown.style.zIndex = '10000';
+        dropdown.scrollTop = 0;
+
+        // === адаптация при изменении viewport (например, клавиатура) ===
+        const adjustPosition = () => {
+            if (dropdown.style.display === 'none') return;
+            const vv = window.visualViewport || { height: window.innerHeight, width: window.innerWidth, offsetTop: 0 };
+            let newTop = rect.bottom + 6 - vv.offsetTop;
+
+            if (vv.height - rect.bottom < dropdown.offsetHeight + 20 && rect.top > dropdown.offsetHeight) {
+                newTop = rect.top - dropdown.offsetHeight - 6 - vv.offsetTop;
+            }
+
+            if (newTop < 10) newTop = 10;
+            if (newTop + dropdown.offsetHeight > vv.height - 10) {
+                newTop = vv.height - dropdown.offsetHeight - 10;
+            }
+            dropdown.style.top = `${newTop}px`;
+        };
+
+        window.visualViewport?.addEventListener('resize', adjustPosition);
+        window.visualViewport?.addEventListener('scroll', adjustPosition);
+
+        // === закрытие при клике вне ===
         setTimeout(() => {
-            document.addEventListener('click', closeDropdownOnClickOutside);
+            document.addEventListener('click', function handler(e) {
+                if (!dropdown.contains(e.target) && e.target !== partElement) {
+                    closeDropdown();
+                    document.removeEventListener('click', handler);
+                }
+            });
         }, 10);
+
+        function closeDropdown() {
+            dropdown.style.display = 'none';
+            window.visualViewport?.removeEventListener('resize', adjustPosition);
+            window.visualViewport?.removeEventListener('scroll', adjustPosition);
+        }
     }
 
     function closeDropdownOnClickOutside(event) {
