@@ -2961,21 +2961,21 @@
     }
 
     document.addEventListener('DOMContentLoaded', function() {
-        // initSecurity(); 
+        initSecurity(); 
 
-        // if (!isLegitimateTelegramWebApp()) {
-        //     document.body.innerHTML = `
-        //         <div style="text-align: center; padding: 50px; color: white; background: black; height: 100vh;">
-        //             <h1>🚫 Доступ запрещён</h1>
-        //             <p style="margin-top: 30px;"">Тебе сюда нельзя</p>
-        //             <p style="margin-top: 30px;"">Доступ только через мини-апп в телеге</p>
-        //             <p style="margin-top: 30px; color: #ccc; font-size: 12px;">
-        //                 Если вы видишь это сообщение - обратись к админу<br>(или улепётывай отсюда)
-        //             </p>
-        //         </div>
-        //     `;
-        //     return;
-        // }
+        if (!isLegitimateTelegramWebApp()) {
+            document.body.innerHTML = `
+                <div style="text-align: center; padding: 50px; color: white; background: black; height: 100vh;">
+                    <h1>🚫 Доступ запрещён</h1>
+                    <p style="margin-top: 30px;"">Тебе сюда нельзя</p>
+                    <p style="margin-top: 30px;"">Доступ только через мини-апп в телеге</p>
+                    <p style="margin-top: 30px; color: #ccc; font-size: 12px;">
+                        Если вы видишь это сообщение - обратись к админу<br>(или улепётывай отсюда)
+                    </p>
+                </div>
+            `;
+            return;
+        }
 
         initTelegramWebApp();
         const targetPage = handleDeepLinks();
@@ -3041,3 +3041,4 @@
 </script>
 </body>
 </html>
+
