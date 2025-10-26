@@ -1500,28 +1500,24 @@
     async function startTimestampProcess() {
         const startBtn = document.getElementById('start-timestamp-btn');
         const loading = document.getElementById('timestamp-loading');
-
-        showNotification("Начинаем фотосессию :)");
         
         startBtn.disabled = true;
-        startBtn.querySelector('.btn-text').textContent = 'Получаем геопозицию...';
+        startBtn.querySelector('.btn-text').textContent = 'Запускаем камеру...';
         
         try {
-            loading.textContent = 'Получаем геопозицию...';
-            await getTimestampLocation();
-            
-            startBtn.querySelector('.btn-text').textContent = 'Запускаем камеру...';
             loading.textContent = 'Запускаем камеру...';
             
-            await startTimestampCamera();
+            await Promise.all([
+                startTimestampCamera(),
+                getTimestampLocation()
+            ]);
             
             startBtn.style.display = 'none';
             
         } catch (error) {
             console.error('Timestamp process error:', error);
-            startBtn.disabled = false;
-            startBtn.querySelector('.btn-text').textContent = 'Начать фотосессию';
-            loading.textContent = 'Ошибка запуска. Попробуйте еще раз.';
+            retakeTimestampPhoto();
+            loading.textContent = 'Ошибка запуска. Нажмите "Начать фотосессию" еще раз.';
         }
     }
 
@@ -1544,7 +1540,7 @@
             video.srcObject = stream;
             video.style.display = 'block';
 
-            await new Promise((resolve) => {
+            return new Promise((resolve, reject) => {
                 video.onloadedmetadata = () => {
                     video.play().then(() => {
                         loading.style.display = 'none';
@@ -1552,30 +1548,17 @@
                         resolve();
                     }).catch(err => {
                         console.error('Video play failed:', err);
-                        loading.innerHTML = `
-                            <div style="text-align: center;">
-                                <div style="margin-bottom: 10px;">Не удалось запустить видео</div>
-                                <button onclick="startTimestampCamera()" 
-                                        style="padding: 10px 20px; background: white; color: black; border: none; border-radius: 8px; cursor: pointer;">
-                                    Попробовать снова
-                                </button>
-                            </div>
-                        `;
+                        reject(err);
                     });
+                };
+                
+                video.onerror = () => {
+                    reject(new Error('Video error'));
                 };
             });
 
         } catch (err) {
             console.error('Camera access error:', err);
-            loading.innerHTML = `
-                <div style="text-align: center;">
-                    <div style="margin-bottom: 10px;">Ошибка доступа к камере</div>
-                    <button onclick="startTimestampCamera()" 
-                            style="padding: 10px 20px; background: white; color: black; border: none; border-radius: 8px; cursor: pointer;">
-                        Попробовать снова
-                    </button>
-                </div>
-            `;
             throw err;
         }
     }
@@ -1983,38 +1966,37 @@
     function retakeTimestampPhoto() {
         const previewImg = document.getElementById('processed-photo-preview');
         const video = document.getElementById('timestamp-video');
-        const canvas = document.getElementById('timestamp-canvas');
-        const captureBtn = document.getElementById('timestamp-capture-btn');
-        const resultControls = document.getElementById('timestamp-result-controls');
         const loading = document.getElementById('timestamp-loading');
         const startBtn = document.getElementById('start-timestamp-btn');
+        const captureBtn = document.getElementById('timestamp-capture-btn');
+        const resultControls = document.getElementById('timestamp-result-controls');
         
-        previewImg.style.display = 'none';
-        previewImg.src = '';
-        canvas.style.display = 'none';
-        video.style.display = 'none';
-        
-        const btnContent = captureBtn.querySelector('.btn-content');
-        btnContent.innerHTML = '<span class="btn-text">Сфотографировать</span>';
-        captureBtn.disabled = false;
-        
-        const sendBtn = document.getElementById('send-telegram-btn');
-        const sendBtnContent = sendBtn.querySelector('.btn-content');
-        sendBtnContent.innerHTML = '<span class="btn-text">Отправить в телегу</span>';
-        sendBtn.disabled = false;
-        
-        resultControls.style.display = 'none';
-        captureBtn.style.display = 'none';
-        startBtn.style.display = 'block';
-        startBtn.disabled = false;
-        startBtn.querySelector('.btn-text').textContent = 'Начать фотосессию';
-        loading.style.display = 'flex';
-        loading.textContent = 'Нажмите кнопку ниже чтобы начать';
-        
-        document.getElementById('timestamp-location-info').textContent = 'Нажми "Начать фотосессию" для запуска';
-        locationReceived = false;
-        userCoords = null;
-        userAddress = null;
+        if (currentProcessedPhoto) {
+            previewImg.src = currentProcessedPhoto;
+            previewImg.style.display = 'block';
+            video.style.display = 'none';
+            loading.style.display = 'none';
+            startBtn.style.display = 'none';
+            captureBtn.style.display = 'none';
+            resultControls.style.display = 'flex';
+        } 
+        else if (timestampStream) {
+            startBtn.style.display = 'none';
+            captureBtn.style.display = 'block';
+            video.style.display = 'block';
+            loading.style.display = 'none';
+        }
+        else {
+            startBtn.style.display = 'block';
+            startBtn.disabled = false;
+            startBtn.querySelector('.btn-text').textContent = 'Начать фотосессию';
+            loading.style.display = 'flex';
+            loading.textContent = 'Нажмите кнопку ниже чтобы начать';
+            video.style.display = 'none';
+            captureBtn.style.display = 'none';
+            resultControls.style.display = 'none';
+            previewImg.style.display = 'none';
+        }
     }
 
     function initQRScanner() {
@@ -2842,12 +2824,15 @@
             navItem.classList.add('active');
         }
 
-        stopAllCameras();
+        if (pageId !== 'timestamp') {
+            stopAllCameras();
+        }
 
-        if (pageId === 'timestamp' && !isTimestampInitialized) {
+        if (pageId === 'timestamp') {
             setTimeout(() => {
                 initTimestampCanvas();
                 initTimestampEventListeners();
+                restoreTimestampState();
                 isTimestampInitialized = true;
             }, 100);
         }
