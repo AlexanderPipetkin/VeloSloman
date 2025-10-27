@@ -1347,6 +1347,9 @@
     let timestampStream = null;
     let timestampCanvas = null;
     let timestampContext = null;
+    let timestampState = 'initial'; // 'initial', 'waiting_geo', 'ready', 'capturing', 'processing', 'ready_to_send', 'sending', 'sent'
+    let cameraPermissionGranted = false;
+    let geoPermissionGranted = false;
     let currentProcessedPhoto = null;
     let userCoords = null;
     let userAddress = null;
@@ -1506,51 +1509,47 @@
     }
 
     async function startTimestampProcess() {
-        const startBtn = document.getElementById('start-timestamp-btn');
-        const captureBtn = document.getElementById('timestamp-capture-btn');
-        const resultControls = document.getElementById('timestamp-result-controls');
-        const loading = document.getElementById('timestamp-loading');
-        const video = document.getElementById('timestamp-video');
-        const previewImg = document.getElementById('processed-photo-preview');
-        
-        startBtn.style.display = 'none';
-        captureBtn.style.display = 'none';
-        resultControls.style.display = 'none';
-        previewImg.style.display = 'none';
-        video.style.display = 'none';
-        
-        loading.style.display = 'flex';
-        loading.textContent = 'Запрашиваем камеру...';
-        
+        timestampState = 'initial';
+        updateTimestampUI();
+
         try {
-            if (!timestampStream) {
+            // Запрашиваем камеру один раз на сессию
+            if (!cameraPermissionGranted) {
                 await startTimestampCamera();
+                cameraPermissionGranted = true;
             }
 
-            loading.textContent = 'Запрашиваем геопозицию...';
+            // Переходим в состояние ожидания гео
+            timestampState = 'waiting_geo';
+            updateTimestampUI();
+
+            // Получаем геопозицию
             await getTimestampLocation();
             
-            loading.style.display = 'none';
-            video.style.display = 'block';
-            captureBtn.style.display = 'block';
-            captureBtn.disabled = false;
-            captureBtn.querySelector('.btn-text').textContent = 'Сфотографировать';
-            
+            // Успех - готовы к съемке
+            timestampState = 'ready';
+            updateTimestampUI();
+
         } catch (error) {
-            console.error('Timestamp process error:', error);
-            loading.textContent = 'Ошибка запуска. Нажмите "Начать фотосессию" еще раз.';
-            startBtn.style.display = 'block';
-            startBtn.disabled = false;
-            captureBtn.style.display = 'none';
-            resultControls.style.display = 'none';
+            console.error('Start process error:', error);
+            
+            if (error.message.includes('геопозицию')) {
+                // Ошибка геопозиции - блокируем кнопку съемки
+                timestampState = 'waiting_geo';
+                updateTimestampUI();
+                showNotification('Не удалось получить геопозицию');
+            } else {
+                // Другие ошибки - возвращаем в начальное состояние
+                timestampState = 'initial';
+                updateTimestampUI();
+                showNotification('Ошибка запуска камеры');
+            }
         }
     }
 
     async function startTimestampCamera() {
         const video = document.getElementById('timestamp-video');
-        const loading = document.getElementById('timestamp-loading');
-        const captureBtn = document.getElementById('timestamp-capture-btn');
-
+        
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
                 video: { 
@@ -1563,23 +1562,12 @@
 
             timestampStream = stream;
             video.srcObject = stream;
-            video.style.display = 'block';
 
             return new Promise((resolve, reject) => {
                 video.onloadedmetadata = () => {
-                    video.play().then(() => {
-                        loading.style.display = 'none';
-                        captureBtn.style.display = 'block';
-                        resolve();
-                    }).catch(err => {
-                        console.error('Video play failed:', err);
-                        reject(err);
-                    });
+                    video.play().then(resolve).catch(reject);
                 };
-                
-                video.onerror = () => {
-                    reject(new Error('Video error'));
-                };
+                video.onerror = () => reject(new Error('Video error'));
             });
 
         } catch (err) {
@@ -1589,54 +1577,35 @@
     }
 
     async function getTimestampLocation() {
-        try {
-            document.getElementById('timestamp-location-info').textContent = 'Получаем твою геопозицию...';
-            
-            const position = await new Promise((resolve, reject) => {
-                navigator.geolocation.getCurrentPosition(resolve, reject, {
+        return new Promise((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(
+                async (position) => {
+                    userCoords = {
+                        latitude: position.coords.latitude,
+                        longitude: position.coords.longitude
+                    };
+                    
+                    locationReceived = true;
+                    geoPermissionGranted = true;
+                    
+                    try {
+                        userAddress = await getAddressFromCoords(userCoords.latitude, userCoords.longitude);
+                        resolve();
+                    } catch (error) {
+                        reject(new Error('Ошибка получения адреса'));
+                    }
+                },
+                (error) => {
+                    locationReceived = false;
+                    reject(new Error('Не удалось получить геопозицию'));
+                },
+                {
                     enableHighAccuracy: true,
                     timeout: 15000,
                     maximumAge: 0
-                });
-            });
-            
-            userCoords = {
-                latitude: position.coords.latitude,
-                longitude: position.coords.longitude
-            };
-            
-            locationReceived = true;
-            document.getElementById('timestamp-location-info').textContent = 'Геопозиция получена';
-            
-            userAddress = await getAddressFromCoords(userCoords.latitude, userCoords.longitude);
-            
-            const captureBtn = document.getElementById('timestamp-capture-btn');
-            if (captureBtn.style.display !== 'none') {
-                captureBtn.disabled = false;
-                captureBtn.querySelector('.btn-text').textContent = 'Сфотографировать';
-            }
-            
-        } catch (error) {
-            locationReceived = false;
-            userAddress = 'Геопозиция не получена';
-            
-            const captureBtn = document.getElementById('timestamp-capture-btn');
-            if (captureBtn.style.display !== 'none') {
-                captureBtn.disabled = true;
-                captureBtn.querySelector('.btn-text').textContent = 'Без гео никак :(';
-            }
-            
-            document.getElementById('timestamp-location-info').innerHTML = `
-                <div style="text-align: center;">
-                    <div style="margin-bottom: 10px;">Не удалось получить твою геопозицию</div>
-                    <button onclick="getTimestampLocation()" 
-                            style="padding: 8px 16px; background: white; color: black; border: none; border-radius: 6px; cursor: pointer; font-size: 12px;">
-                        Повторить
-                    </button>
-                </div>
-            `;
-            throw error;
-        }
+                }
+            );
+        });
     }
 
     async function getAddressFromCoords(lat, lon) {
@@ -1664,59 +1633,42 @@
     }
 
     function captureTimestampPhoto() {
-        if (!locationReceived) {
-            showNotification('Подожди получения геопозиции...');
-            return;
+    if (timestampState !== 'ready') {
+        if (timestampState === 'waiting_geo') {
+            showNotification('Ждем получение геопозиции...');
         }
+        return;
+    }
+
+    timestampState = 'capturing';
+        updateTimestampUI();
 
         const video = document.getElementById('timestamp-video');
         const canvas = document.getElementById('timestamp-canvas');
-        const captureBtn = document.getElementById('timestamp-capture-btn');
-        const resultControls = document.getElementById('timestamp-result-controls');
-        const loading = document.getElementById('timestamp-loading');
         
-        if (!video || !canvas || !timestampContext) {
-            showNotification('Ошибка: компоненты камеры не инициализированы');
-            return;
-        }
-
-        if (video.videoWidth === 0 || video.videoHeight === 0) {
-            showNotification('Камера не готова. Подожди...');
-            return;
-        }
-        
-        captureBtn.style.display = 'none';
-        resultControls.style.display = 'none';
-        
-        const btnContent = captureBtn.querySelector('.btn-content');
-        btnContent.innerHTML = '<span class="loading-spinner"></span><span class="btn-text">Обработка...</span>';
-        captureBtn.disabled = true;
-        
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        
-        timestampContext.drawImage(video, 0, 0, canvas.width, canvas.height);
-        
-        if (timestampStream) {
-            timestampStream.getTracks().forEach(track => track.stop());
-            timestampStream = null;
-        }
-
-        setTimeout(() => {
+        setTimeout(async () => {
             try {
-                processTimestampPhoto();
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                timestampContext.drawImage(video, 0, 0, canvas.width, canvas.height);
                 
-                document.getElementById('timestamp-capture-btn').style.display = 'none';
-                document.getElementById('timestamp-result-controls').style.display = 'flex';
+                // Останавливаем камеру после захвата
+                if (timestampStream) {
+                    timestampStream.getTracks().forEach(track => track.stop());
+                    timestampStream = null;
+                }
+
+                timestampState = 'processing';
+                updateTimestampUI();
+                
+                await processTimestampPhoto();
+                
+                timestampState = 'ready_to_send';
+                updateTimestampUI();
                 
             } catch (error) {
-                console.error('Photo processing error:', error);
-                showNotification('Ошибка обработки фото');
-                
-                captureBtn.style.display = 'block';
-                captureBtn.disabled = false;
-                btnContent.innerHTML = '<span class="btn-text">Сфотографировать</span>';
-                
+                console.error('Capture error:', error);
+                showNotification('Ошибка при съемке фото');
                 retakeTimestampPhoto();
             }
         }, 100);
@@ -1725,48 +1677,22 @@
     async function processTimestampPhoto() {
         const originalCanvas = document.getElementById('timestamp-canvas');
         
-        if (!originalCanvas || originalCanvas.width === 0) {
-            throw new Error('Нет данных для обработки');
-        }
-
         try {
             const processedCanvas = document.createElement('canvas');
             const ctx = processedCanvas.getContext('2d');
             
-            const targetWidth = originalCanvas.width;
-            const targetHeight = originalCanvas.height;
-            
-            processedCanvas.width = targetWidth;
-            processedCanvas.height = targetHeight;
+            processedCanvas.width = originalCanvas.width;
+            processedCanvas.height = originalCanvas.height;
             
             ctx.drawImage(originalCanvas, 0, 0);
-
-            await addLogoToPhoto(ctx, targetWidth, targetHeight);
-            await addMapToPhoto(ctx, targetWidth, targetHeight);
-            addTextToPhoto(ctx, targetWidth, targetHeight);
+            await addLogoToPhoto(ctx, processedCanvas.width, processedCanvas.height);
+            await addMapToPhoto(ctx, processedCanvas.width, processedCanvas.height);
+            addTextToPhoto(ctx, processedCanvas.width, processedCanvas.height);
             
             currentProcessedPhoto = processedCanvas.toDataURL('image/jpeg', 1.0);
             
             const previewImg = document.getElementById('processed-photo-preview');
             previewImg.src = currentProcessedPhoto;
-            previewImg.style.display = 'block';
-            
-            previewImg.style.opacity = '0';
-            previewImg.style.transition = 'opacity 0.5s ease-in-out';
-            setTimeout(() => {
-                previewImg.style.opacity = '1';
-            }, 50);
-            
-            document.getElementById('timestamp-video').style.display = 'none';
-            document.getElementById('timestamp-canvas').style.display = 'none';
-            
-            document.getElementById('timestamp-capture-btn').style.display = 'none';
-            document.getElementById('timestamp-result-controls').style.display = 'flex';
-            
-            const captureBtn = document.getElementById('timestamp-capture-btn');
-            const btnContent = captureBtn.querySelector('.btn-content');
-            btnContent.innerHTML = '<span class="btn-text">Сфотографировать</span>';
-            captureBtn.disabled = false;
             
         } catch (error) {
             console.error('Process photo error:', error);
@@ -1940,59 +1866,41 @@
         });
     }
 
-    async function sendTimestampToTelegramWithRetry() {
-        if (!currentProcessedPhoto || !userCoords) {
-            showNotification('Ошибка: нет фото или геопозиции');
-            return;
-        }
-        
-        const sendBtn = document.getElementById('send-telegram-btn');
-        const btnContent = sendBtn.querySelector('.btn-content');
-        
-        btnContent.innerHTML = '<span class="loading-spinner"></span><span class="btn-text">Отправка...</span>';
-        sendBtn.disabled = true;
-        
+    async function sendTimestampToTelegram() {
+        if (timestampState !== 'ready_to_send') return;
+
+        timestampState = 'sending';
+        updateTimestampUI();
+
         const maxAttempts = 3;
-        const timeoutMs = 10000;
-        let lastError = '';
-        
-        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        let attempt = 0;
+        let success = false;
+
+        while (attempt < maxAttempts && !success && timestampState === 'sending') {
+            attempt++;
+            console.log(`Попытка отправки ${attempt}/${maxAttempts}`);
+
             try {
-                console.log(`Попытка отправки ${attempt}/${maxAttempts}`);
+                await sendPhotoToTelegram();
+                success = true;
                 
-                const sendPromise = sendPhotoToTelegram();
-                const timeoutPromise = new Promise((_, reject) => 
-                    setTimeout(() => reject(new Error('Таймаут отправки')), timeoutMs)
-                );
-                
-                await Promise.race([sendPromise, timeoutPromise]);
-                
-                btnContent.innerHTML = '<span class="btn-text">Отправлено</span>';
-                sendBtn.disabled = true;
+                timestampState = 'sent';
+                updateTimestampUI();
                 showNotification('Фото отправлено!');
-                return;
                 
             } catch (error) {
                 console.error(`Попытка ${attempt} не удалась:`, error);
-                lastError = error.message;
                 
-                if (attempt < maxAttempts) {
-                    btnContent.innerHTML = `<span class="btn-text">Повтор... (${attempt}/${maxAttempts})</span>`;
-                    
+                if (attempt < maxAttempts && timestampState === 'sending') {
+                    // Ждем перед следующей попыткой
                     await new Promise(resolve => setTimeout(resolve, 2000));
-                } else {
-                    btnContent.innerHTML = '<span class="btn-text">Повторить</span>';
-                    sendBtn.disabled = false;
-                    
-                    let errorMessage = 'Ошибка отправки. Попробуй еще раз.';
-                    if (lastError.includes('Таймаут')) {
-                        errorMessage = 'Таймаут отправки. Проверь интернет и попробуй еще раз.';
-                    } else if (lastError.includes('403')) {
-                        errorMessage = 'Бот не может отправить вам сообщение. Начните диалог с ботом.';
-                    }
-                    
-                    showNotification(errorMessage);
+                } else if (timestampState === 'sending') {
+                    // Все попытки исчерпаны
+                    timestampState = 'ready_to_send';
+                    updateTimestampUI();
+                    showNotification('Ошибка отправки после 3 попыток');
                 }
+                // Если состояние изменилось (пользователь нажал "Переснять"), выходим без уведомлений
             }
         }
     }
@@ -2078,36 +1986,35 @@
     }
 
     function retakeTimestampPhoto() {
-        const previewImg = document.getElementById('processed-photo-preview');
-        const video = document.getElementById('timestamp-video');
-        const loading = document.getElementById('timestamp-loading');
-        const startBtn = document.getElementById('start-timestamp-btn');
-        const captureBtn = document.getElementById('timestamp-capture-btn');
-        const resultControls = document.getElementById('timestamp-result-controls');
+        // Сбрасываем состояние отправки
+        timestampState = 'initial';
         
+        // Останавливаем камеру если активна
         if (timestampStream) {
             timestampStream.getTracks().forEach(track => track.stop());
             timestampStream = null;
         }
         
         currentProcessedPhoto = null;
-        
-        startBtn.style.display = 'block';
-        startBtn.disabled = false;
-        startBtn.querySelector('.btn-text').textContent = 'Начать фотосессию';
-        
-        loading.style.display = 'flex';
-        loading.textContent = 'Нажмите кнопку ниже чтобы начать';
-        
-        video.style.display = 'none';
-        captureBtn.style.display = 'none';
-        resultControls.style.display = 'none';
-        previewImg.style.display = 'none';
-        
         userCoords = null;
         userAddress = null;
         locationReceived = false;
-        document.getElementById('timestamp-location-info').textContent = 'Нажми "Начать фотосессию" для запуска';
+        
+        // Если разрешения уже есть, сразу переходим к ожиданию гео
+        if (cameraPermissionGranted) {
+            timestampState = 'waiting_geo';
+            updateTimestampUI();
+            getTimestampLocation().then(() => {
+                timestampState = 'ready';
+                updateTimestampUI();
+            }).catch(() => {
+                // Оставляем в состоянии ожидания гео
+                timestampState = 'waiting_geo';
+                updateTimestampUI();
+            });
+        } else {
+            updateTimestampUI();
+        }
     }
 
     function initQRScanner() {
@@ -2947,9 +2854,116 @@
             setTimeout(() => {
                 initTimestampCanvas();
                 initTimestampEventListeners();
-                restoreTimestampState();
+                
+                // Восстанавливаем состояние если фото уже было сделано
+                if (currentProcessedPhoto) {
+                    timestampState = 'ready_to_send';
+                } else if (timestampStream) {
+                    timestampState = locationReceived ? 'ready' : 'waiting_geo';
+                } else {
+                    timestampState = 'initial';
+                }
+                
+                updateTimestampUI();
                 isTimestampInitialized = true;
             }, 100);
+        }
+    }
+
+    function updateTimestampUI() {
+        const startBtn = document.getElementById('start-timestamp-btn');
+        const captureBtn = document.getElementById('timestamp-capture-btn');
+        const resultControls = document.getElementById('timestamp-result-controls');
+        const retakeBtn = document.getElementById('retake-btn');
+        const sendBtn = document.getElementById('send-telegram-btn');
+        const loading = document.getElementById('timestamp-loading');
+        const video = document.getElementById('timestamp-video');
+        const previewImg = document.getElementById('processed-photo-preview');
+        const locationInfo = document.getElementById('timestamp-location-info');
+
+        // Сбрасываем все элементы
+        startBtn.style.display = 'none';
+        captureBtn.style.display = 'none';
+        resultControls.style.display = 'none';
+        loading.style.display = 'none';
+        video.style.display = 'none';
+        previewImg.style.display = 'none';
+
+        // Восстанавливаем состояние кнопок при переснятии
+        if (sendBtn) {
+            sendBtn.disabled = false;
+            const sendBtnContent = sendBtn.querySelector('.btn-content');
+            sendBtnContent.innerHTML = '<span class="btn-text">Отправить в телегу</span>';
+        }
+
+        if (captureBtn) {
+            captureBtn.disabled = false;
+            const captureBtnContent = captureBtn.querySelector('.btn-content');
+            captureBtnContent.innerHTML = '<span class="btn-text">Сфотографировать</span>';
+        }
+
+        switch (timestampState) {
+            case 'initial':
+                startBtn.style.display = 'block';
+                startBtn.disabled = false;
+                startBtn.querySelector('.btn-text').textContent = 'Начать фотосессию';
+                loading.style.display = 'flex';
+                loading.textContent = 'Нажми кнопку ниже чтобы начать';
+                locationInfo.textContent = 'Нажми "Начать фотосессию" для запуска';
+                break;
+
+            case 'waiting_geo':
+                captureBtn.style.display = 'block';
+                captureBtn.disabled = true;
+                captureBtn.querySelector('.btn-text').textContent = 'Ждём гео...';
+                video.style.display = 'block';
+                locationInfo.textContent = 'Получаем твою геопозицию...';
+                break;
+
+            case 'ready':
+                captureBtn.style.display = 'block';
+                captureBtn.disabled = false;
+                captureBtn.querySelector('.btn-text').textContent = 'Сфотографировать';
+                video.style.display = 'block';
+                locationInfo.textContent = 'Геопозиция получена.';
+                break;
+
+            case 'capturing':
+                captureBtn.style.display = 'block';
+                captureBtn.disabled = true;
+                captureBtn.querySelector('.btn-text').textContent = 'Захватываем кадр...';
+                video.style.display = 'block';
+                locationInfo.textContent = 'Обрабатываем фото...';
+                break;
+
+            case 'processing':
+                captureBtn.style.display = 'block';
+                captureBtn.disabled = true;
+                captureBtn.querySelector('.btn-content').innerHTML = '<span class="loading-spinner"></span><span class="btn-text">Обработка...</span>';
+                locationInfo.textContent = 'Добавляем данные на фото...';
+                break;
+
+            case 'ready_to_send':
+                resultControls.style.display = 'flex';
+                previewImg.style.display = 'block';
+                locationInfo.textContent = 'Фото готово к отправке';
+                break;
+
+            case 'sending':
+                resultControls.style.display = 'flex';
+                previewImg.style.display = 'block';
+                sendBtn.disabled = true;
+                sendBtn.querySelector('.btn-content').innerHTML = '<span class="loading-spinner"></span><span class="btn-text">Отправка...</span>';
+                locationInfo.textContent = 'Отправляем фото...';
+                break;
+
+            case 'sent':
+                resultControls.style.display = 'flex';
+                previewImg.style.display = 'block';
+                sendBtn.disabled = true;
+                sendBtn.querySelector('.btn-text').textContent = 'Отправлено';
+                locationInfo.textContent = 'Фото успешно отправлено!';
+                break;
         }
     }
 
@@ -3048,7 +3062,7 @@
         if (startBtn) startBtn.onclick = startTimestampProcess;
         if (captureBtn) captureBtn.onclick = captureTimestampPhoto;
         if (retakeBtn) retakeBtn.onclick = retakeTimestampPhoto;
-        if (sendBtn) sendBtn.onclick = sendTimestampToTelegramWithRetry;
+        if (sendBtn) sendBtn.onclick = sendTimestampToTelegram;
     }
 
     document.addEventListener('DOMContentLoaded', function() {
