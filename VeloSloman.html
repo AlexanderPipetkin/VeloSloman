@@ -1500,18 +1500,22 @@
     async function startTimestampProcess() {
         const startBtn = document.getElementById('start-timestamp-btn');
         const captureBtn = document.getElementById('timestamp-capture-btn');
+        const resultControls = document.getElementById('timestamp-result-controls');
         const loading = document.getElementById('timestamp-loading');
         const video = document.getElementById('timestamp-video');
+        const previewImg = document.getElementById('processed-photo-preview');
         
-        if (!timestampStream) {
-            startBtn.style.display = 'none';
-            captureBtn.style.display = 'none';
-            loading.style.display = 'flex';
-        }
+        startBtn.style.display = 'none';
+        captureBtn.style.display = 'none';
+        resultControls.style.display = 'none';
+        previewImg.style.display = 'none';
+        video.style.display = 'none';
+        
+        loading.style.display = 'flex';
+        loading.textContent = 'Запрашиваем камеру...';
         
         try {
             if (!timestampStream) {
-                loading.textContent = 'Запрашиваем камеру...';
                 await startTimestampCamera();
             }
 
@@ -1529,8 +1533,8 @@
             loading.textContent = 'Ошибка запуска. Нажмите "Начать фотосессию" еще раз.';
             startBtn.style.display = 'block';
             startBtn.disabled = false;
-            startBtn.querySelector('.btn-text').textContent = 'Начать фотосессию';
             captureBtn.style.display = 'none';
+            resultControls.style.display = 'none';
         }
     }
 
@@ -1659,6 +1663,9 @@
 
         const video = document.getElementById('timestamp-video');
         const canvas = document.getElementById('timestamp-canvas');
+        const captureBtn = document.getElementById('timestamp-capture-btn');
+        const resultControls = document.getElementById('timestamp-result-controls');
+        const loading = document.getElementById('timestamp-loading');
         
         if (!video || !canvas || !timestampContext) {
             showNotification('Ошибка: компоненты камеры не инициализированы');
@@ -1670,6 +1677,13 @@
             return;
         }
         
+        captureBtn.style.display = 'none';
+        resultControls.style.display = 'none';
+        
+        const btnContent = captureBtn.querySelector('.btn-content');
+        btnContent.innerHTML = '<span class="loading-spinner"></span><span class="btn-text">Обработка...</span>';
+        captureBtn.disabled = true;
+        
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         
@@ -1680,17 +1694,21 @@
             timestampStream = null;
         }
 
-        const captureBtn = document.getElementById('timestamp-capture-btn');
-        const btnContent = captureBtn.querySelector('.btn-content');
-        btnContent.innerHTML = '<span class="loading-spinner"></span><span class="btn-text">Обработка...</span>';
-        captureBtn.disabled = true;
-
         setTimeout(() => {
             try {
                 processTimestampPhoto();
+                
+                document.getElementById('timestamp-capture-btn').style.display = 'none';
+                document.getElementById('timestamp-result-controls').style.display = 'flex';
+                
             } catch (error) {
                 console.error('Photo processing error:', error);
                 showNotification('Ошибка обработки фото');
+                
+                captureBtn.style.display = 'block';
+                captureBtn.disabled = false;
+                btnContent.innerHTML = '<span class="btn-text">Сфотографировать</span>';
+                
                 retakeTimestampPhoto();
             }
         }, 100);
@@ -1922,56 +1940,95 @@
         
         const sendBtn = document.getElementById('send-telegram-btn');
         const btnContent = sendBtn.querySelector('.btn-content');
+        const originalText = btnContent.innerHTML;
+        
         btnContent.innerHTML = '<span class="loading-spinner"></span><span class="btn-text">Отправка...</span>';
         sendBtn.disabled = true;
         
-        try {
-            const base64Response = await fetch(currentProcessedPhoto);
-            const blob = await base64Response.blob();
-            
-            const username = userData?.username || 'Неизвестен';
-            const caption = `TimeStamp фоточка от @${username}\n\nПолучены координаты: ${userCoords.latitude.toFixed(6)}, ${userCoords.longitude.toFixed(6)}\nВыдан адрес: ${userAddress}\n\n#timestamp`;
-            
-            const formData = new FormData();
-            formData.append('chat_id', i_eto_tozhe);
-            formData.append('message_thread_id', TIMESTAMP_TOPIC_ID);
-            formData.append('photo', blob, 'timestamp.jpg');
-            formData.append('caption', caption);
-            
-            const response = await fetch(`https://api.telegram.org/bot${ne_trogai_plz}/sendPhoto`, {
-                method: 'POST',
-                body: formData
-            });
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+        const maxAttempts = 3;
+        const timeoutMs = 7000;
+        let lastError = '';
+        
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                const sendPromise = sendPhotoToTelegram();
+                const timeoutPromise = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Таймаут отправки')), timeoutMs)
+                );
+                
+                await Promise.race([sendPromise, timeoutPromise]);
+                
+                btnContent.innerHTML = '<span class="btn-text">Отправлено</span>';
+                sendBtn.disabled = true;
+                showNotification('Фото отправлено!');
+                return;
+                
+            } catch (error) {
+                console.error(`Попытка ${attempt} не удалась:`, error);
+                lastError = error.message;
+                
+                if (attempt < maxAttempts) {
+                    btnContent.innerHTML = `<span class="btn-text">Повтор... (${attempt}/${maxAttempts})</span>`;
+                    
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                } else {
+                    btnContent.innerHTML = '<span class="btn-text">Повторить</span>';
+                    sendBtn.disabled = false;
+                    showNotification(`Ошибка отправки после ${maxAttempts} попыток. Попробуй еще раз.`);
+                }
             }
-            
-            const result = await response.json();
-            
-            if (!result.ok) {
-                throw new Error(result.description || 'Telegram API error');
-            }
-            
-            const userFormData = new FormData();
-            userFormData.append('chat_id', userData.id);
-            userFormData.append('photo', blob, 'timestamp.jpg');
-            userFormData.append('caption', 'Лови фотку #timestamp');
-            
-            await fetch(`https://api.telegram.org/bot${ne_trogai_plz}/sendPhoto`, {
-                method: 'POST',
-                body: userFormData
-            });
-            
-            btnContent.innerHTML = '<span class="btn-text">Отправлено</span>';
-            sendBtn.disabled = true;
-            showNotification('Фото отправлено!');
-            
-        } catch (error) {
-            console.error('Ошибка отправки в телегу:', error);
-            btnContent.innerHTML = '<span class="btn-text">Повторить</span>';
-            sendBtn.disabled = false;
-            showNotification(`Ошибка отправки. Попробуй еще раз.`);
+        }
+    }
+
+    async function sendPhotoToTelegram() {
+        const base64Response = await fetch(currentProcessedPhoto);
+        const blob = await base64Response.blob();
+        
+        if (!userData || !userData.id) {
+            throw new Error('Не удалось получить данные пользователя');
+        }
+        
+        const username = userData?.username || 'Неизвестен';
+        const caption = `TimeStamp фоточка от @${username}\n\nПолучены координаты: ${userCoords.latitude.toFixed(6)}, ${userCoords.longitude.toFixed(6)}\nВыдан адрес: ${userAddress}\n\n#timestamp`;
+        
+        const formData = new FormData();
+        formData.append('chat_id', i_eto_tozhe);
+        formData.append('message_thread_id', TIMESTAMP_TOPIC_ID);
+        formData.append('photo', blob, 'timestamp.jpg');
+        formData.append('caption', caption);
+        
+        const response = await fetch(`https://api.telegram.org/bot${ne_trogai_plz}/sendPhoto`, {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        
+        if (!result.ok) {
+            throw new Error(result.description || 'Telegram API error');
+        }
+        
+        const userFormData = new FormData();
+        userFormData.append('chat_id', userData.id);
+        userFormData.append('photo', blob, 'timestamp.jpg');
+        userFormData.append('caption', 'Лови фотку #timestamp');
+        
+        const userResponse = await fetch(`https://api.telegram.org/bot${ne_trogai_plz}/sendPhoto`, {
+            method: 'POST',
+            body: userFormData
+        });
+        
+        if (!userResponse.ok) {
+            throw new Error(`Ошибка отправки пользователю: ${userResponse.status}`);
+        }
+        
+        const userResult = await userResponse.json();
+        if (!userResult.ok) {
+            throw new Error(userResult.description || 'Ошибка Telegram API при отправке пользователю');
         }
     }
 
@@ -2933,6 +2990,23 @@
         }
     }
 
+    function showUserDataErrorModal() {
+        const modal = document.createElement('div');
+        modal.className = 'modal active';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <h2 class="modal-title">Ошибка данных аккаунта</h2>
+                <p class="modal-text">
+                    Не удалось получить данные твоего аккаунта.<br><br>
+                    Это повлияет на отправку заявок и фотографий с таймстемпа.<br><br>
+                    Для решения проблемы перезапускаем мини-апп.
+                </p>
+                <button class="modal-btn" onclick="location.reload()">Перезагрузить</button>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+
     function initTimestampEventListeners() {
         const startBtn = document.getElementById('start-timestamp-btn');
         const captureBtn = document.getElementById('timestamp-capture-btn');
@@ -2980,6 +3054,11 @@
         //     `;
         //     return;
         // }
+
+        if (!userData || !userData.id) {
+            showUserDataErrorModal();
+            return;
+        }
 
         initTelegramWebApp();
         const targetPage = handleDeepLinks();
