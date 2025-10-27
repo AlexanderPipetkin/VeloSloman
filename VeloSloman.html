@@ -1636,14 +1636,14 @@
     }
 
     function captureTimestampPhoto() {
-    if (timestampState !== 'ready') {
-        if (timestampState === 'waiting_geo') {
-            showNotification('Ждем получение геопозиции...');
+        if (timestampState !== 'ready') {
+            if (timestampState === 'waiting_geo') {
+                showNotification('Ждем получение геопозиции...');
+            }
+            return;
         }
-        return;
-    }
 
-    timestampState = 'capturing';
+        timestampState = 'capturing';
         updateTimestampUI();
 
         const video = document.getElementById('timestamp-video');
@@ -1651,9 +1651,16 @@
         
         setTimeout(async () => {
             try {
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                timestampContext.drawImage(video, 0, 0, canvas.width, canvas.height);
+                // Получаем реальные размеры видео с учетом ориентации
+                const videoWidth = video.videoWidth;
+                const videoHeight = video.videoHeight;
+                
+                // Устанавливаем размеры canvas в соответствии с видео
+                canvas.width = videoWidth;
+                canvas.height = videoHeight;
+                
+                // Рисуем видео на canvas без обрезки
+                timestampContext.drawImage(video, 0, 0, videoWidth, videoHeight);
                 
                 // Останавливаем камеру после захвата
                 if (timestampStream) {
@@ -1684,10 +1691,14 @@
             const processedCanvas = document.createElement('canvas');
             const ctx = processedCanvas.getContext('2d');
             
+            // Сохраняем оригинальные пропорции
             processedCanvas.width = originalCanvas.width;
             processedCanvas.height = originalCanvas.height;
             
-            ctx.drawImage(originalCanvas, 0, 0);
+            // Копируем оригинальное изображение без изменений
+            ctx.drawImage(originalCanvas, 0, 0, processedCanvas.width, processedCanvas.height);
+
+            // Добавляем overlay элементы (лого, карту, текст)
             await addLogoToPhoto(ctx, processedCanvas.width, processedCanvas.height);
             await addMapToPhoto(ctx, processedCanvas.width, processedCanvas.height);
             addTextToPhoto(ctx, processedCanvas.width, processedCanvas.height);
