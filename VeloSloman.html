@@ -1117,7 +1117,7 @@
             </div>
             <div class="under-construction">
                 <h2>Раздел в разработке</h2>
-                <p>Обновление этого раздела планируется 31.10.2025</p>
+                <p>Обновление этого раздела планируетс  я<br>фиг знает когда</p>
             </div>
         </div>
     </section>
@@ -1294,7 +1294,7 @@
             </div>
             <div class="under-construction">
                 <h2>Раздел в разработке</h2>
-                <p>Обновление этого раздела планируется 28.10.2025</p>
+                <p>Обновление этого раздела планируется<br>фиг знает когда</p>
             </div>
             <div class="version-info">
                 <div class="version-number">Версия: 0.0.6</div>
@@ -1982,12 +1982,10 @@
 
     async function showSuccessSequence() {
         const locationInfo = document.getElementById('timestamp-location-info');
-        
-        locationInfo.textContent = 'Тааакс, админам скинул, сейчас тебе.';
-        
+                
         await new Promise(resolve => setTimeout(resolve, 1500));
         
-        locationInfo.textContent = 'Тебе тоже скинул.';
+        locationInfo.textContent = 'Найс, скинул тебе.';
         
         await new Promise(resolve => setTimeout(resolve, 1000));
         
@@ -2012,7 +2010,7 @@
             userId = telegramUser.id;
             username = telegramUser.username || `Пользователь ${telegramUser.id}`;
         } else {
-            username = 'бомж (без регистрации)';
+            username = 'бомжа (без регистрации)';
         }
         
         const caption = `TimeStamp фоточка от ${username}\n\nПолучены координаты: ${userCoords.latitude.toFixed(6)}, ${userCoords.longitude.toFixed(6)}\nВыдан адрес: ${userAddress}\n\n#timestamp`;
