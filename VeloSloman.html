@@ -2084,19 +2084,10 @@
         userAddress = null;
         locationReceived = false;
         
-        if (cameraPermissionGranted) {
-            timestampState = 'waiting_geo';
-            updateTimestampUI();
-            getTimestampLocation().then(() => {
-                timestampState = 'ready';
-                updateTimestampUI();
-            }).catch(() => {
-                timestampState = 'waiting_geo';
-                updateTimestampUI();
-            });
-        } else {
-            updateTimestampUI();
-        }
+        cameraPermissionGranted = false;
+        geoPermissionGranted = false;
+        
+        updateTimestampUI();
     }
 
     function initQRScanner() {
