@@ -1355,6 +1355,9 @@
     let userAddress = null;
     let locationReceived = false;
     let isTimestampInitialized = false;
+    let sendingStartTime = 0;
+    let sendingMessageInterval = null;
+    let currentSendingPhase = 0;
 
     const ne_trogai_plz = '8201906085:AAHy9icCeYui2Bt5ZNecUXOZo4q4u3oIUUE';
     const i_eto_tozhe = '-1002981629310';
@@ -1869,6 +1872,11 @@
     async function sendTimestampToTelegram() {
         if (timestampState !== 'ready_to_send') return;
 
+        // Запускаем систему сообщений
+        sendingStartTime = Date.now();
+        currentSendingPhase = 0;
+        sendingMessageInterval = setInterval(updateSendingMessage, 1000);
+        
         timestampState = 'sending';
         updateTimestampUI();
 
@@ -1881,28 +1889,101 @@
             console.log(`Попытка отправки ${attempt}/${maxAttempts}`);
 
             try {
-                await sendPhotoToTelegram();
+                // Для первой попытки используем обычные сообщения
+                if (attempt === 1) {
+                    await sendPhotoToTelegram();
+                } else {
+                    // Для повторных попыток показываем специальные сообщения на 3 секунды
+                    clearInterval(sendingMessageInterval);
+                    
+                    const retryMessages = [
+                        'Перезапрашиваем у инопланетян...',
+                        'Пробиваемся через астероидное поле...',
+                        'Последний шанс связаться с космосом...'
+                    ];
+                    
+                    const locationInfo = document.getElementById('timestamp-location-info');
+                    locationInfo.textContent = retryMessages[attempt - 2]; // -2 потому что attempt начинается с 1, а массив с 0
+                    
+                    // Ждем 3 секунды чтобы пользователь увидел сообщение
+                    await new Promise(resolve => setTimeout(resolve, 3000));
+                    
+                    // Пытаемся отправить
+                    await sendPhotoToTelegram();
+                    
+                    // После отправки возобновляем общие сообщения если еще отправляем
+                    if (timestampState === 'sending') {
+                        sendingStartTime = Date.now(); // Сбрасываем таймер
+                        sendingMessageInterval = setInterval(updateSendingMessage, 1000);
+                    }
+                }
+                
                 success = true;
                 
-                timestampState = 'sent';
-                updateTimestampUI();
-                showNotification('Фото отправлено!');
+                // Останавливаем интервал сообщений
+                clearInterval(sendingMessageInterval);
+                sendingMessageInterval = null;
+                
+                // Запускаем последовательность успешных сообщений
+                await showSuccessSequence();
                 
             } catch (error) {
                 console.error(`Попытка ${attempt} не удалась:`, error);
                 
                 if (attempt < maxAttempts && timestampState === 'sending') {
+                    // Для повторных попыток сообщение уже показано выше
+                    if (attempt === 1) {
+                        // Только для первой неудачи возобновляем сообщения
+                        sendingStartTime = Date.now();
+                        sendingMessageInterval = setInterval(updateSendingMessage, 1000);
+                    }
                     // Ждем перед следующей попыткой
-                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    await new Promise(resolve => setTimeout(resolve, 1000));
                 } else if (timestampState === 'sending') {
                     // Все попытки исчерпаны
+                    clearInterval(sendingMessageInterval);
+                    sendingMessageInterval = null;
                     timestampState = 'ready_to_send';
                     updateTimestampUI();
                     showNotification('Ошибка отправки после 3 попыток');
                 }
-                // Если состояние изменилось (пользователь нажал "Переснять"), выходим без уведомлений
             }
         }
+        
+        // На всякий случай очищаем интервал
+        if (sendingMessageInterval) {
+            clearInterval(sendingMessageInterval);
+            sendingMessageInterval = null;
+        }
+    }
+
+    function updateRetryMessage(attempt) {
+        const locationInfo = document.getElementById('timestamp-location-info');
+        const messages = [
+            'Перезапрашиваем у инопланетян...',
+            'Пробиваемся через астероидное поле...',
+            'Последний шанс связаться с космосом...'
+        ];
+        
+        const message = messages[attempt - 1] || 'Пытаемся установить связь...';
+        locationInfo.textContent = message;
+    }
+
+    async function showSuccessSequence() {
+        const locationInfo = document.getElementById('timestamp-location-info');
+        
+        locationInfo.textContent = 'Тааакс, админам скинул, сейчас тебе.';
+        
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        locationInfo.textContent = 'Тебе тоже скинул.';
+        
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        locationInfo.textContent = 'Победа. Фото успешно отправлено. Погнали делать новое?';
+        
+        timestampState = 'sent';
+        updateTimestampUI();
     }
 
     async function sendPhotoToTelegram() {
@@ -1986,10 +2067,13 @@
     }
 
     function retakeTimestampPhoto() {
-        // Сбрасываем состояние отправки
+        if (sendingMessageInterval) {
+            clearInterval(sendingMessageInterval);
+            sendingMessageInterval = null;
+        }
+        
         timestampState = 'initial';
         
-        // Останавливаем камеру если активна
         if (timestampStream) {
             timestampStream.getTracks().forEach(track => track.stop());
             timestampStream = null;
@@ -2000,7 +2084,6 @@
         userAddress = null;
         locationReceived = false;
         
-        // Если разрешения уже есть, сразу переходим к ожиданию гео
         if (cameraPermissionGranted) {
             timestampState = 'waiting_geo';
             updateTimestampUI();
@@ -2008,7 +2091,6 @@
                 timestampState = 'ready';
                 updateTimestampUI();
             }).catch(() => {
-                // Оставляем в состоянии ожидания гео
                 timestampState = 'waiting_geo';
                 updateTimestampUI();
             });
@@ -2870,6 +2952,32 @@
         }
     }
 
+    function updateSendingMessage() {
+        const locationInfo = document.getElementById('timestamp-location-info');
+        if (!locationInfo || timestampState !== 'sending') return;
+
+        const elapsedTime = Date.now() - sendingStartTime;
+        const seconds = Math.floor(elapsedTime / 1000);
+
+        let message = '';
+        
+        if (seconds < 3) {
+            message = 'Отправляем фото...';
+            currentSendingPhase = 0;
+        } else if (seconds < 6) {
+            message = 'Устанавливаем связь с космосом...';
+            currentSendingPhase = 1;
+        } else if (seconds < 9) {
+            message = 'Ждём согласия инопланетян на соединение...';
+            currentSendingPhase = 2;
+        } else {
+            message = 'Астероиды глушат связь... Ждём-с.';
+            currentSendingPhase = 3;
+        }
+        
+        locationInfo.textContent = message;
+    }
+
     function updateTimestampUI() {
         const startBtn = document.getElementById('start-timestamp-btn');
         const captureBtn = document.getElementById('timestamp-capture-btn');
@@ -2881,7 +2989,6 @@
         const previewImg = document.getElementById('processed-photo-preview');
         const locationInfo = document.getElementById('timestamp-location-info');
 
-        // Сбрасываем все элементы
         startBtn.style.display = 'none';
         captureBtn.style.display = 'none';
         resultControls.style.display = 'none';
@@ -2889,7 +2996,11 @@
         video.style.display = 'none';
         previewImg.style.display = 'none';
 
-        // Восстанавливаем состояние кнопок при переснятии
+        if (timestampState !== 'sending' && sendingMessageInterval) {
+            clearInterval(sendingMessageInterval);
+            sendingMessageInterval = null;
+        }
+
         if (sendBtn) {
             sendBtn.disabled = false;
             const sendBtnContent = sendBtn.querySelector('.btn-content');
@@ -2954,7 +3065,6 @@
                 previewImg.style.display = 'block';
                 sendBtn.disabled = true;
                 sendBtn.querySelector('.btn-content').innerHTML = '<span class="loading-spinner"></span><span class="btn-text">Отправка...</span>';
-                locationInfo.textContent = 'Отправляем фото...';
                 break;
 
             case 'sent':
@@ -2962,7 +3072,6 @@
                 previewImg.style.display = 'block';
                 sendBtn.disabled = true;
                 sendBtn.querySelector('.btn-text').textContent = 'Отправлено';
-                locationInfo.textContent = 'Фото успешно отправлено!';
                 break;
         }
     }
