@@ -2045,13 +2045,13 @@
 
     async function showSuccessSequence() {
         const locationInfo = document.getElementById('timestamp-location-info');
-                
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        locationInfo.textContent = 'Победа. Фото успешно отправлено. Погнали делать новое?';
         
         timestampState = 'sent';
         updateTimestampUI();
+        
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        locationInfo.textContent = 'Победа. Фото успешно отправлено. Погнали делать новое?';
     }
 
     async function sendPhotoToTelegram() {
@@ -3058,11 +3058,22 @@
         video.style.display = 'none';
         previewImg.style.display = 'none';
 
-        // Сбрасываем стили кнопок
-        startBtn.className = 'timestamp-btn';
-        captureBtn.className = 'timestamp-btn';
-        retakeBtn.className = 'timestamp-btn';
-        sendBtn.className = 'timestamp-btn';
+        // Сбрасываем состояния кнопок (но сохраняем анимации!)
+        startBtn.disabled = false;
+        captureBtn.disabled = false;
+        retakeBtn.disabled = false;
+        sendBtn.disabled = false;
+        
+        // Восстанавливаем нормальное содержимое кнопок
+        const startBtnContent = startBtn.querySelector('.btn-content');
+        const captureBtnContent = captureBtn.querySelector('.btn-content');
+        const retakeBtnContent = retakeBtn.querySelector('.btn-content');
+        const sendBtnContent = sendBtn.querySelector('.btn-content');
+        
+        startBtnContent.innerHTML = '<span class="btn-text">Начать фотосессию</span>';
+        captureBtnContent.innerHTML = '<span class="btn-text">Сфотографировать</span>';
+        retakeBtnContent.innerHTML = '<span class="btn-text">Переснять</span>';
+        sendBtnContent.innerHTML = '<span class="btn-text">Отправить в телегу</span>';
 
         if (timestampState !== 'sending' && sendingMessageInterval) {
             clearInterval(sendingMessageInterval);
@@ -3072,8 +3083,7 @@
         switch (timestampState) {
             case 'initial':
                 startBtn.style.display = 'block';
-                startBtn.className = 'timestamp-btn primary'; // Приоритет
-                startBtn.disabled = false;
+                startBtn.className = 'timestamp-btn primary';
                 loading.style.display = 'flex';
                 loading.textContent = 'Нажми кнопку ниже чтобы начать';
                 locationInfo.textContent = 'Нажми "Начать фотосессию" для запуска';
@@ -3092,7 +3102,6 @@
                 captureBtn.style.display = 'block';
                 captureBtn.className = 'timestamp-btn primary'; // Приоритет, активная белая
                 captureBtn.disabled = false;
-                captureBtn.querySelector('.btn-text').textContent = 'Сфотографировать';
                 video.style.display = 'block';
                 locationInfo.textContent = 'Геопозиция получена.';
                 break;
@@ -3110,7 +3119,7 @@
                 captureBtn.style.display = 'block';
                 captureBtn.className = 'timestamp-btn';
                 captureBtn.disabled = true;
-                captureBtn.querySelector('.btn-content').innerHTML = '<span class="loading-spinner"></span><span class="btn-text">Обработка...</span>';
+                captureBtnContent.innerHTML = '<span class="loading-spinner"></span><span class="btn-text">Обработка...</span>';
                 locationInfo.textContent = 'Добавляем данные на фото...';
                 break;
 
@@ -3118,10 +3127,7 @@
                 resultControls.style.display = 'flex';
                 previewImg.style.display = 'block';
                 retakeBtn.className = 'timestamp-btn'; // Обычная, активная
-                retakeBtn.querySelector('.btn-text').textContent = 'Переснять';
                 sendBtn.className = 'timestamp-btn primary'; // Приоритет
-                sendBtn.disabled = false;
-                sendBtn.querySelector('.btn-text').textContent = 'Отправить в телегу';
                 locationInfo.textContent = 'Фото готово к отправке';
                 break;
 
@@ -3129,10 +3135,9 @@
                 resultControls.style.display = 'flex';
                 previewImg.style.display = 'block';
                 retakeBtn.className = 'timestamp-btn'; // Обычная, активная
-                retakeBtn.querySelector('.btn-text').textContent = 'Переснять';
-                sendBtn.className = 'timestamp-btn primary'; // Приоритет, но disabled
+                sendBtn.className = 'timestamp-btn primary'; // Приоритет
                 sendBtn.disabled = true;
-                sendBtn.querySelector('.btn-content').innerHTML = '<span class="loading-spinner"></span><span class="btn-text">Отправка...</span>';
+                sendBtnContent.innerHTML = '<span class="loading-spinner"></span><span class="btn-text">Отправка...</span>';
                 break;
 
             case 'sent':
@@ -3143,6 +3148,8 @@
                 sendBtn.className = 'timestamp-btn'; // Обычная, неактивная
                 sendBtn.disabled = true;
                 sendBtn.querySelector('.btn-text').textContent = 'Отправлено';
+                // Убираем спиннер если он остался
+                sendBtnContent.innerHTML = '<span class="btn-text">Отправлено</span>';
                 locationInfo.textContent = 'Победа. Фото успешно отправлено. Погнали делать новое?';
                 break;
         }
