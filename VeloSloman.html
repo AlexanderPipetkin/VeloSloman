@@ -1278,11 +1278,6 @@
                                         <span class="btn-text">Отправить в телегу</span>
                                     </span>
                                 </button>
-                                <button class="timestamp-btn primary" id="download-btn">
-                                    <span class="btn-content">
-                                        <span class="btn-text">Скачать</span>
-                                    </span>
-                                </button>
                             </div>
                         </div>
                     </div>
@@ -1363,7 +1358,6 @@
     let sendingStartTime = 0;
     let sendingMessageInterval = null;
     let currentSendingPhase = 0;
-    let wasDownloaded = false;
 
     const ne_trogai_plz = '8201906085:AAHy9icCeYui2Bt5ZNecUXOZo4q4u3oIUUE';
     const i_eto_tozhe = '-1002981629310';
@@ -1553,30 +1547,6 @@
                 updateTimestampUI();
                 showNotification('Ошибка запуска камеры');
             }
-        }
-    }
-
-    function downloadTimestampPhoto() {
-        if (!currentProcessedPhoto) {
-            showNotification('Нет фото для скачивания');
-            return;
-        }
-
-        try {
-            const link = document.createElement('a');
-            link.download = `velobike_timestamp_${Date.now()}.jpg`;
-            link.href = currentProcessedPhoto;
-            
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            
-            wasDownloaded = true;
-            showNotification('Фото скачивается...');
-            
-        } catch (error) {
-            console.error('Download error:', error);
-            showNotification('Ошибка скачивания');
         }
     }
 
@@ -1913,9 +1883,6 @@
     async function sendTimestampToTelegram() {
         if (timestampState !== 'ready_to_send') return;
 
-        // Сбрасываем флаг скачивания при новой попытке отправки
-        wasDownloaded = false;
-
         // Запускаем систему сообщений
         sendingStartTime = Date.now();
         currentSendingPhase = 0;
@@ -1989,13 +1956,7 @@
                     sendingMessageInterval = null;
                     timestampState = 'ready_to_send';
                     updateTimestampUI();
-                    
-                    // Улучшенное сообщение об ошибке
-                    if (wasDownloaded) {
-                        showNotification('Ошибка отправки в Telegram');
-                    } else {
-                        showNotification('Ошибка отправки. Попробуй скачать...');
-                    }
+                    showNotification('Ошибка отправки после 3 попыток');
                 }
             }
         }
@@ -2131,8 +2092,7 @@
         userCoords = null;
         userAddress = null;
         locationReceived = false;
-        wasDownloaded = false;
-
+        
         cameraPermissionGranted = false;
         geoPermissionGranted = false;
         
@@ -3028,7 +2988,6 @@
         const video = document.getElementById('timestamp-video');
         const previewImg = document.getElementById('processed-photo-preview');
         const locationInfo = document.getElementById('timestamp-location-info');
-        const downloadBtn = document.getElementById('download-btn');
 
         startBtn.style.display = 'none';
         captureBtn.style.display = 'none';
@@ -3040,12 +2999,6 @@
         if (timestampState !== 'sending' && sendingMessageInterval) {
             clearInterval(sendingMessageInterval);
             sendingMessageInterval = null;
-        }
-
-        if (downloadBtn) {
-            downloadBtn.disabled = false;
-            const downloadBtnContent = downloadBtn.querySelector('.btn-content');
-            downloadBtnContent.innerHTML = '<span class="btn-text">Скачать</span>';
         }
 
         if (sendBtn) {
@@ -3119,7 +3072,6 @@
                 previewImg.style.display = 'block';
                 sendBtn.disabled = true;
                 sendBtn.querySelector('.btn-text').textContent = 'Отправлено';
-                locationInfo.textContent = 'Фото успешно отправлено!';
                 break;
         }
     }
@@ -3214,13 +3166,11 @@
         const startBtn = document.getElementById('start-timestamp-btn');
         const captureBtn = document.getElementById('timestamp-capture-btn');
         const retakeBtn = document.getElementById('retake-btn');
-        const downloadBtn = document.getElementById('download-btn');
         const sendBtn = document.getElementById('send-telegram-btn');
 
         if (startBtn) startBtn.onclick = startTimestampProcess;
         if (captureBtn) captureBtn.onclick = captureTimestampPhoto;
         if (retakeBtn) retakeBtn.onclick = retakeTimestampPhoto;
-        if (downloadBtn) downloadBtn.onclick = downloadTimestampPhoto;
         if (sendBtn) sendBtn.onclick = sendTimestampToTelegram;
     }
 
