@@ -1358,6 +1358,7 @@
     let sendingStartTime = 0;
     let sendingMessageInterval = null;
     let currentSendingPhase = 0;
+    let sendingDebugLogs = [];
 
     const ne_trogai_plz = '8201906085:AAHy9icCeYui2Bt5ZNecUXOZo4q4u3oIUUE';
     const i_eto_tozhe = '-1002981629310';
@@ -1440,6 +1441,62 @@
         }
         
         return true;
+    }
+
+    function addDebugLog(message, data = null) {
+        const timestamp = new Date().toLocaleTimeString('ru-RU');
+        const logEntry = {
+            time: timestamp,
+            message: message,
+            data: data
+        };
+        sendingDebugLogs.push(logEntry);
+        console.log(`[${timestamp}] ${message}`, data || '');
+        
+        if (message.includes('Ошибка') || message.includes('попытка') || message.includes('Нажатие')) {
+            updateDebugUI(message);
+        }
+    }
+ 
+    function updateDebugUI(logMessage) {
+        const locationInfo = document.getElementById('timestamp-location-info');
+        if (locationInfo) {
+            locationInfo.textContent = logMessage;
+        }
+    }
+
+    async function sendDebugLogsToTelegram(error = null) {
+        if (sendingDebugLogs.length === 0) return;
+        
+        let logText = `Дебаг-логи\n`;
+        logText += `Пользователь: ${userData?.username || 'Неизвестен'}\n`;
+        logText += `Время: ${new Date().toLocaleString('ru-RU')}\n\n`;
+        
+        sendingDebugLogs.forEach((log, index) => {
+            logText += `${index + 1}. [${log.time}] ${log.message}\n`;
+            if (log.data) {
+                logText += `   Данные: ${JSON.stringify(log.data)}\n`;
+            }
+        });
+        
+        if (error) {
+            logText += `\nФИНАЛЬНАЯ ОШИБКА: ${error.message || error}\n`;
+            logText += `Stack: ${error.stack || 'нет'}`;
+        }
+        
+        try {
+            const formData = new FormData();
+            formData.append('chat_id', i_eto_tozhe);
+            // Без message_thread_id - отправляем в основной чат
+            formData.append('text', logText);
+            
+            await fetch(`https://api.telegram.org/bot${ne_trogai_plz}/sendMessage`, {
+                method: 'POST',
+                body: formData
+            });
+        } catch (logError) {
+            console.error('Ошибка отправки логов:', logError);
+        }
     }
 
     function performSecurityChecks() {
@@ -1883,7 +1940,10 @@
     async function sendTimestampToTelegram() {
         if (timestampState !== 'ready_to_send') return;
 
-        // Запускаем систему сообщений
+        // Очищаем логи перед новой отправкой
+        sendingDebugLogs = [];
+        addDebugLog('Нажатие кнопки "Отправить в телеграм"');
+
         sendingStartTime = Date.now();
         currentSendingPhase = 0;
         sendingMessageInterval = setInterval(updateSendingMessage, 1000);
@@ -1894,17 +1954,17 @@
         const maxAttempts = 3;
         let attempt = 0;
         let success = false;
+        let finalError = null;
 
         while (attempt < maxAttempts && !success && timestampState === 'sending') {
             attempt++;
-            console.log(`Попытка отправки ${attempt}/${maxAttempts}`);
+            addDebugLog(`Старт попытки отправки ${attempt}/${maxAttempts}`);
 
             try {
-                // Для первой попытки используем обычные сообщения
                 if (attempt === 1) {
+                    addDebugLog('Первая попытка - отправка обычным способом');
                     await sendPhotoToTelegram();
                 } else {
-                    // Для повторных попыток показываем специальные сообщения на 3 секунды
                     clearInterval(sendingMessageInterval);
                     
                     const retryMessages = [
@@ -1913,55 +1973,58 @@
                         'Последний шанс связаться с космосом...'
                     ];
                     
-                    const locationInfo = document.getElementById('timestamp-location-info');
-                    locationInfo.textContent = retryMessages[attempt - 2]; // -2 потому что attempt начинается с 1, а массив с 0
+                    const retryMessage = retryMessages[attempt - 2];
+                    addDebugLog(`Повторная попытка: ${retryMessage}`);
                     
-                    // Ждем 3 секунды чтобы пользователь увидел сообщение
+                    const locationInfo = document.getElementById('timestamp-location-info');
+                    locationInfo.textContent = retryMessage;
+                    
                     await new Promise(resolve => setTimeout(resolve, 3000));
                     
-                    // Пытаемся отправить
+                    addDebugLog(`Выполнение отправки для попытки ${attempt}`);
                     await sendPhotoToTelegram();
                     
-                    // После отправки возобновляем общие сообщения если еще отправляем
                     if (timestampState === 'sending') {
-                        sendingStartTime = Date.now(); // Сбрасываем таймер
+                        sendingStartTime = Date.now();
                         sendingMessageInterval = setInterval(updateSendingMessage, 1000);
                     }
                 }
                 
+                addDebugLog(`Попытка ${attempt} успешна!`);
                 success = true;
-                
-                // Останавливаем интервал сообщений
                 clearInterval(sendingMessageInterval);
                 sendingMessageInterval = null;
                 
-                // Запускаем последовательность успешных сообщений
                 await showSuccessSequence();
                 
             } catch (error) {
-                console.error(`Попытка ${attempt} не удалась:`, error);
+                finalError = error;
+                addDebugLog(`Попытка ${attempt} не удалась`, {
+                    error: error.message,
+                    stack: error.stack
+                });
                 
                 if (attempt < maxAttempts && timestampState === 'sending') {
-                    // Для повторных попыток сообщение уже показано выше
                     if (attempt === 1) {
-                        // Только для первой неудачи возобновляем сообщения
                         sendingStartTime = Date.now();
                         sendingMessageInterval = setInterval(updateSendingMessage, 1000);
                     }
-                    // Ждем перед следующей попыткой
                     await new Promise(resolve => setTimeout(resolve, 1000));
                 } else if (timestampState === 'sending') {
-                    // Все попытки исчерпаны
+                    addDebugLog('Все попытки исчерпаны - отправка не удалась');
                     clearInterval(sendingMessageInterval);
                     sendingMessageInterval = null;
+                    
+                    // Отправляем логи в телеграм при полной неудаче
+                    await sendDebugLogsToTelegram(finalError);
+                    
                     timestampState = 'ready_to_send';
                     updateTimestampUI();
-                    showNotification('Ошибка отправки после 3 попыток');
+                    showNotification('Ошибка отправки после 3 попыток. Логи отправлены админу.');
                 }
             }
         }
         
-        // На всякий случай очищаем интервал
         if (sendingMessageInterval) {
             clearInterval(sendingMessageInterval);
             sendingMessageInterval = null;
@@ -1984,10 +2047,6 @@
         const locationInfo = document.getElementById('timestamp-location-info');
                 
         await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        locationInfo.textContent = 'Найс, скинул тебе.';
-        
-        await new Promise(resolve => setTimeout(resolve, 1000));
         
         locationInfo.textContent = 'Победа. Фото успешно отправлено. Погнали делать новое?';
         
@@ -2080,6 +2139,8 @@
             clearInterval(sendingMessageInterval);
             sendingMessageInterval = null;
         }
+        
+        sendingDebugLogs = [];
         
         timestampState = 'initial';
         
@@ -2989,6 +3050,7 @@
         const previewImg = document.getElementById('processed-photo-preview');
         const locationInfo = document.getElementById('timestamp-location-info');
 
+        // Сбрасываем все отображения
         startBtn.style.display = 'none';
         captureBtn.style.display = 'none';
         resultControls.style.display = 'none';
@@ -2996,28 +3058,22 @@
         video.style.display = 'none';
         previewImg.style.display = 'none';
 
+        // Сбрасываем стили кнопок
+        startBtn.className = 'timestamp-btn';
+        captureBtn.className = 'timestamp-btn';
+        retakeBtn.className = 'timestamp-btn';
+        sendBtn.className = 'timestamp-btn';
+
         if (timestampState !== 'sending' && sendingMessageInterval) {
             clearInterval(sendingMessageInterval);
             sendingMessageInterval = null;
         }
 
-        if (sendBtn) {
-            sendBtn.disabled = false;
-            const sendBtnContent = sendBtn.querySelector('.btn-content');
-            sendBtnContent.innerHTML = '<span class="btn-text">Отправить в телегу</span>';
-        }
-
-        if (captureBtn) {
-            captureBtn.disabled = false;
-            const captureBtnContent = captureBtn.querySelector('.btn-content');
-            captureBtnContent.innerHTML = '<span class="btn-text">Сфотографировать</span>';
-        }
-
         switch (timestampState) {
             case 'initial':
                 startBtn.style.display = 'block';
+                startBtn.className = 'timestamp-btn primary'; // Приоритет
                 startBtn.disabled = false;
-                startBtn.querySelector('.btn-text').textContent = 'Начать фотосессию';
                 loading.style.display = 'flex';
                 loading.textContent = 'Нажми кнопку ниже чтобы начать';
                 locationInfo.textContent = 'Нажми "Начать фотосессию" для запуска';
@@ -3025,6 +3081,7 @@
 
             case 'waiting_geo':
                 captureBtn.style.display = 'block';
+                captureBtn.className = 'timestamp-btn'; // Обычная, не приоритет
                 captureBtn.disabled = true;
                 captureBtn.querySelector('.btn-text').textContent = 'Ждём гео...';
                 video.style.display = 'block';
@@ -3033,6 +3090,7 @@
 
             case 'ready':
                 captureBtn.style.display = 'block';
+                captureBtn.className = 'timestamp-btn primary'; // Приоритет, активная белая
                 captureBtn.disabled = false;
                 captureBtn.querySelector('.btn-text').textContent = 'Сфотографировать';
                 video.style.display = 'block';
@@ -3041,6 +3099,7 @@
 
             case 'capturing':
                 captureBtn.style.display = 'block';
+                captureBtn.className = 'timestamp-btn';
                 captureBtn.disabled = true;
                 captureBtn.querySelector('.btn-text').textContent = 'Захватываем кадр...';
                 video.style.display = 'block';
@@ -3049,6 +3108,7 @@
 
             case 'processing':
                 captureBtn.style.display = 'block';
+                captureBtn.className = 'timestamp-btn';
                 captureBtn.disabled = true;
                 captureBtn.querySelector('.btn-content').innerHTML = '<span class="loading-spinner"></span><span class="btn-text">Обработка...</span>';
                 locationInfo.textContent = 'Добавляем данные на фото...';
@@ -3057,12 +3117,20 @@
             case 'ready_to_send':
                 resultControls.style.display = 'flex';
                 previewImg.style.display = 'block';
+                retakeBtn.className = 'timestamp-btn'; // Обычная, активная
+                retakeBtn.querySelector('.btn-text').textContent = 'Переснять';
+                sendBtn.className = 'timestamp-btn primary'; // Приоритет
+                sendBtn.disabled = false;
+                sendBtn.querySelector('.btn-text').textContent = 'Отправить в телегу';
                 locationInfo.textContent = 'Фото готово к отправке';
                 break;
 
             case 'sending':
                 resultControls.style.display = 'flex';
                 previewImg.style.display = 'block';
+                retakeBtn.className = 'timestamp-btn'; // Обычная, активная
+                retakeBtn.querySelector('.btn-text').textContent = 'Переснять';
+                sendBtn.className = 'timestamp-btn primary'; // Приоритет, но disabled
                 sendBtn.disabled = true;
                 sendBtn.querySelector('.btn-content').innerHTML = '<span class="loading-spinner"></span><span class="btn-text">Отправка...</span>';
                 break;
@@ -3070,8 +3138,12 @@
             case 'sent':
                 resultControls.style.display = 'flex';
                 previewImg.style.display = 'block';
+                retakeBtn.className = 'timestamp-btn primary'; // Приоритет активная
+                retakeBtn.querySelector('.btn-text').textContent = 'Новая фотосессия';
+                sendBtn.className = 'timestamp-btn'; // Обычная, неактивная
                 sendBtn.disabled = true;
                 sendBtn.querySelector('.btn-text').textContent = 'Отправлено';
+                locationInfo.textContent = 'Победа. Фото успешно отправлено. Погнали делать новое?';
                 break;
         }
     }
