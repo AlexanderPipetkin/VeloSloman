@@ -2838,11 +2838,18 @@
                     'Координаты не получены';
             }
 
-            let messageText = `Новая заявка на ремонт\n`;
-            messageText += `Велосипед: №${currentBikeNumber}\n`;
-            messageText += `Время: ${new Date().toLocaleString()}\n\n`;
+            let messageText = `<b>Новая заявка на ремонт</b>\n`;
+            messageText += `Велосипед: №<code>${currentBikeNumber}</code>\n`;
+            messageText += `Время: ${new Date().toLocaleString('ru-RU', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            })}\n\n`;
 
-            messageText += `Список поломок:\n`;
+            messageText += `<b>Список поломок:</b>\n`;
             selectedDamages.forEach((damage, index) => {
                 messageText += `${index + 1}. ${getPartName(damage.part)}: ${damage.description}`;
                 if (damage.customNote && damage.customNote.length) {
@@ -2854,14 +2861,18 @@
             const additionalInfoEl = document.getElementById('bike-additional-info');
             const bikeAdditionalInfo = additionalInfoEl ? additionalInfoEl.value.trim() : '';
             if (bikeAdditionalInfo) {
-                messageText += `\nДоп. информация о велосипеде:\n${bikeAdditionalInfo}\n`;
+                messageText += `\n<b>Доп. информация о велосипеде:</b>\n`;
+                messageText += `<blockquote>${bikeAdditionalInfo}</blockquote>\n`;
             }
 
             messageText += `\n`;
 
             if (userLocation) {
-                messageText += `Координаты:\n`;
-                messageText += `${userLocation.latitude.toFixed(6)}, ${userLocation.longitude.toFixed(6)}\n\n`;
+                messageText += `<b>Координаты:</b>\n`;
+                messageText += `<code>${userLocation.latitude.toFixed(6)}, ${userLocation.longitude.toFixed(6)}</code>\n`;
+                
+                const yandexMapsUrl = `https://yandex.ru/maps/?pt=${userLocation.longitude},${userLocation.latitude}&z=17&l=map`;
+                messageText += `<a href="${yandexMapsUrl}">Открыть в Яндекс Картах</a>\n\n`;
             }
 
             if (currentPhoto) {
@@ -2870,6 +2881,7 @@
                 formData.append('chat_id', i_eto_tozhe);
                 formData.append('message_thread_id', DAMAGES_TOPIC_ID);
                 formData.append('caption', messageText);
+                formData.append('parse_mode', 'HTML');
                 
                 const base64Response = await fetch(currentPhoto);
                 const blob = await base64Response.blob();
