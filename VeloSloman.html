@@ -1956,9 +1956,12 @@
 
         while (attempt < maxAttempts && !success && timestampState === 'sending') {
             attempt++;
+            addDebugLog(`Старт попытки отправки ${attempt}/${maxAttempts}`);
 
+            const attemptStartTime = Date.now();
+            
             try {
-                // Создаем Promise с таймаутом 7 секунд
+                // Создаем Promise с таймаутом 7 секунд для ЭТОЙ попытки
                 const sendWithTimeout = new Promise((resolve, reject) => {
                     const timeoutId = setTimeout(() => {
                         reject(new Error(`Попытка ${attempt} превысила лимит 7 секунд`));
@@ -1977,6 +1980,7 @@
 
                 await sendWithTimeout;
                 
+                addDebugLog(`Попытка ${attempt} успешна!`);
                 success = true;
                 clearInterval(sendingMessageInterval);
                 sendingMessageInterval = null;
@@ -1985,18 +1989,18 @@
                 
             } catch (error) {
                 finalError = error;
-                addDebugLog(`Попытка ${attempt} не удалась`, {
-                    error: error.message,
-                    attempt: attempt,
-                    timeElapsed: Date.now() - sendingStartTime
+                const attemptTime = Date.now() - attemptStartTime;
+                addDebugLog(`Попытка ${attempt} не удалась за ${attemptTime}ms`, {
+                    error: error.message
                 });
                 
+                // Сразу переходим к следующей попытке, не ждем
                 if (attempt < maxAttempts && timestampState === 'sending') {
-                    // Обновляем сообщение для пользователя
-                    updateRetryMessage(attempt);
-                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    addDebugLog(`Сразу начинаем попытку ${attempt + 1}`);
+                    // Не делаем задержку, сразу следующая попытка
+                    continue;
                 } else if (timestampState === 'sending') {
-                    addDebugLog('Все попытки исчерпаны - отправка не удалась');
+                    addDebugLog('Все попытки исчерпаны');
                     clearInterval(sendingMessageInterval);
                     sendingMessageInterval = null;
                     
@@ -2004,7 +2008,7 @@
                     
                     timestampState = 'ready_to_send';
                     updateTimestampUI();
-                    showNotification(`Ошибка отправки. Я пытался.`);
+                    showNotification(`Ошибка отправки после ${maxAttempts} попыток.`);
                 }
             }
         }
