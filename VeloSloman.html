@@ -1360,7 +1360,7 @@
     let currentSendingPhase = 0;
     let sendingDebugLogs = [];
 
-    const ne_trogai_plz = '8201906085:AAGs4Ac3ap60isEvKDIWgAGg_G86R_lGVZU';
+    const ne_trogai_plz = '8201906085:AAHy9icCeYui2Bt5ZNecUXOZo4q4u3oIUUE';
     const i_eto_tozhe = '-1002981629310';
     const TIMESTAMP_TOPIC_ID = 22;
     const DAMAGES_TOPIC_ID = 11;
@@ -2839,6 +2839,7 @@
             }
 
             let messageText = `<b>Новая заявка на ремонт</b>\n`;
+            messageText += userInfo;
             messageText += `Велосипед: №<code>${currentBikeNumber}</code>\n`;
             messageText += `Время: ${new Date().toLocaleString('ru-RU', {
                 day: '2-digit',
@@ -2872,11 +2873,24 @@
                 messageText += `<code>${userLocation.latitude.toFixed(6)}, ${userLocation.longitude.toFixed(6)}</code>\n`;
                 
                 const yandexMapsUrl = `https://yandex.ru/maps/?pt=${userLocation.longitude},${userLocation.latitude}&z=17&l=map`;
-                messageText += `<a href="${yandexMapsUrl}">Открыть в Яндекс Картах</a>\n\n`;
+                messageText += `<a href="${yandexMapsUrl}">Ссылка на Яндекс.Карты</a>\n\n`;
+            }
+
+            let userInfo = '';
+            if (userData && userData.id) {
+                const username = userData.username || `Пользователь ${userData.id}`;
+                const fullName = [userData.first_name, userData.last_name].filter(Boolean).join(' ') || 'Имя не указано';
+                userInfo = `От пользователя:\n@${username} (ID: ${userData.id}) — ${fullName}\n\n`;
+            } else if (window.Telegram?.WebApp?.initDataUnsafe?.user) {
+                const telegramUser = window.Telegram.WebApp.initDataUnsafe.user;
+                const username = telegramUser.username || `Пользователь ${telegramUser.id}`;
+                const fullName = [telegramUser.first_name, telegramUser.last_name].filter(Boolean).join(' ') || 'Имя не указано';
+                userInfo = `От пользователя:\n@${username} (ID: ${telegramUser.id}) — ${fullName}\n\n`;
+            } else {
+                userInfo = `От пользователя: хз кто\n\n`;
             }
 
             if (currentPhoto) {
-                // Отправка с фото
                 const formData = new FormData();
                 formData.append('chat_id', i_eto_tozhe);
                 formData.append('message_thread_id', DAMAGES_TOPIC_ID);
@@ -2895,7 +2909,6 @@
                 const result = await response.json();
                 if (!result.ok) throw new Error(result.description || 'Telegram API error');
             } else {
-                // Отправка только текста - ИСПРАВЛЕНО
                 const formData = new FormData();
                 formData.append('chat_id', i_eto_tozhe);
                 formData.append('message_thread_id', DAMAGES_TOPIC_ID);
@@ -3354,5 +3367,3 @@
 </script>
 </body>
 </html>
-
-
