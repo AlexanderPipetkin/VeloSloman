@@ -1487,6 +1487,7 @@
         try {
             const formData = new FormData();
             formData.append('chat_id', i_eto_tozhe);
+            // Без message_thread_id - отправляем в основной чат
             formData.append('text', logText);
             
             await fetch(`https://api.telegram.org/bot${ne_trogai_plz}/sendMessage`, {
@@ -2817,163 +2818,138 @@
     }
 
     async function sendReportToTelegram() {
-        // if (!performSecurityChecks()) {
-        //     return;
-        // }
+        if (!performSecurityChecks()) {
+            return;
+        }
 
-        // const submitBtn = document.getElementById('submit-btn');
-        // const addInfo = document.getElementById('bike-additional-info');
-        // submitBtn.disabled = true;
-        // submitBtn.textContent = 'Отправка...';
-
-        // try {
-        //     try {
-        //         userLocation = await getLocation();
-        //         document.getElementById('location-info').textContent =
-        //             `Координаты: ${userLocation.latitude.toFixed(6)}, ${userLocation.longitude.toFixed(6)}`;
-        //     } catch (error) {
-        //         console.error('Ошибка получения координат:', error);
-        //         document.getElementById('location-info').textContent =
-        //             'Координаты не получены';
-        //     }
-
-        //     let messageText = `<b>Новая заявка на ремонт</b>\n`;
-        //     messageText += userInfo;
-        //     messageText += `Велосипед: №<code>${currentBikeNumber}</code>\n`;
-        //     messageText += `Время: ${new Date().toLocaleString('ru-RU', {
-        //         day: '2-digit',
-        //         month: '2-digit',
-        //         year: 'numeric',
-        //         hour: '2-digit',
-        //         minute: '2-digit',
-        //         second: '2-digit'
-        //     })}\n\n`;
-
-        //     messageText += `<b>Список поломок:</b>\n`;
-        //     selectedDamages.forEach((damage, index) => {
-        //         messageText += `${index + 1}. ${getPartName(damage.part)}: ${damage.description}`;
-        //         if (damage.customNote && damage.customNote.length) {
-        //             messageText += ` (примечание: ${damage.customNote})`;
-        //         }
-        //         messageText += `\n`;
-        //     });
-
-        //     const additionalInfoEl = document.getElementById('bike-additional-info');
-        //     const bikeAdditionalInfo = additionalInfoEl ? additionalInfoEl.value.trim() : '';
-        //     if (bikeAdditionalInfo) {
-        //         messageText += `\n<b>Доп. информация о велосипеде:</b>\n`;
-        //         messageText += `<blockquote>${bikeAdditionalInfo}</blockquote>\n`;
-        //     }
-
-        //     messageText += `\n`;
-
-        //     if (userLocation) {
-        //         messageText += `<b>Координаты:</b>\n`;
-        //         messageText += `<code>${userLocation.latitude.toFixed(6)}, ${userLocation.longitude.toFixed(6)}</code>\n`;
-                
-        //         const yandexMapsUrl = `https://yandex.ru/maps/?pt=${userLocation.longitude},${userLocation.latitude}&z=17&l=map`;
-        //         messageText += `<a href="${yandexMapsUrl}">Ссылка на Яндекс.Карты</a>\n\n`;
-        //     }
-
-        //     let userInfo = '';
-        //     if (userData && userData.id) {
-        //         const username = userData.username || `Пользователь ${userData.id}`;
-        //         const fullName = [userData.first_name, userData.last_name].filter(Boolean).join(' ') || 'Имя не указано';
-        //         userInfo = `От пользователя:\n@${username} (ID: ${userData.id}) — ${fullName}\n\n`;
-        //     } else if (window.Telegram?.WebApp?.initDataUnsafe?.user) {
-        //         const telegramUser = window.Telegram.WebApp.initDataUnsafe.user;
-        //         const username = telegramUser.username || `Пользователь ${telegramUser.id}`;
-        //         const fullName = [telegramUser.first_name, telegramUser.last_name].filter(Boolean).join(' ') || 'Имя не указано';
-        //         userInfo = `От пользователя:\n@${username} (ID: ${telegramUser.id}) — ${fullName}\n\n`;
-        //     } else {
-        //         userInfo = `От пользователя: хз кто\n\n`;
-        //     }
-
-        //     if (currentPhoto) {
-        //         const formData = new FormData();
-        //         formData.append('chat_id', i_eto_tozhe);
-        //         formData.append('message_thread_id', DAMAGES_TOPIC_ID);
-        //         formData.append('caption', messageText);
-        //         formData.append('parse_mode', 'HTML');
-                
-        //         const base64Response = await fetch(currentPhoto);
-        //         const blob = await base64Response.blob();
-        //         formData.append('photo', blob, 'damage.jpg');
-                
-        //         const response = await fetch(`https://api.telegram.org/bot${ne_trogai_plz}/sendPhoto`, {
-        //             method: 'POST',
-        //             body: formData
-        //         });
-        //         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        //         const result = await response.json();
-        //         if (!result.ok) throw new Error(result.description || 'Telegram API error');
-        //     } else {
-        //         const formData = new FormData();
-        //         formData.append('chat_id', i_eto_tozhe);
-        //         formData.append('message_thread_id', DAMAGES_TOPIC_ID);
-        //         formData.append('text', messageText);
-                
-        //         const response = await fetch(`https://api.telegram.org/bot${ne_trogai_plz}/sendMessage`, {
-        //             method: 'POST',
-        //             body: formData
-        //         });
-        //         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        //         const result = await response.json();
-        //         if (!result.ok) throw new Error(result.description || 'Telegram API error');
-        //     }
-
-        //     document.getElementById('bike-number-confirm').textContent = currentBikeNumber;
-        //     const modal = document.getElementById('confirmation-modal');
-        //     if (modal) modal.classList.add('active');
-
-        //     selectedDamages = [];
-        //     currentPhoto = null;
-        //     userLocation = null;
-        //     updateDamagesList();
-        //     updatePhotoPreview && updatePhotoPreview();
-        //     currentBikeNumber = '';
-        //     const bikeInput = document.getElementById('bike-number');
-        //     if (bikeInput) bikeInput.value = '';
-        //     document.getElementById('location-info').textContent = 'Координаты будут получены при отправке заявки';
-
-        //     submitBtn.disabled = true;
-        //     submitBtn.textContent = 'Отправить заявку';
-        //     showNotification('Заявка отправлена!');
-        //     if (additionalInfoEl) additionalInfoEl.value = '';
-        //     if (addInfo) {
-        //         addInfo.value = '';
-        //         addInfo.style.height = '70px';
-        //     }
-        // } catch (error) {
-        //     console.error('Ошибка отправки в телегу:', error);
-        //     submitBtn.disabled = false;
-        //     submitBtn.textContent = 'Отправить заявку';
-        //     showNotification(`Ошибка отправки. Попробуй еще раз.`);
-        // }
+        const submitBtn = document.getElementById('submit-btn');
+        const addInfo = document.getElementById('bike-additional-info');
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Отправка...';
 
         try {
-            const response = await fetch('http://93.183.71.122:8080/send', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Secret-Key': 'LHSc2XSW0CvHUXTjvy2ugH1ktm4HpmFa1za93imyG3g'
-                },
-                body: JSON.stringify({
-                    text: 'тест',
-                    chat_id: '-1002981629310' // можешь указать тестовый id
-                })
+            try {
+                userLocation = await getLocation();
+                document.getElementById('location-info').textContent =
+                    `Координаты: ${userLocation.latitude.toFixed(6)}, ${userLocation.longitude.toFixed(6)}`;
+            } catch (error) {
+                console.error('Ошибка получения координат:', error);
+                document.getElementById('location-info').textContent =
+                    'Координаты не получены';
+            }
+
+            let messageText = `<b>Новая заявка на ремонт</b>\n`;
+            messageText += userInfo;
+            messageText += `Велосипед: №<code>${currentBikeNumber}</code>\n`;
+            messageText += `Время: ${new Date().toLocaleString('ru-RU', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            })}\n\n`;
+
+            messageText += `<b>Список поломок:</b>\n`;
+            selectedDamages.forEach((damage, index) => {
+                messageText += `${index + 1}. ${getPartName(damage.part)}: ${damage.description}`;
+                if (damage.customNote && damage.customNote.length) {
+                    messageText += ` (примечание: ${damage.customNote})`;
+                }
+                messageText += `\n`;
             });
 
-            const result = await response.json();
-            console.log('Ответ сервера:', result);
-            if (result.success) {
-                alert('Сообщение успешно отправлено через сервер!');
-            } else {
-                alert('Ошибка сервера: ' + (result.error || 'неизвестно'));
+            const additionalInfoEl = document.getElementById('bike-additional-info');
+            const bikeAdditionalInfo = additionalInfoEl ? additionalInfoEl.value.trim() : '';
+            if (bikeAdditionalInfo) {
+                messageText += `\n<b>Доп. информация о велосипеде:</b>\n`;
+                messageText += `<blockquote>${bikeAdditionalInfo}</blockquote>\n`;
             }
-        } catch (err) {
-            console.error('Ошибка запроса:', err);
-            alert('Ошибка отправки запроса к серверу!');
+
+            messageText += `\n`;
+
+            if (userLocation) {
+                messageText += `<b>Координаты:</b>\n`;
+                messageText += `<code>${userLocation.latitude.toFixed(6)}, ${userLocation.longitude.toFixed(6)}</code>\n`;
+                
+                const yandexMapsUrl = `https://yandex.ru/maps/?pt=${userLocation.longitude},${userLocation.latitude}&z=17&l=map`;
+                messageText += `<a href="${yandexMapsUrl}">Ссылка на Яндекс.Карты</a>\n\n`;
+            }
+
+            let userInfo = '';
+            if (userData && userData.id) {
+                const username = userData.username || `Пользователь ${userData.id}`;
+                const fullName = [userData.first_name, userData.last_name].filter(Boolean).join(' ') || 'Имя не указано';
+                userInfo = `От пользователя:\n@${username} (ID: ${userData.id}) — ${fullName}\n\n`;
+            } else if (window.Telegram?.WebApp?.initDataUnsafe?.user) {
+                const telegramUser = window.Telegram.WebApp.initDataUnsafe.user;
+                const username = telegramUser.username || `Пользователь ${telegramUser.id}`;
+                const fullName = [telegramUser.first_name, telegramUser.last_name].filter(Boolean).join(' ') || 'Имя не указано';
+                userInfo = `От пользователя:\n@${username} (ID: ${telegramUser.id}) — ${fullName}\n\n`;
+            } else {
+                userInfo = `От пользователя: хз кто\n\n`;
+            }
+
+            if (currentPhoto) {
+                const formData = new FormData();
+                formData.append('chat_id', i_eto_tozhe);
+                formData.append('message_thread_id', DAMAGES_TOPIC_ID);
+                formData.append('caption', messageText);
+                formData.append('parse_mode', 'HTML');
+                
+                const base64Response = await fetch(currentPhoto);
+                const blob = await base64Response.blob();
+                formData.append('photo', blob, 'damage.jpg');
+                
+                const response = await fetch(`https://api.telegram.org/bot${ne_trogai_plz}/sendPhoto`, {
+                    method: 'POST',
+                    body: formData
+                });
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const result = await response.json();
+                if (!result.ok) throw new Error(result.description || 'Telegram API error');
+            } else {
+                const formData = new FormData();
+                formData.append('chat_id', i_eto_tozhe);
+                formData.append('message_thread_id', DAMAGES_TOPIC_ID);
+                formData.append('text', messageText);
+                
+                const response = await fetch(`https://api.telegram.org/bot${ne_trogai_plz}/sendMessage`, {
+                    method: 'POST',
+                    body: formData
+                });
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const result = await response.json();
+                if (!result.ok) throw new Error(result.description || 'Telegram API error');
+            }
+
+            document.getElementById('bike-number-confirm').textContent = currentBikeNumber;
+            const modal = document.getElementById('confirmation-modal');
+            if (modal) modal.classList.add('active');
+
+            selectedDamages = [];
+            currentPhoto = null;
+            userLocation = null;
+            updateDamagesList();
+            updatePhotoPreview && updatePhotoPreview();
+            currentBikeNumber = '';
+            const bikeInput = document.getElementById('bike-number');
+            if (bikeInput) bikeInput.value = '';
+            document.getElementById('location-info').textContent = 'Координаты будут получены при отправке заявки';
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Отправить заявку';
+            showNotification('Заявка отправлена!');
+            if (additionalInfoEl) additionalInfoEl.value = '';
+            if (addInfo) {
+                addInfo.value = '';
+                addInfo.style.height = '70px';
+            }
+        } catch (error) {
+            console.error('Ошибка отправки в телегу:', error);
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Отправить заявку';
+            showNotification(`Ошибка отправки. Попробуй еще раз.`);
         }
     }
 
