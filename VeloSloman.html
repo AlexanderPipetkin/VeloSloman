@@ -2838,6 +2838,20 @@
                     'Координаты не получены';
             }
 
+            let userInfo = '';
+            if (userData && userData.id) {
+                const username = userData.username || `Пользователь ${userData.id}`;
+                const fullName = [userData.first_name, userData.last_name].filter(Boolean).join(' ') || 'Имя не указано';
+                userInfo = `От пользователя:\n@${username} (ID: ${userData.id}) — ${fullName}\n\n`;
+            } else if (window.Telegram?.WebApp?.initDataUnsafe?.user) {
+                const telegramUser = window.Telegram.WebApp.initDataUnsafe.user;
+                const username = telegramUser.username || `Пользователь ${telegramUser.id}`;
+                const fullName = [telegramUser.first_name, telegramUser.last_name].filter(Boolean).join(' ') || 'Имя не указано';
+                userInfo = `От пользователя:\n@${username} (ID: ${telegramUser.id}) — ${fullName}\n\n`;
+            } else {
+                userInfo = `От пользователя: хз кто\n\n`;
+            }
+
             let messageText = `<b>Новая заявка на ремонт</b>\n`;
             messageText += userInfo;
             messageText += `Велосипед: №<code>${currentBikeNumber}</code>\n`;
@@ -2874,20 +2888,6 @@
                 
                 const yandexMapsUrl = `https://yandex.ru/maps/?pt=${userLocation.longitude},${userLocation.latitude}&z=17&l=map`;
                 messageText += `<a href="${yandexMapsUrl}">Ссылка на Яндекс.Карты</a>\n\n`;
-            }
-
-            let userInfo = '';
-            if (userData && userData.id) {
-                const username = userData.username || `Пользователь ${userData.id}`;
-                const fullName = [userData.first_name, userData.last_name].filter(Boolean).join(' ') || 'Имя не указано';
-                userInfo = `От пользователя:\n@${username} (ID: ${userData.id}) — ${fullName}\n\n`;
-            } else if (window.Telegram?.WebApp?.initDataUnsafe?.user) {
-                const telegramUser = window.Telegram.WebApp.initDataUnsafe.user;
-                const username = telegramUser.username || `Пользователь ${telegramUser.id}`;
-                const fullName = [telegramUser.first_name, telegramUser.last_name].filter(Boolean).join(' ') || 'Имя не указано';
-                userInfo = `От пользователя:\n@${username} (ID: ${telegramUser.id}) — ${fullName}\n\n`;
-            } else {
-                userInfo = `От пользователя: хз кто\n\n`;
             }
 
             if (currentPhoto) {
