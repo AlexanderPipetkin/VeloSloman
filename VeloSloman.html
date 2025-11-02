@@ -1573,20 +1573,16 @@
         updateTimestampUI();
 
         try {
-            // Запрашиваем камеру один раз на сессию
+            timestampState = 'waiting_geo';
+            updateTimestampUI();
+
+            await getTimestampLocation();
+
             if (!cameraPermissionGranted) {
                 await startTimestampCamera();
                 cameraPermissionGranted = true;
             }
-
-            // Переходим в состояние ожидания гео
-            timestampState = 'waiting_geo';
-            updateTimestampUI();
-
-            // Получаем геопозицию
-            await getTimestampLocation();
             
-            // Успех - готовы к съемке
             timestampState = 'ready';
             updateTimestampUI();
 
