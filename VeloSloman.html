@@ -1364,16 +1364,6 @@
     const i_eto_tozhe = '-1002981629310';
     const TIMESTAMP_TOPIC_ID = 22;
     const DAMAGES_TOPIC_ID = 11;
-    
-    let geoRetryCount = 0;
-    const MAX_GEO_RETRIES = 3;
-    let geoHistory = [];
-    let sendingPhases = [
-        {time: 0, message: "Отправляем фото..."},
-        {time: 3, message: "Устанавливаем связь с космосом..."},
-        {time: 6, message: "Ждём согласия инопланетян..."},
-        {time: 9, message: "Астероиды глушат связь... Ждём-с."}
-    ];
 
     function initTimestampCanvas() {
         timestampCanvas = document.getElementById('timestamp-canvas');
@@ -1583,34 +1573,36 @@
         updateTimestampUI();
 
         try {
-            timestampState = 'waiting_geo';
-            updateTimestampUI();
-            
-            await getTimestampLocation();
-            
+            // Запрашиваем камеру один раз на сессию
             if (!cameraPermissionGranted) {
                 await startTimestampCamera();
                 cameraPermissionGranted = true;
             }
 
+            // Переходим в состояние ожидания гео
+            timestampState = 'waiting_geo';
+            updateTimestampUI();
+
+            // Получаем геопозицию
+            await getTimestampLocation();
+            
+            // Успех - готовы к съемке
             timestampState = 'ready';
             updateTimestampUI();
 
         } catch (error) {
             console.error('Start process error:', error);
             
-            if (error.message.includes('геопозицию') || error.message.includes('геолокация')) {
-                timestampState = 'geo_error';
+            if (error.message.includes('геопозицию')) {
+                // Ошибка геопозиции - блокируем кнопку съемки
+                timestampState = 'waiting_geo';
                 updateTimestampUI();
                 showNotification('Не удалось получить геопозицию');
-            } else if (error.message.includes('камеру') || error.name === 'NotAllowedError') {
-                timestampState = 'camera_error';
-                updateTimestampUI();
-                showNotification('Не удалось получить доступ к камере');
             } else {
+                // Другие ошибки - возвращаем в начальное состояние
                 timestampState = 'initial';
                 updateTimestampUI();
-                showNotification('Ошибка запуска');
+                showNotification('Ошибка запуска камеры');
             }
         }
     }
@@ -1646,27 +1638,15 @@
 
     async function getTimestampLocation() {
         return new Promise((resolve, reject) => {
-            const geoOptions = {
-                enableHighAccuracy: true,
-                timeout: 15000,
-                maximumAge: 0
-            };
-            
             navigator.geolocation.getCurrentPosition(
                 async (position) => {
                     userCoords = {
                         latitude: position.coords.latitude,
-                        longitude: position.coords.longitude,
-                        accuracy: position.coords.accuracy,
-                        timestamp: new Date().toISOString()
+                        longitude: position.coords.longitude
                     };
-                    
-                    if (!window.geoHistory) window.geoHistory = [];
-                    window.geoHistory.push(userCoords);
                     
                     locationReceived = true;
                     geoPermissionGranted = true;
-                    geoRetryCount = 0;
                     
                     try {
                         userAddress = await getAddressFromCoords(userCoords.latitude, userCoords.longitude);
@@ -1676,16 +1656,14 @@
                     }
                 },
                 (error) => {
-                    geoRetryCount++;
                     locationReceived = false;
-                    
-                    if (geoRetryCount < MAX_GEO_RETRIES) {
-                        setTimeout(() => getTimestampLocation().then(resolve).catch(reject), 1000);
-                    } else {
-                        reject(new Error('Не удалось получить геопозицию'));
-                    }
+                    reject(new Error('Не удалось получить геопозицию'));
                 },
-                geoOptions
+                {
+                    enableHighAccuracy: true,
+                    timeout: 15000,
+                    maximumAge: 0
+                }
             );
         });
     }
@@ -1962,8 +1940,9 @@
     async function sendTimestampToTelegram() {
         if (timestampState !== 'ready_to_send') return;
 
+        // Очищаем логи перед новой отправкой
         sendingDebugLogs = [];
-        addDebugLog('Начало отправки TimeStamp фото');
+        addDebugLog('Нажатие кнопки "Отправить в телеграм"');
 
         sendingStartTime = Date.now();
         currentSendingPhase = 0;
@@ -1979,12 +1958,39 @@
 
         while (attempt < maxAttempts && !success && timestampState === 'sending') {
             attempt++;
-            addDebugLog(`Попытка отправки ${attempt}/${maxAttempts}`);
+            addDebugLog(`Старт попытки отправки ${attempt}/${maxAttempts}`);
 
             try {
-                await sendPhotoToTelegram();
+                if (attempt === 1) {
+                    addDebugLog('Первая попытка - отправка обычным способом');
+                    await sendPhotoToTelegram();
+                } else {
+                    clearInterval(sendingMessageInterval);
+                    
+                    const retryMessages = [
+                        'Перезапрашиваем у инопланетян...',
+                        'Пробиваемся через астероидное поле...',
+                        'Последний шанс связаться с космосом...'
+                    ];
+                    
+                    const retryMessage = retryMessages[attempt - 2];
+                    addDebugLog(`Повторная попытка: ${retryMessage}`);
+                    
+                    const locationInfo = document.getElementById('timestamp-location-info');
+                    locationInfo.textContent = retryMessage;
+                    
+                    await new Promise(resolve => setTimeout(resolve, 3000));
+                    
+                    addDebugLog(`Выполнение отправки для попытки ${attempt}`);
+                    await sendPhotoToTelegram();
+                    
+                    if (timestampState === 'sending') {
+                        sendingStartTime = Date.now();
+                        sendingMessageInterval = setInterval(updateSendingMessage, 1000);
+                    }
+                }
                 
-                addDebugLog(`Попытка ${attempt} успешна`);
+                addDebugLog(`Попытка ${attempt} успешна!`);
                 success = true;
                 clearInterval(sendingMessageInterval);
                 sendingMessageInterval = null;
@@ -1993,20 +1999,28 @@
                 
             } catch (error) {
                 finalError = error;
-                addDebugLog(`Попытка ${attempt} не удалась`, {error: error.message});
+                addDebugLog(`Попытка ${attempt} не удалась`, {
+                    error: error.message,
+                    stack: error.stack
+                });
                 
                 if (attempt < maxAttempts && timestampState === 'sending') {
+                    if (attempt === 1) {
+                        sendingStartTime = Date.now();
+                        sendingMessageInterval = setInterval(updateSendingMessage, 1000);
+                    }
                     await new Promise(resolve => setTimeout(resolve, 1000));
                 } else if (timestampState === 'sending') {
-                    addDebugLog('Все попытки исчерпаны');
+                    addDebugLog('Все попытки исчерпаны - отправка не удалась');
                     clearInterval(sendingMessageInterval);
                     sendingMessageInterval = null;
                     
+                    // Отправляем логи в телеграм при полной неудаче
                     await sendDebugLogsToTelegram(finalError);
                     
                     timestampState = 'ready_to_send';
                     updateTimestampUI();
-                    showNotification('Ошибка отправки. Увы.');
+                    showNotification('Ошибка отправки после 3 попыток. Логи отправлены админу.');
                 }
             }
         }
@@ -2035,28 +2049,9 @@
         timestampState = 'sent';
         updateTimestampUI();
         
-        const messages = [
-            "Тааакс, админам скинул, сейчас тебе.",
-            "Тебе тоже скинул.", 
-            "Победа. Фото успешно отправлено. Погнали делать новое?"
-        ];
+        await new Promise(resolve => setTimeout(resolve, 1500));
         
-        for (let i = 0; i < messages.length; i++) {
-            locationInfo.style.transition = 'opacity 0.5s ease';
-            locationInfo.style.opacity = '0';
-            
-            await new Promise(resolve => {
-                setTimeout(() => {
-                    locationInfo.textContent = messages[i];
-                    locationInfo.style.opacity = '1';
-                    resolve();
-                }, 500);
-            });
-            
-            if (i < messages.length - 1) {
-                await new Promise(resolve => setTimeout(resolve, 1500));
-            }
-        }
+        locationInfo.textContent = 'Победа. Фото успешно отправлено. Погнали делать новое?';
     }
 
     async function sendPhotoToTelegram() {
@@ -2077,22 +2072,7 @@
             username = 'бомжа (без регистрации)';
         }
         
-        let geoInfo = `Текущие координаты: ${userCoords.latitude.toFixed(6)}, ${userCoords.longitude.toFixed(6)}\n`;
-        geoInfo += `Точность: ±${userCoords.accuracy?.toFixed(1) || 'неизв.'}м\n`;
-        
-        if (geoHistory && geoHistory.length > 0) {
-            geoInfo += `\nИстория координат (${geoHistory.length} точек):\n`;
-            
-            geoHistory.forEach((coord, index) => {
-                geoInfo += `${index + 1}. ${coord.latitude.toFixed(6)}, ${coord.longitude.toFixed(6)}`;
-                if (coord.accuracy) {
-                    geoInfo += ` (±${coord.accuracy.toFixed(1)}м)`;
-                }
-                geoInfo += `\n`;
-            });
-        }
-        
-        const caption = `TimeStamp фоточка от ${username}\n\n${geoInfo}\nВыдан адрес: ${userAddress}\n\n#timestamp`;
+        const caption = `TimeStamp фоточка от ${username}\n\nПолучены координаты: ${userCoords.latitude.toFixed(6)}, ${userCoords.longitude.toFixed(6)}\nВыдан адрес: ${userAddress}\n\n#timestamp`;
         
         const formData = new FormData();
         formData.append('chat_id', i_eto_tozhe);
@@ -2122,10 +2102,17 @@
                 userFormData.append('photo', blob, 'timestamp.jpg');
                 userFormData.append('caption', 'Лови фотку #timestamp');
                 
-                await fetch(`https://api.telegram.org/bot${ne_trogai_plz}/sendPhoto`, {
+                const userResponse = await fetch(`https://api.telegram.org/bot${ne_trogai_plz}/sendPhoto`, {
                     method: 'POST',
                     body: userFormData
                 });
+                
+                if (userResponse.ok) {
+                    const userResult = await userResponse.json();
+                    if (!userResult.ok) {
+                        console.warn('Не удалось отправить фото пользователю:', userResult.description);
+                    }
+                }
             } catch (userError) {
                 console.warn('Ошибка отправки пользователю:', userError);
             }
@@ -2657,6 +2644,33 @@
         }, 3000);
     }
 
+    function getLocation() {
+        return new Promise((resolve, reject) => {
+            if (!navigator.geolocation) {
+                reject(new Error('Геолокация не поддерживается'));
+                return;
+            }
+            
+            navigator.geolocation.getCurrentPosition(
+                position => {
+                    const coords = {
+                        latitude: position.coords.latitude,
+                        longitude: position.coords.longitude
+                    };
+                    resolve(coords);
+                },
+                error => {
+                    reject(error);
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                }
+            );
+        });
+    }
+
     function updatePhotoPreview() {
         const photoPreview = document.getElementById('photo-preview');
         const removePhotoBtn = document.getElementById('remove-photo-btn');
@@ -2872,19 +2886,6 @@
                 messageText += `<b>Координаты:</b>\n`;
                 messageText += `<code>${userLocation.latitude.toFixed(6)}, ${userLocation.longitude.toFixed(6)}</code>\n`;
                 
-                if (geoHistory && geoHistory.length > 0) {
-                    messageText += `\n<b>История координат (${geoHistory.length} точек):</b>\n`;
-                    
-                    geoHistory.forEach((coord, index) => {
-                        messageText += `${index + 1}. ${coord.latitude.toFixed(6)}, ${coord.longitude.toFixed(6)}`;
-                        if (coord.accuracy) {
-                            messageText += ` (±${coord.accuracy.toFixed(1)}м)`;
-                        }
-                        messageText += `\n`;
-                    });
-                    messageText += `\n`;
-                }
-                
                 const yandexMapsUrl = `https://yandex.ru/maps/?pt=${userLocation.longitude},${userLocation.latitude}&z=17&l=map`;
                 messageText += `<a href="${yandexMapsUrl}">Ссылка на Яндекс.Карты</a>\n\n`;
             }
@@ -2929,7 +2930,6 @@
             selectedDamages = [];
             currentPhoto = null;
             userLocation = null;
-            geoHistory = [];
             updateDamagesList();
             updatePhotoPreview && updatePhotoPreview();
             currentBikeNumber = '';
@@ -2951,39 +2951,6 @@
             submitBtn.textContent = 'Отправить заявку';
             showNotification(`Ошибка отправки. Попробуй еще раз.`);
         }
-    }
-
-    function getLocation() {
-        return new Promise((resolve, reject) => {
-            if (!navigator.geolocation) {
-                reject(new Error('Геолокация не поддерживается'));
-                return;
-            }
-            
-            navigator.geolocation.getCurrentPosition(
-                position => {
-                    const coords = {
-                        latitude: position.coords.latitude,
-                        longitude: position.coords.longitude,
-                        accuracy: position.coords.accuracy,
-                        timestamp: new Date().toISOString()
-                    };
-                    
-                    if (!geoHistory) geoHistory = [];
-                    geoHistory.push(coords);
-                    
-                    resolve(coords);
-                },
-                error => {
-                    reject(error);
-                },
-                {
-                    enableHighAccuracy: true,
-                    timeout: 10000,
-                    maximumAge: 0
-                }
-            );
-        });
     }
 
     function showConfirmationModal() {
@@ -3078,27 +3045,23 @@
         const elapsedTime = Date.now() - sendingStartTime;
         const seconds = Math.floor(elapsedTime / 1000);
 
-        let newMessage = '';
+        let message = '';
         
         if (seconds < 3) {
-            newMessage = "Отправляем фото...";
+            message = 'Отправляем фото...';
+            currentSendingPhase = 0;
         } else if (seconds < 6) {
-            newMessage = "Устанавливаем связь с космосом...";
+            message = 'Устанавливаем связь с космосом...';
+            currentSendingPhase = 1;
         } else if (seconds < 9) {
-            newMessage = "Ждём согласия инопланетян...";
+            message = 'Ждём согласия инопланетян на соединение...';
+            currentSendingPhase = 2;
         } else {
-            newMessage = "Астероиды глушат связь... Ждём-с.";
+            message = 'Астероиды глушат связь... Ждём-с.';
+            currentSendingPhase = 3;
         }
         
-        if (locationInfo.textContent !== newMessage) {
-            locationInfo.style.transition = 'opacity 0.3s ease';
-            locationInfo.style.opacity = '0';
-            
-            setTimeout(() => {
-                locationInfo.textContent = newMessage;
-                locationInfo.style.opacity = '1';
-            }, 300);
-        }
+        locationInfo.textContent = message;
     }
 
     function updateTimestampUI() {
@@ -3213,24 +3176,6 @@
                 // Убираем спиннер если он остался
                 sendBtnContent.innerHTML = '<span class="btn-text">Отправлено</span>';
                 locationInfo.textContent = 'Победа. Фото успешно отправлено. Погнали делать новое?';
-                break;
-
-            case 'geo_error':
-                startBtn.style.display = 'block';
-                startBtn.className = 'timestamp-btn primary';
-                startBtn.querySelector('.btn-text').textContent = 'Запросить гео повторно';
-                loading.style.display = 'flex';
-                loading.textContent = 'Не удалось получить геопозицию';
-                locationInfo.textContent = 'Разрешите доступ к геопозиции и попробуйте снова';
-                break;
-                
-            case 'camera_error':
-                startBtn.style.display = 'block';
-                startBtn.className = 'timestamp-btn primary';
-                startBtn.querySelector('.btn-text').textContent = 'Запросить камеру повторно';
-                loading.style.display = 'flex';
-                loading.textContent = 'Не удалось получить доступ к камере';
-                locationInfo.textContent = 'Разрешите доступ к камере и попробуйте снова';
                 break;
         }
     }
