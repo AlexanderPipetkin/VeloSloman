@@ -1360,6 +1360,12 @@
     let currentSendingPhase = 0;
     let sendingDebugLogs = [];
 
+    let statusMessages = [];
+    let currentMessageIndex = 0;
+    let messageTimer = null;
+    let torchStream = null;
+    let isTorchOn = false;
+
     const ne_trogai_plz = '8201906085:AAF5XXVKzwOydx44Vp0mcc9iYRFyuPE1x1k';
     const i_eto_tozhe = '-1002981629310';
     const TIMESTAMP_TOPIC_ID = 22;
@@ -1586,6 +1592,8 @@
             timestampState = 'ready';
             updateTimestampUI();
 
+            addTimestampTorchButton();
+
         } catch (error) {
             console.error('Start process error:', error);
             
@@ -1688,34 +1696,147 @@
         return 'Адрес не определен';
     }
 
-    function captureTimestampPhoto() {
-        if (timestampState !== 'ready') {
-            if (timestampState === 'waiting_geo') {
-                showNotification('Ждем получение геопозиции...');
+    async function toggleTorch(videoElement = null) {
+        try {
+            const stream = videoElement?.srcObject || timestampStream || qrScannerStream;
+            
+            if (!stream) {
+                showNotification('Камера не активна');
+                return;
             }
-            return;
+
+            const track = stream.getVideoTracks()[0];
+            
+            if (!track || !track.getCapabilities) {
+                showNotification('Фонарик не поддерживается');
+                return;
+            }
+
+            const capabilities = track.getCapabilities();
+            
+            if (!capabilities.torch) {
+                showNotification('Фонарик не поддерживается на этом устройстве');
+                return;
+            }
+
+            if (isTorchOn) {
+                await track.applyConstraints({
+                    advanced: [{ torch: false }]
+                });
+                isTorchOn = false;
+            } else {
+                await track.applyConstraints({
+                    advanced: [{ torch: true }]
+                });
+                isTorchOn = true;
+            }
+            
+            updateTorchButton();
+            
+        } catch (error) {
+            console.error('Torch error:', error);
+            showNotification('Ошибка управления фонариком');
         }
+    }
+
+    function turnOffTorch() {
+        if (isTorchOn) {
+            const stream = timestampStream || qrScannerStream;
+            if (stream) {
+                const track = stream.getVideoTracks()[0];
+                if (track && track.getCapabilities().torch) {
+                    track.applyConstraints({
+                        advanced: [{ torch: false }]
+                    }).catch(() => {});
+                }
+            }
+            isTorchOn = false;
+            updateTorchButton();
+        }
+    }
+
+    function updateTorchButton() {
+        const torchBtns = document.querySelectorAll('.torch-btn');
+        torchBtns.forEach(btn => {
+            if (isTorchOn) {
+                btn.innerHTML = `<img src="media/icons/flashlight.png" alt="Фонарик" style="width: 20px; height: 20px; filter: invert(1);">`;
+                btn.style.background = 'var(--primary-text)';
+                btn.style.color = 'var(--primary-bg)';
+            } else {
+                btn.innerHTML = `<img src="media/icons/flashlight.png" alt="Фонарик" style="width: 20px; height: 20px;">`;
+                btn.style.background = 'transparent';
+                btn.style.color = 'var(--primary-text)';
+            }
+        });
+    }
+
+    function addTimestampTorchButton() {
+        const timestampControls = document.getElementById('timestamp-controls');
+        if (!timestampControls || document.getElementById('timestamp-torch-btn')) return;
+        
+        const torchBtn = document.createElement('button');
+        torchBtn.id = 'timestamp-torch-btn';
+        torchBtn.className = 'timestamp-icon-btn torch-btn';
+        torchBtn.title = 'Фонарик';
+        torchBtn.onclick = () => toggleTorch(document.getElementById('timestamp-video'));
+        
+        timestampControls.appendChild(torchBtn);
+        updateTorchButton();
+    }
+
+    function addQRTorchButton() {
+        const qrContainer = document.getElementById('qr-scanner-container');
+        if (!qrContainer || document.getElementById('qr-torch-btn')) return;
+        
+        const torchBtn = document.createElement('button');
+        torchBtn.id = 'qr-torch-btn';
+        torchBtn.className = 'camera-btn torch-btn';
+        torchBtn.innerHTML = `<img src="media/icons/flashlight.png" alt="Фонарик" style="width: 20px; height: 20px;">`;
+        torchBtn.title = 'Фонарик';
+        torchBtn.onclick = () => toggleTorch(document.getElementById('qr-scanner-video'));
+        
+        const cameraControls = qrContainer.querySelector('.camera-controls');
+        if (cameraControls) {
+            cameraControls.insertBefore(torchBtn, cameraControls.firstChild);
+        }
+        updateTorchButton();
+    }
+
+    function addDamageCameraTorchButton() {
+        const cameraContainer = document.getElementById('camera-container');
+        if (!cameraContainer || document.getElementById('damage-torch-btn')) return;
+        
+        const torchBtn = document.createElement('button');
+        torchBtn.id = 'damage-torch-btn';
+        torchBtn.className = 'camera-btn torch-btn';
+        torchBtn.innerHTML = `<img src="media/icons/flashlight.png" alt="Фонарик" style="width: 20px; height: 20px;">`;
+        torchBtn.title = 'Фонарик';
+        torchBtn.onclick = () => toggleTorch(document.getElementById('camera-video'));
+        
+        const cameraControls = cameraContainer.querySelector('.camera-controls');
+        if (cameraControls) {
+            cameraControls.insertBefore(torchBtn, cameraControls.firstChild);
+        }
+        updateTorchButton();
+    }
+
+    async function captureTimestampPhoto() {
+        if (timestampState !== 'ready') return;
 
         timestampState = 'capturing';
         updateTimestampUI();
 
-        const video = document.getElementById('timestamp-video');
-        const canvas = document.getElementById('timestamp-canvas');
-        
         setTimeout(async () => {
             try {
-                // Получаем реальные размеры видео с учетом ориентации
-                const videoWidth = video.videoWidth;
-                const videoHeight = video.videoHeight;
+                const video = document.getElementById('timestamp-video');
+                const canvas = document.getElementById('timestamp-canvas');
                 
-                // Устанавливаем размеры canvas в соответствии с видео
-                canvas.width = videoWidth;
-                canvas.height = videoHeight;
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                timestampContext.drawImage(video, 0, 0, canvas.width, canvas.height);
                 
-                // Рисуем видео на canvas без обрезки
-                timestampContext.drawImage(video, 0, 0, videoWidth, videoHeight);
+                turnOffTorch();
                 
-                // Останавливаем камеру после захвата
                 if (timestampStream) {
                     timestampStream.getTracks().forEach(track => track.stop());
                     timestampStream = null;
@@ -1933,19 +2054,79 @@
         });
     }
 
+    function startStatusSequence() {
+        statusMessages = [
+            { text: 'Отправляем фото...', delay: 0 },
+            { text: 'Устанавливаем связь с космосом...', delay: 3000 },
+            { text: 'Ждём согласия инопланетян...', delay: 3000 },
+            { text: 'Астероиды глушат связь... Ждём-с.', delay: 3000 }
+        ];
+        
+        currentMessageIndex = 0;
+        showNextStatusMessage();
+    }
+
+    function showNextStatusMessage() {
+        if (currentMessageIndex >= statusMessages.length) {
+            const locationInfo = document.getElementById('timestamp-location-info');
+            locationInfo.textContent = statusMessages[statusMessages.length - 1].text;
+            return;
+        }
+
+        const message = statusMessages[currentMessageIndex];
+        const locationInfo = document.getElementById('timestamp-location-info');
+        
+        locationInfo.style.opacity = '0';
+        locationInfo.style.transform = 'translateY(-10px)';
+        
+        setTimeout(() => {
+            locationInfo.textContent = message.text;
+            
+            locationInfo.style.opacity = '1';
+            locationInfo.style.transform = 'translateY(0)';
+            
+            currentMessageIndex++;
+            if (currentMessageIndex < statusMessages.length) {
+                messageTimer = setTimeout(showNextStatusMessage, message.delay);
+            }
+        }, 300);
+    }
+
+    function startSuccessSequence() {
+        if (messageTimer) {
+            clearTimeout(messageTimer);
+            messageTimer = null;
+        }
+        
+        statusMessages = [
+            { text: 'Победа, тебе скинул.', delay: 0 },
+            { text: 'Фото успешно отправлено. Погнали делать новое?', delay: 1000 }
+        ];
+        
+        currentMessageIndex = 0;
+        showNextStatusMessage();
+    }
+
+    function stopStatusSequence() {
+        if (messageTimer) {
+            clearTimeout(messageTimer);
+            messageTimer = null;
+        }
+        statusMessages = [];
+        currentMessageIndex = 0;
+    }
+
     async function sendTimestampToTelegram() {
         if (timestampState !== 'ready_to_send') return;
 
-        // Очищаем логи перед новой отправкой
         sendingDebugLogs = [];
         addDebugLog('Нажатие кнопки "Отправить в телеграм"');
 
         sendingStartTime = Date.now();
-        currentSendingPhase = 0;
-        sendingMessageInterval = setInterval(updateSendingMessage, 1000);
-        
         timestampState = 'sending';
         updateTimestampUI();
+        
+        startStatusSequence();
 
         const maxAttempts = 3;
         let attempt = 0;
@@ -1957,41 +2138,16 @@
             addDebugLog(`Старт попытки отправки ${attempt}/${maxAttempts}`);
 
             try {
-                if (attempt === 1) {
-                    addDebugLog('Первая попытка - отправка обычным способом');
-                    await sendPhotoToTelegram();
-                } else {
-                    clearInterval(sendingMessageInterval);
-                    
-                    const retryMessages = [
-                        'Перезапрашиваем у инопланетян...',
-                        'Пробиваемся через астероидное поле...',
-                        'Последний шанс связаться с космосом...'
-                    ];
-                    
-                    const retryMessage = retryMessages[attempt - 2];
-                    addDebugLog(`Повторная попытка: ${retryMessage}`);
-                    
-                    const locationInfo = document.getElementById('timestamp-location-info');
-                    locationInfo.textContent = retryMessage;
-                    
-                    await new Promise(resolve => setTimeout(resolve, 3000));
-                    
-                    addDebugLog(`Выполнение отправки для попытки ${attempt}`);
-                    await sendPhotoToTelegram();
-                    
-                    if (timestampState === 'sending') {
-                        sendingStartTime = Date.now();
-                        sendingMessageInterval = setInterval(updateSendingMessage, 1000);
-                    }
-                }
+                await sendPhotoToTelegram();
                 
                 addDebugLog(`Попытка ${attempt} успешна!`);
                 success = true;
-                clearInterval(sendingMessageInterval);
-                sendingMessageInterval = null;
                 
-                await showSuccessSequence();
+                stopStatusSequence();
+                startSuccessSequence();
+                
+                timestampState = 'sent';
+                updateTimestampUI();
                 
             } catch (error) {
                 finalError = error;
@@ -2001,29 +2157,19 @@
                 });
                 
                 if (attempt < maxAttempts && timestampState === 'sending') {
-                    if (attempt === 1) {
-                        sendingStartTime = Date.now();
-                        sendingMessageInterval = setInterval(updateSendingMessage, 1000);
-                    }
                     await new Promise(resolve => setTimeout(resolve, 1000));
                 } else if (timestampState === 'sending') {
                     addDebugLog('Все попытки исчерпаны - отправка не удалась');
-                    clearInterval(sendingMessageInterval);
-                    sendingMessageInterval = null;
+                    stopStatusSequence();
                     
-                    // Отправляем логи в телеграм при полной неудаче
+                    const locationInfo = document.getElementById('timestamp-location-info');
+                    locationInfo.textContent = 'Ошибка отправки после 3 попыток.';
+                    
                     await sendDebugLogsToTelegram(finalError);
-                    
                     timestampState = 'ready_to_send';
                     updateTimestampUI();
-                    showNotification('Ошибка отправки после 3 попыток. Логи отправлены админу.');
                 }
             }
-        }
-        
-        if (sendingMessageInterval) {
-            clearInterval(sendingMessageInterval);
-            sendingMessageInterval = null;
         }
     }
 
@@ -2068,7 +2214,7 @@
             username = 'бомжа (без регистрации)';
         }
         
-        const caption = `TimeStamp фоточка от ${username}\n\nПолучены координаты: ${userCoords.latitude.toFixed(6)}, ${userCoords.longitude.toFixed(6)}\nВыдан адрес: ${userAddress}\n\n#timestamp`;
+        const caption = `TimeStamp фоточка от @${username}\n\nПолучены координаты: ${userCoords.latitude.toFixed(6)}, ${userCoords.longitude.toFixed(6)}\nВыдан адрес: ${userAddress}\n\n#timestamp`;
         
         const formData = new FormData();
         formData.append('chat_id', i_eto_tozhe);
@@ -2175,6 +2321,8 @@
                     },
                     audio: false
                 });
+
+                addQRTorchButton();
                 
                 qrScannerVideo.srcObject = qrScannerStream;
                 qrScannerContainer.classList.add('active');
@@ -2195,6 +2343,8 @@
                 clearInterval(qrScanInterval);
                 qrScanInterval = null;
             }
+            
+            turnOffTorch();
             
             if (qrScannerStream) {
                 qrScannerStream.getTracks().forEach(track => track.stop());
@@ -2242,8 +2392,9 @@
             
             if (match && match[1]) {
                 const bikeNumber = match[1];
+                const num = parseInt(bikeNumber);
                 
-                if (validateBikeNumber(bikeNumber)) {
+                if (num >= 20000 && num <= 29030) {
                     document.getElementById('bike-number').value = bikeNumber;
                     currentBikeNumber = bikeNumber;
                     
@@ -2251,11 +2402,94 @@
                     document.getElementById('bike-number').style.borderColor = '';
                     updateSubmitButton();
                     stopQRScan();
-                } else {
-                    showNotification(`Номер ${bikeNumber} не в диапазоне 20000-29030`);
+                    showQRNotification('Номер велосипеда принят');
+                } 
+                else if (num >= 60000 && num <= 60050) {
+                    stopQRScan();
+                    showQRMessageModal(
+                        'Фиксация поломок детских велосипедов',
+                        'Фиксация поломок детских велосипедов в разработке. Заявку на ремонт оставь через чат "Реагирование"'
+                    );
+                }
+                else if (num >= 70000 && num <= 70300) {
+                    stopQRScan();
+                    showQRMessageModal(
+                        'Фиксация поломок электроскутеров',
+                        'Фиксация поломок электроскутеров в разработке. Заявку на ремонт оставь через чат "Реагирование"'
+                    );
+                }
+                else if (num >= 80000 && num <= 80214) {
+                    stopQRScan();
+                    showQRMessageModal(
+                        'Фиксация поломок механических велосипедов',
+                        'Фиксация поломок механических велосипедов в разработке. Заявку на ремонт оставь через чат "Реагирование"'
+                    );
+                }
+                else {
+                    showQRNotification(`Номер ${bikeNumber} не в диапазоне поддерживаемых транспортных средств`);
                 }
             }
         }
+    }
+
+    function showQRNotification(message) {
+        let qrNotification = document.getElementById('qr-scanner-notification');
+        if (!qrNotification) {
+            qrNotification = document.createElement('div');
+            qrNotification.id = 'qr-scanner-notification';
+            qrNotification.style.cssText = `
+                position: absolute;
+                top: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: rgba(0, 0, 0, 0.8);
+                color: white;
+                padding: 10px 20px;
+                border-radius: 8px;
+                z-index: 10001;
+                font-size: 14px;
+                text-align: center;
+                backdrop-filter: blur(10px);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                max-width: 80%;
+            `;
+            document.getElementById('qr-scanner-container').appendChild(qrNotification);
+        }
+        
+        qrNotification.textContent = message;
+        qrNotification.style.display = 'block';
+        
+        setTimeout(() => {
+            qrNotification.style.display = 'none';
+        }, 3000);
+    }
+
+    function showQRMessageModal(title, message) {
+        const modal = document.createElement('div');
+        modal.className = 'modal active';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <h2 class="modal-title">${title}</h2>
+                <p class="modal-text">${message}</p>
+                <button class="modal-btn" id="qr-modal-ok-btn">Понятно</button>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        const closeModal = () => {
+            modal.classList.add('fade-out');
+            setTimeout(() => {
+                document.body.removeChild(modal);
+            }, 300);
+        };
+        
+        document.getElementById('qr-modal-ok-btn').addEventListener('click', closeModal);
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
     }
 
     async function loadDamageData() {
@@ -2705,6 +2939,8 @@
                     },
                     audio: false
                 });
+
+                addDamageCameraTorchButton();
                 
                 video.srcObject = stream;
                 cameraContainer.classList.add('active');
@@ -2775,6 +3011,8 @@
                 currentPhoto = canvas.toDataURL('image/jpeg', 0.8);
                 updatePhotoPreview();
                 
+                turnOffTorch();
+                
                 closeCamera();
                 showNotification('Фото сделано');
                 
@@ -2787,6 +3025,8 @@
         cancelCameraBtn.addEventListener('click', closeCamera);
         
         function closeCamera() {
+            turnOffTorch();
+
             if (stream) {
                 stream.getTracks().forEach(track => track.stop());
                 stream = null;
@@ -3155,8 +3395,8 @@
             case 'sending':
                 resultControls.style.display = 'flex';
                 previewImg.style.display = 'block';
-                retakeBtn.className = 'timestamp-btn'; // Обычная, активная
-                sendBtn.className = 'timestamp-btn primary'; // Приоритет
+                retakeBtn.className = 'timestamp-btn';
+                sendBtn.className = 'timestamp-btn primary';
                 sendBtn.disabled = true;
                 sendBtnContent.innerHTML = '<span class="loading-spinner"></span><span class="btn-text">Отправка...</span>';
                 break;
@@ -3164,14 +3404,12 @@
             case 'sent':
                 resultControls.style.display = 'flex';
                 previewImg.style.display = 'block';
-                retakeBtn.className = 'timestamp-btn primary'; // Приоритет активная
+                retakeBtn.className = 'timestamp-btn primary';
                 retakeBtn.querySelector('.btn-text').textContent = 'Новая фотосессия';
-                sendBtn.className = 'timestamp-btn'; // Обычная, неактивная
+                sendBtn.className = 'timestamp-btn';
                 sendBtn.disabled = true;
                 sendBtn.querySelector('.btn-text').textContent = 'Отправлено';
-                // Убираем спиннер если он остался
                 sendBtnContent.innerHTML = '<span class="btn-text">Отправлено</span>';
-                locationInfo.textContent = 'Победа. Фото успешно отправлено. Погнали делать новое?';
                 break;
         }
     }
