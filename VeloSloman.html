@@ -760,6 +760,40 @@
             height: 20px;
         }
 
+        .qr-scanner-container .camera-controls,
+        #camera-container .camera-controls {
+            padding-bottom: 20px;
+            gap: 10px;
+        }
+
+        .damage-camera-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 100%;
+        }
+
+        .damage-camera-row {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+        }
+
+        .torch-btn {
+            width: 50px !important;
+            height: 50px !important;
+            border-radius: 12px !important;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .damage-camera-row {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+        }
+
         .qr-btn {
             width: 50px;
             height: 50px;
@@ -1584,10 +1618,8 @@
 
             await getTimestampLocation();
 
-            if (!cameraPermissionGranted) {
-                await startTimestampCamera();
-                cameraPermissionGranted = true;
-            }
+            await startTimestampCamera();
+            cameraPermissionGranted = true;
             
             timestampState = 'ready';
             updateTimestampUI();
@@ -1598,12 +1630,10 @@
             console.error('Start process error:', error);
             
             if (error.message.includes('геопозицию')) {
-                // Ошибка геопозиции - блокируем кнопку съемки
                 timestampState = 'waiting_geo';
                 updateTimestampUI();
                 showNotification('Не удалось получить геопозицию');
             } else {
-                // Другие ошибки - возвращаем в начальное состояние
                 timestampState = 'initial';
                 updateTimestampUI();
                 showNotification('Ошибка запуска камеры');
@@ -1759,7 +1789,7 @@
         const torchBtns = document.querySelectorAll('.torch-btn');
         torchBtns.forEach(btn => {
             if (isTorchOn) {
-                btn.innerHTML = `<img src="media/icons/flashlight.png" alt="Фонарик" style="width: 20px; height: 20px; filter: invert(1);">`;
+                btn.innerHTML = `<img src="media/icons/flashlight.png" alt="Фонарик" style="width: 20px; height: 20px;">`;
                 btn.style.background = 'var(--primary-text)';
                 btn.style.color = 'var(--primary-bg)';
             } else {
@@ -1806,6 +1836,13 @@
         const cameraContainer = document.getElementById('camera-container');
         if (!cameraContainer || document.getElementById('damage-torch-btn')) return;
         
+        const buttonsContainer = document.createElement('div');
+        buttonsContainer.className = 'damage-camera-buttons';
+        
+        const firstRow = document.createElement('div');
+        firstRow.className = 'damage-camera-row';
+        
+        const captureBtn = cameraContainer.querySelector('#capture-btn');
         const torchBtn = document.createElement('button');
         torchBtn.id = 'damage-torch-btn';
         torchBtn.className = 'camera-btn torch-btn';
@@ -1813,10 +1850,49 @@
         torchBtn.title = 'Фонарик';
         torchBtn.onclick = () => toggleTorch(document.getElementById('camera-video'));
         
-        const cameraControls = cameraContainer.querySelector('.camera-controls');
-        if (cameraControls) {
-            cameraControls.insertBefore(torchBtn, cameraControls.firstChild);
+        firstRow.appendChild(captureBtn.cloneNode(true));
+        firstRow.appendChild(torchBtn);
+        
+        const secondRow = document.createElement('div');
+        secondRow.className = 'damage-camera-row';
+        
+        const cancelBtn = cameraContainer.querySelector('#cancel-camera-btn');
+        secondRow.appendChild(cancelBtn.cloneNode(true));
+        
+        buttonsContainer.appendChild(firstRow);
+        buttonsContainer.appendChild(secondRow);
+        
+        const oldControls = cameraContainer.querySelector('.camera-controls');
+        if (oldControls) {
+            oldControls.replaceWith(buttonsContainer);
         }
+        
+        buttonsContainer.querySelector('#capture-btn').onclick = () => {
+            const video = document.getElementById('camera-video');
+            if (!video.srcObject) return;
+            
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                currentPhoto = canvas.toDataURL('image/jpeg', 0.8);
+                updatePhotoPreview();
+                
+                turnOffTorch();
+                closeCamera();
+                showNotification('Фото сделано');
+                
+            } catch (error) {
+                console.error('Ошибка при съемке фото:', error);
+                showNotification('Ошибка при съемке фото');
+            }
+        };
+        
+        buttonsContainer.querySelector('#cancel-camera-btn').onclick = closeCamera;
+        
         updateTorchButton();
     }
 
@@ -3310,8 +3386,10 @@
         const video = document.getElementById('timestamp-video');
         const previewImg = document.getElementById('processed-photo-preview');
         const locationInfo = document.getElementById('timestamp-location-info');
+        const existingTorchBtn = document.getElementById('timestamp-torch-btn');
+        
+        if (existingTorchBtn) existingTorchBtn.remove();
 
-        // Сбрасываем все отображения
         startBtn.style.display = 'none';
         captureBtn.style.display = 'none';
         resultControls.style.display = 'none';
@@ -3319,13 +3397,11 @@
         video.style.display = 'none';
         previewImg.style.display = 'none';
 
-        // Сбрасываем состояния кнопок (но сохраняем анимации!)
         startBtn.disabled = false;
         captureBtn.disabled = false;
         retakeBtn.disabled = false;
         sendBtn.disabled = false;
         
-        // Восстанавливаем нормальное содержимое кнопок
         const startBtnContent = startBtn.querySelector('.btn-content');
         const captureBtnContent = captureBtn.querySelector('.btn-content');
         const retakeBtnContent = retakeBtn.querySelector('.btn-content');
@@ -3361,10 +3437,11 @@
 
             case 'ready':
                 captureBtn.style.display = 'block';
-                captureBtn.className = 'timestamp-btn primary'; // Приоритет, активная белая
+                captureBtn.className = 'timestamp-btn primary';
                 captureBtn.disabled = false;
                 video.style.display = 'block';
-                locationInfo.textContent = 'Геопозиция получена.';
+                addTimestampTorchButton();
+                locationInfo.textContent = `Геопозиция получена.`;
                 break;
 
             case 'capturing':
