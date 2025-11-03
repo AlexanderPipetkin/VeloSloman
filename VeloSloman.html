@@ -760,32 +760,44 @@
             height: 20px;
         }
 
-        .qr-scanner-container .camera-controls,
+        #qr-scanner-container .camera-controls,
         #camera-container .camera-controls {
-            padding-bottom: 20px;
-            gap: 10px;
+            padding: 20px;
+            gap: 15px;
+            margin-bottom: env(safe-area-inset-bottom, 20px);
         }
 
         .damage-camera-buttons {
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 15px;
             width: 100%;
+            padding: 0 20px 20px 20px;
         }
 
         .damage-camera-row {
             display: flex;
             gap: 10px;
             width: 100%;
+            justify-content: center;
+        }
+
+        .damage-camera-row:first-child {
+            justify-content: space-between;
+        }
+
+        .damage-camera-row:first-child .camera-btn:not(.torch-btn) {
+            flex: 1;
         }
 
         .torch-btn {
-            width: 50px !important;
-            height: 50px !important;
-            border-radius: 12px !important;
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
+            flex-shrink: 0;
         }
 
         .damage-camera-row {
@@ -1836,13 +1848,23 @@
         const cameraContainer = document.getElementById('camera-container');
         if (!cameraContainer || document.getElementById('damage-torch-btn')) return;
         
+        const oldControls = cameraContainer.querySelector('.camera-controls');
+        if (!oldControls) return;
+        
+        const captureBtn = oldControls.querySelector('#capture-btn');
+        const cancelBtn = oldControls.querySelector('#cancel-camera-btn');
+        
+        if (!captureBtn || !cancelBtn) return;
+        
+        const captureHandler = captureBtn.onclick;
+        const cancelHandler = cancelBtn.onclick;
+        
         const buttonsContainer = document.createElement('div');
         buttonsContainer.className = 'damage-camera-buttons';
         
         const firstRow = document.createElement('div');
         firstRow.className = 'damage-camera-row';
         
-        const captureBtn = cameraContainer.querySelector('#capture-btn');
         const torchBtn = document.createElement('button');
         torchBtn.id = 'damage-torch-btn';
         torchBtn.className = 'camera-btn torch-btn';
@@ -1850,48 +1872,20 @@
         torchBtn.title = 'Фонарик';
         torchBtn.onclick = () => toggleTorch(document.getElementById('camera-video'));
         
-        firstRow.appendChild(captureBtn.cloneNode(true));
+        captureBtn.onclick = captureHandler;
+        cancelBtn.onclick = cancelHandler;
+        
+        firstRow.appendChild(captureBtn);
         firstRow.appendChild(torchBtn);
         
         const secondRow = document.createElement('div');
         secondRow.className = 'damage-camera-row';
-        
-        const cancelBtn = cameraContainer.querySelector('#cancel-camera-btn');
-        secondRow.appendChild(cancelBtn.cloneNode(true));
+        secondRow.appendChild(cancelBtn);
         
         buttonsContainer.appendChild(firstRow);
         buttonsContainer.appendChild(secondRow);
         
-        const oldControls = cameraContainer.querySelector('.camera-controls');
-        if (oldControls) {
-            oldControls.replaceWith(buttonsContainer);
-        }
-        
-        buttonsContainer.querySelector('#capture-btn').onclick = () => {
-            const video = document.getElementById('camera-video');
-            if (!video.srcObject) return;
-            
-            try {
-                const canvas = document.createElement('canvas');
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                
-                currentPhoto = canvas.toDataURL('image/jpeg', 0.8);
-                updatePhotoPreview();
-                
-                turnOffTorch();
-                closeCamera();
-                showNotification('Фото сделано');
-                
-            } catch (error) {
-                console.error('Ошибка при съемке фото:', error);
-                showNotification('Ошибка при съемке фото');
-            }
-        };
-        
-        buttonsContainer.querySelector('#cancel-camera-btn').onclick = closeCamera;
+        oldControls.replaceWith(buttonsContainer);
         
         updateTorchButton();
     }
