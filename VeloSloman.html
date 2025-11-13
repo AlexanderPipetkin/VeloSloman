@@ -4,8 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Velobike Technic</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
     <style>
         :root {
             --primary-bg: #000;
@@ -1176,7 +1174,7 @@
             </div>
             <div class="under-construction">
                 <h2>Раздел в разработке</h2>
-                <p>Обновление этого раздела планируетс  я<br>фиг знает когда</p>
+                <p>Обновление этого раздела планируется<br>фиг знает когда</p>
             </div>
         </div>
     </section>
@@ -1391,6 +1389,8 @@
         </div>
     </nav>
 
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
     <script>
     let currentBikeNumber = '';
     let selectedDamages = [];
@@ -1587,7 +1587,7 @@
     }
 
     function handleDeepLinks() {
-        let targetPage = 'damage';
+        let targetPage = 'timestamp';
         
         const urlParams = new URLSearchParams(window.location.search);
         const startapp = urlParams.get('startapp');
@@ -1607,7 +1607,7 @@
         
         const validPages = ['main', 'damage', 'timestamp', 'profile'];
         if (!validPages.includes(targetPage)) {
-            targetPage = 'damage';
+            targetPage = 'timestamp';
         }
         
         return targetPage;
@@ -2484,6 +2484,9 @@
                     document.getElementById('number-error').style.display = 'none';
                     document.getElementById('bike-number').style.borderColor = '';
                     updateSubmitButton();
+
+                    updateLockType(bikeNumber);
+                    
                     stopQRScan();
                     showQRNotification('Номер велосипеда принят');
                 } 
@@ -2653,13 +2656,18 @@
         event.preventDefault();
         event.stopPropagation();
 
-        const partId = event.currentTarget.id;
+        const partElement = event.currentTarget.closest('.bike-part');
+        
+        if (!partElement) return;
+        
+        const partId = partElement.id;
         currentPart = partId;
         
         document.querySelectorAll('.bike-part').forEach(p => p.classList.remove('active'));
-        event.currentTarget.classList.add('active');
         
-        showDamageDropdown(partId, event.currentTarget);
+        partElement.classList.add('active');
+        
+        showDamageDropdown(partId, partElement);
     }
 
     function showDamageDropdown(partId, partElement) {
@@ -2904,12 +2912,12 @@
             'saddle': 'Сиденье',
             'handlebars': 'Руль',
             'pedals': 'Педали',
-            'chain-guard': 'Защита цепи',
+            'chain-guard': 'Цепь и защита цепи',
             'light-marker': 'Световой маркер',
             'retroreflector': 'Светоотражатель',
             'gearshift': 'Переключатель скоростей',
             'basket': 'Корзина',
-            'cable-block': 'Блок тросов',
+            'cable-block': 'Блок троса',
             'front-light': 'Передний фонарь'
         };
         
@@ -2940,10 +2948,47 @@
             bikeNumberInput.style.borderColor = '';
             showNotification(`Номер велосипеда ${number} принят`);
             updateSubmitButton();
+            
+            updateLockType(number);
         } else {
             numberError.style.display = 'block';
             bikeNumberInput.style.borderColor = '#ff4444';
             showNotification('Введи корректный номер велосипеда (20000-29030)');
+        }
+    }
+
+    function updateLockType(bikeNumber) {
+        const num = parseInt(bikeNumber);
+        const lockElement = document.getElementById('lock');
+        
+        if (!lockElement) return;
+        
+        lockElement.innerHTML = '';
+        
+        if (num >= 20000 && num <= 23030) {
+            lockElement.innerHTML = `
+                <g id="click-lock">
+                    <path d="M184 198L191 217.5L144 275.5V198H184Z" fill="#818181" fill-opacity="0"/>
+                </g>
+                <path d="M188.663 222.855L151.663 268.355C151.163 268.022 149.863 267.055 148.663 265.855C147.463 264.655 148.163 262.689 148.663 261.855L165.663 238.355L162.663 235.355C166.663 230.689 175.063 220.855 176.663 218.855C178.263 216.855 181.663 217.689 183.163 218.355L188.663 222.855Z" fill="#2A2A2A"/>
+            `;
+        } else if (num >= 23031 && num <= 29030) {
+            lockElement.innerHTML = `
+                <g id="click-lock">
+                    <path d="M184 198L191 217.5L144 275.5V198H184Z" fill="#818181" fill-opacity="0"/>
+                </g>
+                <path d="M190.318 218.377L170.709 242.388L167.611 239.857L187.22 215.847L190.318 218.377Z" fill="#F0F0F0"/>
+                <path d="M178.595 211.386L161.517 232.299C161.517 232.299 162.371 235.579 163.929 236.851C165.288 237.96 167.609 239.855 167.609 239.855L187.218 215.846L183.539 212.841C181.98 211.568 178.595 211.386 178.595 211.386Z" fill="#17181C"/>
+            `;
+        }
+        
+        const clickLock = lockElement.querySelector('#click-lock');
+        if (clickLock) {
+            clickLock.addEventListener('click', handlePartClick);
+            clickLock.addEventListener('touchstart', function(e) {
+                e.preventDefault();
+                handlePartClick(e);
+            });
         }
     }
 
@@ -3304,6 +3349,7 @@
         document.getElementById('submit-btn').disabled = true;
         
         document.querySelectorAll('.bike-part').forEach(p => p.classList.remove('active'));
+        updateLockType('20000');
     }
 
     function hideModal(modal) {
@@ -3342,7 +3388,6 @@
                 initTimestampCanvas();
                 initTimestampEventListeners();
                 
-                // Восстанавливаем состояние если фото уже было сделано
                 if (currentProcessedPhoto) {
                     timestampState = 'ready_to_send';
                 } else if (timestampStream) {
