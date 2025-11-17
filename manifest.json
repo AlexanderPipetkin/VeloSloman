@@ -1,0 +1,17 @@
+{
+  "name": "Velobike Technic",
+  "short_name": "Velobike",
+  "description": "Тут был леха",
+  "start_url": "/",
+  "display": "fullscreen",
+  "theme_color": "#000000",
+  "background_color": "#000000",
+  "icons": [
+    {
+      "src": "media/icons/main_icon.png",
+      "sizes": "128x128",
+      "type": "image/png"
+    }
+  ],
+  "orientation": "portrait"
+}
