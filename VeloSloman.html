@@ -10,7 +10,8 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
     <meta name="apple-mobile-web-app-title" content="Velobike">
-    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    <link rel="apple-touch-icon" href="media/icons/main_icon.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <style>
         :root {
             --primary-bg: #000;
@@ -20,6 +21,7 @@
             --border-radius-small: 8px;
             --border-width: 1px;
             --transition: all 0.3s ease;
+            --app-height: 100vh;
         }
 
         @font-face {
@@ -42,10 +44,12 @@
         body {
             background-color: var(--primary-bg);
             color: var(--primary-text);
-            min-height: 100vh;
+            height: var(--app-height);
+            min-height: -webkit-fill-available;
             padding: 20px 12px 80px;
-            height: 100vh;
-            height: -webkit-fill-available;
+            overflow: hidden; /* Предотвращаем скролл body */
+            position: fixed;
+            width: 100%;
         }
 
         .container {
@@ -870,7 +874,8 @@
             justify-content: space-around;
             align-items: center;
             z-index: 100;
-            bottom: env(safe-area-inset-bottom, 0px);
+            padding-bottom: env(safe-area-inset-bottom, 0px);
+            transition: transform 0.3s ease;
         }
 
         .nav-item {
@@ -929,17 +934,16 @@
         }
 
         .app-container {
-            margin: 0 auto;
-            min-height: 100vh;
+            height: 100%;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
             position: relative;
-            padding-bottom: 60px;
-            min-height: -webkit-fill-available;
-            padding-bottom: 60px;
         }
 
         .page {
-            display: none;
-            animation: fadeIn 0.5s ease;
+            height: 100%;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
         }
 
         .page.active {
@@ -2613,6 +2617,22 @@
         }
     }
 
+    setAppHeight();
+
+    function setAppHeight() {
+        const doc = document.documentElement;
+        doc.style.setProperty('--app-height', `${window.innerHeight}px`);
+        
+        const appContainer = document.querySelector('.app-container');
+        if (appContainer) {
+            const bottomNav = document.querySelector('.bottom-nav');
+            if (bottomNav) {
+            const navHeight = bottomNav.offsetHeight;
+            appContainer.style.paddingBottom = `${navHeight}px`;
+            }
+        }
+        }
+
     function centerBikeSVG() {
         const container = document.querySelector('.bike-container');
         const svg = document.querySelector('.bike-svg');
@@ -3669,9 +3689,12 @@
         if (sendBtn) sendBtn.onclick = sendTimestampToTelegram;
     }
 
+    window.addEventListener('resize', setAppHeight);
+    window.addEventListener('orientationchange', setAppHeight);
     window.addEventListener('resize', updateBottomNav);
     window.addEventListener('load', updateBottomNav);
     window.addEventListener('orientationchange', updateBottomNav);
+    window.visualViewport?.addEventListener('resize', setAppHeight);
 
     document.addEventListener('DOMContentLoaded', function() {
         // initSecurity(); 
