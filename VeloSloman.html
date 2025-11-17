@@ -44,6 +44,8 @@
             color: var(--primary-text);
             min-height: 100vh;
             padding: 20px 12px 80px;
+            height: 100vh;
+            height: -webkit-fill-available;
         }
 
         .container {
@@ -868,6 +870,7 @@
             justify-content: space-around;
             align-items: center;
             z-index: 100;
+            bottom: env(safe-area-inset-bottom, 0px);
         }
 
         .nav-item {
@@ -929,6 +932,8 @@
             margin: 0 auto;
             min-height: 100vh;
             position: relative;
+            padding-bottom: 60px;
+            min-height: -webkit-fill-available;
             padding-bottom: 60px;
         }
 
@@ -1173,201 +1178,203 @@
     </style>
 </head>
 <body>
-    <section id="main" class="page">
-        <div class="container">
-            <div class="header">
-                <h1 class="page-title">Главная</h1>
-                <p class="page-description">Тут у нас будет главная страница.</p>
-            </div>
-            <div class="under-construction">
-                <h2>Раздел в разработке</h2>
-                <p>Обновление этого раздела планируется<br>фиг знает когда</p>
-            </div>
-        </div>
-    </section>
-
-    <section id="damage" class="page">
-        <div class="container">
-            <div class="header">
-                <h1 class="page-title">Фиксация поломок</h1>
-                <p class="page-description">Введи номер велосипеда и выбери его поврежденные детали</p>
-            </div>
-
-            <div class="input-section">
-                <label class="input-label">Номер велосипеда</label>
-                <div class="input-wrapper">
-                    <input type="text" class="bike-input" id="bike-number" placeholder="20000-29030" maxlength="5" inputmode="numeric" pattern="[0-9]*">
-                    <button class="qr-btn" id="scan-qr-btn" title="Сканировать QR-код">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="3" y="3" width="7" height="7"/>
-                            <rect x="14" y="3" width="7" height="7"/>
-                            <rect x="14" y="14" width="7" height="7"/>
-                            <rect x="3" y="14" width="7" height="7"/>
-                            <path d="M10 3v4a1 1 0 0 1-1 1H3"/>
-                            <path d="M14 21v-4a1 1 0 0 1 1-1h6"/>
-                            <path d="M21 14h-4a1 1 0 0 1-1-1V3"/>
-                            <path d="M3 10h4a1 1 0 0 1 1 1v10"/>
-                        </svg>
-                    </button>
+    <div class="app-container">
+        <section id="main" class="page">
+            <div class="container">
+                <div class="header">
+                    <h1 class="page-title">Главная</h1>
+                    <p class="page-description">Тут у нас будет главная страница.</p>
                 </div>
-                <div class="error-message" id="number-error">Номер должен быть от 20000 до 29030</div>
-            </div>
-
-            <div class="bike-section">
-                <div class="bike-container">
-                    <div id="bike-svg-container"></div>
-                </div>
-                <div class="damage-dropdown" id="damage-dropdown"></div>
-            </div>
-
-            <div class="selected-damages">
-                <h2 class="section-title">Выбранные поломки</h2>
-                <div class="damages-list" id="damages-list">
-                    <div class="empty-damages">Поломки не выбраны</div>
+                <div class="under-construction">
+                    <h2>Раздел в разработке</h2>
+                    <p>Обновление этого раздела планируется<br>фиг знает когда</p>
                 </div>
             </div>
+        </section>
 
-            <div class="photo-section">
-                <h2 class="section-title">Фотография поломки</h2>
-                <div class="photo-container">
-                    <img id="photo-preview" class="photo-preview" src="" alt="Предпросмотр фото">
-                    <div class="photo-buttons">
-                        <button class="take-photo-btn" id="take-photo-btn">Сделать фото</button>
-                        <div class="icon-buttons">
-                            <button class="icon-btn" id="upload-photo-btn" title="Загрузить из галереи">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                    <polyline points="17 8 12 3 7 8"/>
-                                    <line x1="12" y1="3" x2="12" y2="15"/>
-                                </svg>
-                            </button>
-                            <button class="icon-btn primary" id="remove-photo-btn" style="display:none;" title="Удалить фото">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <polyline points="3 6 5 6 21 6"/>
-                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                                    <line x1="10" y1="11" x2="10" y2="17"/>
-                                    <line x1="14" y1="11" x2="14" y2="17"/>
-                                </svg>
-                            </button>
-                        </div>
+        <section id="damage" class="page">
+            <div class="container">
+                <div class="header">
+                    <h1 class="page-title">Фиксация поломок</h1>
+                    <p class="page-description">Введи номер велосипеда и выбери его поврежденные детали</p>
+                </div>
+
+                <div class="input-section">
+                    <label class="input-label">Номер велосипеда</label>
+                    <div class="input-wrapper">
+                        <input type="text" class="bike-input" id="bike-number" placeholder="20000-29030" maxlength="5" inputmode="numeric" pattern="[0-9]*">
+                        <button class="qr-btn" id="scan-qr-btn" title="Сканировать QR-код">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="7" height="7"/>
+                                <rect x="14" y="3" width="7" height="7"/>
+                                <rect x="14" y="14" width="7" height="7"/>
+                                <rect x="3" y="14" width="7" height="7"/>
+                                <path d="M10 3v4a1 1 0 0 1-1 1H3"/>
+                                <path d="M14 21v-4a1 1 0 0 1 1-1h6"/>
+                                <path d="M21 14h-4a1 1 0 0 1-1-1V3"/>
+                                <path d="M3 10h4a1 1 0 0 1 1 1v10"/>
+                            </svg>
+                        </button>
                     </div>
-                    <div class="location-info" id="location-info">Координаты будут получены при отправке заявки</div>
+                    <div class="error-message" id="number-error">Номер должен быть от 20000 до 29030</div>
+                </div>
+
+                <div class="bike-section">
+                    <div class="bike-container">
+                        <div id="bike-svg-container"></div>
+                    </div>
+                    <div class="damage-dropdown" id="damage-dropdown"></div>
+                </div>
+
+                <div class="selected-damages">
+                    <h2 class="section-title">Выбранные поломки</h2>
+                    <div class="damages-list" id="damages-list">
+                        <div class="empty-damages">Поломки не выбраны</div>
+                    </div>
+                </div>
+
+                <div class="photo-section">
+                    <h2 class="section-title">Фотография поломки</h2>
+                    <div class="photo-container">
+                        <img id="photo-preview" class="photo-preview" src="" alt="Предпросмотр фото">
+                        <div class="photo-buttons">
+                            <button class="take-photo-btn" id="take-photo-btn">Сделать фото</button>
+                            <div class="icon-buttons">
+                                <button class="icon-btn" id="upload-photo-btn" title="Загрузить из галереи">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                        <polyline points="17 8 12 3 7 8"/>
+                                        <line x1="12" y1="3" x2="12" y2="15"/>
+                                    </svg>
+                                </button>
+                                <button class="icon-btn primary" id="remove-photo-btn" style="display:none;" title="Удалить фото">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="3 6 5 6 21 6"/>
+                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                        <line x1="10" y1="11" x2="10" y2="17"/>
+                                        <line x1="14" y1="11" x2="14" y2="17"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="location-info" id="location-info">Координаты будут получены при отправке заявки</div>
+                    </div>
+                </div>
+
+                
+                <div class="additional-info-section">
+                    <div class="input-block">
+                        <textarea id="bike-additional-info"
+                            class="styled-input auto-resize"
+                            maxlength="200"
+                            placeholder="Добавить что-то от себя"></textarea>
+                    </div>
+                </div>
+
+                <div class="submit-section">
+                    <button class="submit-btn" id="submit-btn" disabled>Отправить заявку</button>
                 </div>
             </div>
 
-            
-            <div class="additional-info-section">
-                <div class="input-block">
-                    <textarea id="bike-additional-info"
-                        class="styled-input auto-resize"
-                        maxlength="200"
-                        placeholder="Добавить что-то от себя"></textarea>
-                </div>
-            </div>
-
-            <div class="submit-section">
-                <button class="submit-btn" id="submit-btn" disabled>Отправить заявку</button>
-            </div>
-        </div>
-
-        <div class="camera-container" id="camera-container">
-            <video id="camera-video" class="camera-video" autoplay playsinline></video>
-            <div class="camera-controls">
-                <button class="camera-btn" id="cancel-camera-btn">Отмена</button>
-                <button class="camera-btn primary" id="capture-btn">Сделать снимок</button>
-            </div>
-        </div>
-
-        <div class="camera-container" id="qr-scanner-container">
-            <video id="qr-scanner-video" class="camera-video" autoplay playsinline></video>
-                <div class="scanner-overlay">
-                    <div class="scanner-frame"></div>
-                </div>
+            <div class="camera-container" id="camera-container">
+                <video id="camera-video" class="camera-video" autoplay playsinline></video>
                 <div class="camera-controls">
-                    <button class="camera-btn" id="cancel-qr-scan-btn">Отмена</button>
+                    <button class="camera-btn" id="cancel-camera-btn">Отмена</button>
+                    <button class="camera-btn primary" id="capture-btn">Сделать снимок</button>
                 </div>
-        </div>
-
-        <div class="modal" id="confirmation-modal">
-            <div class="modal-content">
-                <span class="modal-close" id="modal-close">&times;</span>
-                <h2 class="modal-title">Заявка отправлена</h2>
-                <p class="modal-text">Заявка на велосипед №<span id="bike-number-confirm"></span> успешно отправлена Лёхе.</p>
-                <button class="modal-btn" id="modal-ok-btn">Хорошо</button>
-            </div>
-        </div>
-    </section>
-    
-    <section id="timestamp" class="page">
-        <div class="container">
-            <h1 class="page-description" style="color: #fff; margin-bottom: 15px; text-align: center;">Функционал TimeStamp Camera теперь тут</h1>
-
-            <div class="location-info-header" id="timestamp-location-info">
-                Нажми "Начать фотосессию" для запуска
             </div>
 
-            <div class="timestamp-section">
-                <div class="timestamp-preview-container">
-                    <div class="timestamp-preview" id="timestamp-preview">
-                        <div class="timestamp-loading" id="timestamp-loading">
-                            Нажми кнопку ниже чтобы начать
-                        </div>
-                        <video id="timestamp-video" style="display: none;" autoplay playsinline></video>
-                        <canvas id="timestamp-canvas" style="display: none;"></canvas>
-                        <img id="processed-photo-preview" class="processed-photo" style="display: none;" src="" alt="Обработанное фото">
+            <div class="camera-container" id="qr-scanner-container">
+                <video id="qr-scanner-video" class="camera-video" autoplay playsinline></video>
+                    <div class="scanner-overlay">
+                        <div class="scanner-frame"></div>
                     </div>
+                    <div class="camera-controls">
+                        <button class="camera-btn" id="cancel-qr-scan-btn">Отмена</button>
+                    </div>
+            </div>
 
-                    <div class="timestamp-controls-overlay">
-                        <div class="timestamp-controls" id="timestamp-controls">
-                            <button class="timestamp-btn primary" id="start-timestamp-btn">
-                                <span class="btn-content">
-                                    <span class="btn-text">Начать фотосессию</span>
-                                </span>
-                            </button>
-                            
-                            <button class="timestamp-btn" id="timestamp-capture-btn" style="display: none;">
-                                <span class="btn-content">
-                                    <span class="btn-text">Сфотографировать</span>
-                                </span>
-                            </button>
-                            
-                            <div class="timestamp-result-controls" id="timestamp-result-controls" style="display: none;">
-                                <button class="timestamp-btn" id="retake-btn">
+            <div class="modal" id="confirmation-modal">
+                <div class="modal-content">
+                    <span class="modal-close" id="modal-close">&times;</span>
+                    <h2 class="modal-title">Заявка отправлена</h2>
+                    <p class="modal-text">Заявка на велосипед №<span id="bike-number-confirm"></span> успешно отправлена Лёхе.</p>
+                    <button class="modal-btn" id="modal-ok-btn">Хорошо</button>
+                </div>
+            </div>
+        </section>
+        
+        <section id="timestamp" class="page">
+            <div class="container">
+                <h1 class="page-description" style="color: #fff; margin-bottom: 15px; text-align: center;">Функционал TimeStamp Camera теперь тут</h1>
+
+                <div class="location-info-header" id="timestamp-location-info">
+                    Нажми "Начать фотосессию" для запуска
+                </div>
+
+                <div class="timestamp-section">
+                    <div class="timestamp-preview-container">
+                        <div class="timestamp-preview" id="timestamp-preview">
+                            <div class="timestamp-loading" id="timestamp-loading">
+                                Нажми кнопку ниже чтобы начать
+                            </div>
+                            <video id="timestamp-video" style="display: none;" autoplay playsinline></video>
+                            <canvas id="timestamp-canvas" style="display: none;"></canvas>
+                            <img id="processed-photo-preview" class="processed-photo" style="display: none;" src="" alt="Обработанное фото">
+                        </div>
+
+                        <div class="timestamp-controls-overlay">
+                            <div class="timestamp-controls" id="timestamp-controls">
+                                <button class="timestamp-btn primary" id="start-timestamp-btn">
                                     <span class="btn-content">
-                                        <span class="btn-text">Переснять</span>
+                                        <span class="btn-text">Начать фотосессию</span>
                                     </span>
                                 </button>
-                                <button class="timestamp-btn primary" id="send-telegram-btn">
+                                
+                                <button class="timestamp-btn" id="timestamp-capture-btn" style="display: none;">
                                     <span class="btn-content">
-                                        <span class="btn-text">Отправить в телегу</span>
+                                        <span class="btn-text">Сфотографировать</span>
                                     </span>
                                 </button>
+                                
+                                <div class="timestamp-result-controls" id="timestamp-result-controls" style="display: none;">
+                                    <button class="timestamp-btn" id="retake-btn">
+                                        <span class="btn-content">
+                                            <span class="btn-text">Переснять</span>
+                                        </span>
+                                    </button>
+                                    <button class="timestamp-btn primary" id="send-telegram-btn">
+                                        <span class="btn-content">
+                                            <span class="btn-text">Отправить в телегу</span>
+                                        </span>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-    </section>
+        </section>
 
-    <section id="profile" class="page">
-        <div class="container">
-            <div class="header">
-                <h1 class="page-title">Профиль</h1>
-                <p class="page-description">Профиль. Информация о тебе, как о пользователе.</p>
+        <section id="profile" class="page">
+            <div class="container">
+                <div class="header">
+                    <h1 class="page-title">Профиль</h1>
+                    <p class="page-description">Профиль. Информация о тебе, как о пользователе.</p>
+                </div>
+                <div class="under-construction">
+                    <h2>Раздел в разработке</h2>
+                    <p>Обновление этого раздела планируется<br>фиг знает когда</p>
+                </div>
+                <div class="version-info">
+                    <div class="version-number">Версия: 0.0.6</div>
+                    <div class="version-update">Новая версия: скоро...</div>
+                </div>
             </div>
-            <div class="under-construction">
-                <h2>Раздел в разработке</h2>
-                <p>Обновление этого раздела планируется<br>фиг знает когда</p>
-            </div>
-            <div class="version-info">
-                <div class="version-number">Версия: 0.0.6</div>
-                <div class="version-update">Новая версия: скоро...</div>
-            </div>
-        </div>
-    </section>
+        </section>
 
-    <div class="notification" id="notification"></div>
+        <div class="notification" id="notification"></div>
+    </div>
 
     <nav class="bottom-nav">
         <div class="nav-item" data-page="main">
@@ -2596,6 +2603,16 @@
         }
     }
 
+    function updateBottomNav() {
+        const bottomNav = document.querySelector('.bottom-nav');
+        const appContainer = document.querySelector('.app-container');
+        
+        if (bottomNav && appContainer) {
+            const navHeight = bottomNav.offsetHeight;
+            appContainer.style.paddingBottom = navHeight + 'px';
+        }
+    }
+
     function centerBikeSVG() {
         const container = document.querySelector('.bike-container');
         const svg = document.querySelector('.bike-svg');
@@ -3652,6 +3669,10 @@
         if (sendBtn) sendBtn.onclick = sendTimestampToTelegram;
     }
 
+    window.addEventListener('resize', updateBottomNav);
+    window.addEventListener('load', updateBottomNav);
+    window.addEventListener('orientationchange', updateBottomNav);
+
     document.addEventListener('DOMContentLoaded', function() {
         // initSecurity(); 
 
@@ -3741,5 +3762,3 @@
 </script>
 </body>
 </html>
-
-
