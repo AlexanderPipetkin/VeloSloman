@@ -7,6 +7,7 @@
   "display": "fullscreen",
   "theme_color": "#000000",
   "background_color": "#000000",
+  "viewport": "width=device-width, initial-scale=1.0, viewport-fit=cover",
   "icons": [
     {
       "src": "media/icons/main_icon.png",
