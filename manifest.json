@@ -2,7 +2,7 @@
   "name": "Тут был леха",
   "short_name": "Жесткий ворк", 
   "description": "Тут был леха",
-  "start_url": "./VeloSloman.html",
+  "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "theme_color": "#000000",
@@ -16,3 +16,4 @@
   ],
   "orientation": "portrait"
 }
+
