@@ -1,6 +1,6 @@
 const CACHE_NAME = 'velobike-v1.0';
 const urlsToCache = [
-  'VeloSloman.html',
+  'index.html',
   'manifest.json',
   'media/icons/main_icon.png',
   'media/models/vel.svg',
