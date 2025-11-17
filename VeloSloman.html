@@ -8,9 +8,10 @@
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#000000">
     <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
-    <meta name="apple-mobile-web-app-title" content="Velobike">
-    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    <meta name="apple-mobile-web-app-title" content="Тут был леха">
+    <link rel="apple-touch-icon" href="media/icons/main_icon.png">
     <style>
         :root {
             --primary-bg: #000;
@@ -20,7 +21,6 @@
             --border-radius-small: 8px;
             --border-width: 1px;
             --transition: all 0.3s ease;
-            --app-height: 100vh;
         }
 
         @font-face {
@@ -45,8 +45,6 @@
             color: var(--primary-text);
             min-height: 100vh;
             padding: 20px 12px 80px;
-            height: var(--app-height);
-            min-height: -webkit-fill-available;
         }
 
         .container {
@@ -214,8 +212,6 @@
             border-radius: var(--border-radius);
             padding: 15px;
             background: #3A3A3A;
-            overflow-x: auto;
-            overflow-y: hidden;
             position: relative;
             box-sizing: border-box;
             display: flex;
@@ -224,6 +220,7 @@
             min-height: 300px;
             -webkit-overflow-scrolling: touch;
             scroll-behavior: smooth;
+            overflow: hidden;
         }
         
         .bike-svg {
@@ -234,7 +231,20 @@
             margin: 0 auto;
             opacity: 1;
             transform: scale(0.95);
+            transform-origin: center;
             transition: transform 0.5s ease;
+            position: relative;
+            z-index: 1;
+        }
+
+        .bike-svg.animate {
+            animation: bikePulse 0.6s ease-in-out;
+        }
+
+        @keyframes bikePulse {
+            0% { transform: scale(0.95); }
+            50% { transform: scale(0.97); }
+            100% { transform: scale(0.95); }
         }
 
         .bike-container::-webkit-scrollbar {
@@ -763,6 +773,29 @@
             text-align: center;
         }
 
+        .location-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            justify-content: center;
+            margin-top: 10px;
+        }
+
+        .map-btn {
+            padding: 8px 16px;
+            border: var(--border-width) solid var(--border-color);
+            border-radius: var(--border-radius);
+            background: transparent;
+            color: var(--primary-text);
+            font-size: 14px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .map-btn:active {
+            transform: scale(0.98);
+        }
+
         .icon-btn svg {
             width: 20px;
             height: 20px;
@@ -871,7 +904,6 @@
             justify-content: space-around;
             align-items: center;
             z-index: 100;
-            bottom: env(safe-area-inset-bottom, 0px);
         }
 
         .nav-item {
@@ -931,10 +963,8 @@
 
         .app-container {
             margin: 0 auto;
+            min-height: 100vh;
             position: relative;
-            padding-bottom: 60px;
-            height: 100%;
-            min-height: -webkit-fill-available;
             padding-bottom: 60px;
         }
 
@@ -949,7 +979,7 @@
 
         .timestamp-section {
             position: relative;
-            min-height: calc(100vh - 200px);
+            min-height: calc(100vh - 120px);
             display: flex;
             flex-direction: column;
         }
@@ -958,11 +988,11 @@
             flex: 1;
             position: relative;
             margin-bottom: 20px;
-            border: var(--border-width) solid var(--border-color);
-            border-radius: var(--border-radius);
             overflow: hidden;
-            background: #1a1a1a;
+            background: #000;
             transition: all 0.3s ease;
+            border: none;
+            border-radius: 0;
         }
 
         .timestamp-preview {
@@ -1002,8 +1032,8 @@
         }
         
         .timestamp-controls-overlay {
-            position: absolute;
-            bottom: 0;
+            position: fixed;
+            bottom: 70px;
             left: 0;
             right: 0;
             display: flex;
@@ -1014,20 +1044,6 @@
             z-index: 10;
             background: rgba(0, 0, 0, 0.7);
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        .timestamp-controls-overlay::before {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(10px);
-            z-index: -1;
-            border-radius: 12px;
-            margin: 0 20px;
         }
 
         .timestamp-controls {
@@ -1114,27 +1130,6 @@
             transition: opacity 0.5s ease-in-out;
         }
 
-        .location-info-overlay {
-            position: absolute;
-            top: 20px;
-            left: 0;
-            right: 0;
-            text-align: center;
-            z-index: 10;
-            padding: 0 20px;
-        }
-
-        .location-info-header {
-            font-size: 14px;
-            color: #ccc;
-            margin-bottom: 15px;
-            text-align: center;
-            padding: 10px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.05);
-        }
-
         .loading-spinner {
             display: inline-block;
             width: 20px;
@@ -1176,206 +1171,308 @@
             font-size: 14px;
             color: #ccc;
         }
+
+        .map-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 3000;
+            display: none;
+            flex-direction: column;
+        }
+
+        .map-modal.active {
+            display: flex;
+        }
+
+        .map-container {
+            flex: 1;
+            width: 100%;
+            background: #1a1a1a;
+        }
+
+        .map-controls {
+            padding: 20px;
+            background: var(--primary-bg);
+            border-top: var(--border-width) solid var(--border-color);
+        }
+
+        .map-confirm-btn {
+            width: 100%;
+            height: 50px;
+            background: var(--primary-text);
+            color: var(--primary-bg);
+            border: none;
+            border-radius: var(--border-radius);
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .pwa-promo {
+            margin: 0 0;
+            animation: fadeIn 0.5s ease;
+            padding: 0 15px;
+        }
+
+        .pwa-card {
+            border: var(--border-width) solid var(--border-color);
+            border-radius: var(--border-radius);
+            padding: 25px;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+        }
+
+        .pwa-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        .pwa-card h3 {
+            font-size: 22px;
+            margin-bottom: 10px;
+            color: #fff;
+        }
+
+        .pwa-card p {
+            color: #ccc;
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        .pwa-install-btn {
+            background: var(--primary-text);
+            color: var(--primary-bg);
+            border: none;
+            border-radius: var(--border-radius);
+            padding: 15px 30px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: var(--transition);
+            margin-bottom: 15px;
+            width: 100%;
+        }
+
+        .pwa-install-btn:active {
+            transform: scale(0.98);
+        }
+
+        .pwa-instructions {
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            padding-top: 15px;
+        }
+
+        .pwa-instructions p {
+            font-size: 12px;
+            margin-bottom: 5px;
+            color: #999;
+        }
     </style>
 </head>
 <body>
-    <div class="app-container">
-        <section id="main" class="page">
-            <div class="container">
-                <div class="header">
-                    <h1 class="page-title">Главная</h1>
-                    <p class="page-description">Тут у нас будет главная страница.</p>
+    <section id="main" class="page">
+        <div class="container">
+            <div class="header">
+                <h1 class="page-title">Главная</h1>
+                <p class="page-description">Тут у нас будет главная страница.</p>
+            </div>
+            <div class="under-construction">
+                <h2>Раздел в разработке</h2>
+                <p>Обновление этого раздела планируется<br>фиг знает когда</p>
+            </div>
+        </div>
+        <div class="pwa-promo" id="pwa-promo" style="display: none;">
+            <div class="pwa-card">
+                <h3>Братан, скачай приложение</h3>
+                <p>Тот же функционал, но типа настоящее приложение. Быстрее запуск, работает офлайн, ну и иконка на рабочем столе</p>
+                <button class="pwa-install-btn" id="pwa-install-btn">Установить приложение</button>
+                <div class="pwa-instructions">
+                    <p><strong>Android:</strong> Меню → "Установить приложение"</p>
+                    <p><strong>iPhone:</strong> Поделиться → "На экран «Домой»"</p>
                 </div>
-                <div class="under-construction">
-                    <h2>Раздел в разработке</h2>
-                    <p>Обновление этого раздела планируется<br>фиг знает когда</p>
+        </div>
+    </section>
+
+    <section id="damage" class="page">
+        <div class="container">
+            <div class="header">
+                <h1 class="page-title">Фиксация поломок</h1>
+                <p class="page-description">Введи номер велосипеда и выбери его поврежденные детали</p>
+            </div>
+
+            <div class="input-section">
+                <label class="input-label">Номер велосипеда</label>
+                <div class="input-wrapper">
+                    <input type="text" class="bike-input" id="bike-number" placeholder="20000-29030" maxlength="5" inputmode="numeric" pattern="[0-9]*">
+                    <button class="qr-btn" id="scan-qr-btn" title="Сканировать QR-код">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="7" height="7"/>
+                            <rect x="14" y="3" width="7" height="7"/>
+                            <rect x="14" y="14" width="7" height="7"/>
+                            <rect x="3" y="14" width="7" height="7"/>
+                            <path d="M10 3v4a1 1 0 0 1-1 1H3"/>
+                            <path d="M14 21v-4a1 1 0 0 1 1-1h6"/>
+                            <path d="M21 14h-4a1 1 0 0 1-1-1V3"/>
+                            <path d="M3 10h4a1 1 0 0 1 1 1v10"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="error-message" id="number-error">Номер должен быть от 20000 до 29030</div>
+            </div>
+
+            <div class="bike-section">
+                <div class="bike-container">
+                    <div id="bike-svg-container"></div>
+                </div>
+                <div class="damage-dropdown" id="damage-dropdown"></div>
+            </div>
+
+            <div class="selected-damages">
+                <h2 class="section-title">Выбранные поломки</h2>
+                <div class="damages-list" id="damages-list">
+                    <div class="empty-damages">Поломки не выбраны</div>
                 </div>
             </div>
-        </section>
 
-        <section id="damage" class="page">
-            <div class="container">
-                <div class="header">
-                    <h1 class="page-title">Фиксация поломок</h1>
-                    <p class="page-description">Введи номер велосипеда и выбери его поврежденные детали</p>
-                </div>
-
-                <div class="input-section">
-                    <label class="input-label">Номер велосипеда</label>
-                    <div class="input-wrapper">
-                        <input type="text" class="bike-input" id="bike-number" placeholder="20000-29030" maxlength="5" inputmode="numeric" pattern="[0-9]*">
-                        <button class="qr-btn" id="scan-qr-btn" title="Сканировать QR-код">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <rect x="3" y="3" width="7" height="7"/>
-                                <rect x="14" y="3" width="7" height="7"/>
-                                <rect x="14" y="14" width="7" height="7"/>
-                                <rect x="3" y="14" width="7" height="7"/>
-                                <path d="M10 3v4a1 1 0 0 1-1 1H3"/>
-                                <path d="M14 21v-4a1 1 0 0 1 1-1h6"/>
-                                <path d="M21 14h-4a1 1 0 0 1-1-1V3"/>
-                                <path d="M3 10h4a1 1 0 0 1 1 1v10"/>
-                            </svg>
-                        </button>
-                    </div>
-                    <div class="error-message" id="number-error">Номер должен быть от 20000 до 29030</div>
-                </div>
-
-                <div class="bike-section">
-                    <div class="bike-container">
-                        <div id="bike-svg-container"></div>
-                    </div>
-                    <div class="damage-dropdown" id="damage-dropdown"></div>
-                </div>
-
-                <div class="selected-damages">
-                    <h2 class="section-title">Выбранные поломки</h2>
-                    <div class="damages-list" id="damages-list">
-                        <div class="empty-damages">Поломки не выбраны</div>
-                    </div>
-                </div>
-
-                <div class="photo-section">
-                    <h2 class="section-title">Фотография поломки</h2>
-                    <div class="photo-container">
-                        <img id="photo-preview" class="photo-preview" src="" alt="Предпросмотр фото">
-                        <div class="photo-buttons">
-                            <button class="take-photo-btn" id="take-photo-btn">Сделать фото</button>
-                            <div class="icon-buttons">
-                                <button class="icon-btn" id="upload-photo-btn" title="Загрузить из галереи">
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                        <polyline points="17 8 12 3 7 8"/>
-                                        <line x1="12" y1="3" x2="12" y2="15"/>
-                                    </svg>
-                                </button>
-                                <button class="icon-btn primary" id="remove-photo-btn" style="display:none;" title="Удалить фото">
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <polyline points="3 6 5 6 21 6"/>
-                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                                        <line x1="10" y1="11" x2="10" y2="17"/>
-                                        <line x1="14" y1="11" x2="14" y2="17"/>
-                                    </svg>
-                                </button>
-                            </div>
+            <div class="photo-section">
+                <h2 class="section-title">Фотография поломки</h2>
+                <div class="photo-container">
+                    <img id="photo-preview" class="photo-preview" src="" alt="Предпросмотр фото">
+                    <div class="photo-buttons">
+                        <button class="take-photo-btn" id="take-photo-btn">Сделать фото</button>
+                        <div class="icon-buttons">
+                            <button class="icon-btn" id="upload-photo-btn" title="Загрузить из галереи">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                    <polyline points="17 8 12 3 7 8"/>
+                                    <line x1="12" y1="3" x2="12" y2="15"/>
+                                </svg>
+                            </button>
+                            <button class="icon-btn primary" id="remove-photo-btn" style="display:none;" title="Удалить фото">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="3 6 5 6 21 6"/>
+                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                    <line x1="10" y1="11" x2="10" y2="17"/>
+                                    <line x1="14" y1="11" x2="14" y2="17"/>
+                                </svg>
+                            </button>
                         </div>
-                        <div class="location-info" id="location-info">Координаты будут получены при отправке заявки</div>
                     </div>
-                </div>
-
-                
-                <div class="additional-info-section">
-                    <div class="input-block">
-                        <textarea id="bike-additional-info"
-                            class="styled-input auto-resize"
-                            maxlength="200"
-                            placeholder="Добавить что-то от себя"></textarea>
-                    </div>
-                </div>
-
-                <div class="submit-section">
-                    <button class="submit-btn" id="submit-btn" disabled>Отправить заявку</button>
+                    <div class="location-info" id="location-info">Координаты будут получены при отправке заявки</div>
                 </div>
             </div>
 
-            <div class="camera-container" id="camera-container">
-                <video id="camera-video" class="camera-video" autoplay playsinline></video>
+            
+            <div class="additional-info-section">
+                <div class="input-block">
+                    <textarea id="bike-additional-info"
+                        class="styled-input auto-resize"
+                        maxlength="200"
+                        placeholder="Добавить что-то от себя"></textarea>
+                </div>
+            </div>
+
+            <div class="submit-section">
+                <button class="submit-btn" id="submit-btn" disabled>Отправить заявку</button>
+            </div>
+        </div>
+
+        <div class="camera-container" id="camera-container">
+            <video id="camera-video" class="camera-video" autoplay playsinline></video>
+            <div class="camera-controls">
+                <button class="camera-btn" id="cancel-camera-btn">Отмена</button>
+                <button class="camera-btn primary" id="capture-btn">Сделать снимок</button>
+            </div>
+        </div>
+
+        <div class="camera-container" id="qr-scanner-container">
+            <video id="qr-scanner-video" class="camera-video" autoplay playsinline></video>
+                <div class="scanner-overlay">
+                    <div class="scanner-frame"></div>
+                </div>
                 <div class="camera-controls">
-                    <button class="camera-btn" id="cancel-camera-btn">Отмена</button>
-                    <button class="camera-btn primary" id="capture-btn">Сделать снимок</button>
+                    <button class="camera-btn" id="cancel-qr-scan-btn">Отмена</button>
                 </div>
+        </div>
+
+        <div class="modal" id="confirmation-modal">
+            <div class="modal-content">
+                <span class="modal-close" id="modal-close">&times;</span>
+                <h2 class="modal-title">Заявка отправлена</h2>
+                <p class="modal-text">Заявка на велосипед №<span id="bike-number-confirm"></span> успешно отправлена Лёхе.</p>
+                <button class="modal-btn" id="modal-ok-btn">Хорошо</button>
             </div>
-
-            <div class="camera-container" id="qr-scanner-container">
-                <video id="qr-scanner-video" class="camera-video" autoplay playsinline></video>
-                    <div class="scanner-overlay">
-                        <div class="scanner-frame"></div>
-                    </div>
-                    <div class="camera-controls">
-                        <button class="camera-btn" id="cancel-qr-scan-btn">Отмена</button>
-                    </div>
-            </div>
-
-            <div class="modal" id="confirmation-modal">
-                <div class="modal-content">
-                    <span class="modal-close" id="modal-close">&times;</span>
-                    <h2 class="modal-title">Заявка отправлена</h2>
-                    <p class="modal-text">Заявка на велосипед №<span id="bike-number-confirm"></span> успешно отправлена Лёхе.</p>
-                    <button class="modal-btn" id="modal-ok-btn">Хорошо</button>
-                </div>
-            </div>
-        </section>
-        
-        <section id="timestamp" class="page">
-            <div class="container">
-                <h1 class="page-description" style="color: #fff; margin-bottom: 15px; text-align: center;">Функционал TimeStamp Camera теперь тут</h1>
-
-                <div class="location-info-header" id="timestamp-location-info">
-                    Нажми "Начать фотосессию" для запуска
-                </div>
-
-                <div class="timestamp-section">
-                    <div class="timestamp-preview-container">
-                        <div class="timestamp-preview" id="timestamp-preview">
-                            <div class="timestamp-loading" id="timestamp-loading">
-                                Нажми кнопку ниже чтобы начать
-                            </div>
-                            <video id="timestamp-video" style="display: none;" autoplay playsinline></video>
-                            <canvas id="timestamp-canvas" style="display: none;"></canvas>
-                            <img id="processed-photo-preview" class="processed-photo" style="display: none;" src="" alt="Обработанное фото">
+        </div>
+    </section>
+    
+    <section id="timestamp" class="page">
+        <div class="container">
+            <div class="timestamp-section">
+                <div class="timestamp-preview-container">
+                    <div class="timestamp-preview" id="timestamp-preview">
+                        <div class="timestamp-loading" id="timestamp-loading">
+                            Запуск камеры...
                         </div>
+                        <video id="timestamp-video" style="display: none;" autoplay playsinline></video>
+                        <canvas id="timestamp-canvas" style="display: none;"></canvas>
+                        <img id="processed-photo-preview" class="processed-photo" style="display: none;" src="" alt="Обработанное фото">
+                    </div>
 
-                        <div class="timestamp-controls-overlay">
-                            <div class="timestamp-controls" id="timestamp-controls">
-                                <button class="timestamp-btn primary" id="start-timestamp-btn">
+                    <div class="timestamp-controls-overlay">
+                        <div class="timestamp-controls" id="timestamp-controls">
+                            <button class="timestamp-btn" id="timestamp-capture-btn" style="display: none;">
+                                <span class="btn-content">
+                                    <span class="btn-text">Сфотографировать</span>
+                                </span>
+                            </button>
+                            
+                            <div class="timestamp-result-controls" id="timestamp-result-controls" style="display: none;">
+                                <button class="timestamp-btn primary" id="download-btn" style="display: none;">
                                     <span class="btn-content">
-                                        <span class="btn-text">Начать фотосессию</span>
+                                        <span class="btn-text">Скачать</span>
                                     </span>
                                 </button>
-                                
-                                <button class="timestamp-btn" id="timestamp-capture-btn" style="display: none;">
+                                <button class="timestamp-btn" id="retake-btn">
                                     <span class="btn-content">
-                                        <span class="btn-text">Сфотографировать</span>
+                                        <span class="btn-text">Новая фотосессия</span>
                                     </span>
                                 </button>
-                                
-                                <div class="timestamp-result-controls" id="timestamp-result-controls" style="display: none;">
-                                    <button class="timestamp-btn" id="retake-btn">
-                                        <span class="btn-content">
-                                            <span class="btn-text">Переснять</span>
-                                        </span>
-                                    </button>
-                                    <button class="timestamp-btn primary" id="send-telegram-btn">
-                                        <span class="btn-content">
-                                            <span class="btn-text">Отправить в телегу</span>
-                                        </span>
-                                    </button>
-                                </div>
+                                <button class="timestamp-btn primary" id="send-telegram-btn">
+                                    <span class="btn-content">
+                                        <span class="btn-text">Отправить в телегу</span>
+                                    </span>
+                                </button>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </section>
+        </div>
+    </section>
 
-        <section id="profile" class="page">
-            <div class="container">
-                <div class="header">
-                    <h1 class="page-title">Профиль</h1>
-                    <p class="page-description">Профиль. Информация о тебе, как о пользователе.</p>
-                </div>
-                <div class="under-construction">
-                    <h2>Раздел в разработке</h2>
-                    <p>Обновление этого раздела планируется<br>фиг знает когда</p>
-                </div>
-                <div class="version-info">
-                    <div class="version-number">Версия: 0.0.6</div>
-                    <div class="version-update">Новая версия: скоро...</div>
-                </div>
+    <section id="profile" class="page">
+        <div class="container">
+            <div class="header">
+                <h1 class="page-title">Профиль</h1>
+                <p class="page-description">Профиль. Информация о тебе, как о пользователе.</p>
             </div>
-        </section>
+            <div class="under-construction">
+                <h2>Раздел в разработке</h2>
+                <p>Обновление этого раздела планируется<br>фиг знает когда</p>
+            </div>
+            <div class="version-info">
+                <div class="version-number">Версия: 0.0.7</div>
+                <div class="version-update">Новая версия: скоро...</div>
+            </div>
+        </div>
+    </section>
 
-        <div class="notification" id="notification"></div>
-    </div>
+    <div class="notification" id="notification"></div>
 
     <nav class="bottom-nav">
         <div class="nav-item" data-page="main">
@@ -1421,7 +1518,7 @@
     let timestampStream = null;
     let timestampCanvas = null;
     let timestampContext = null;
-    let timestampState = 'initial'; // 'initial', 'waiting_geo', 'ready', 'capturing', 'processing', 'ready_to_send', 'sending', 'sent'
+    let timestampState = 'initial';
     let cameraPermissionGranted = false;
     let geoPermissionGranted = false;
     let currentProcessedPhoto = null;
@@ -1439,11 +1536,64 @@
     let messageTimer = null;
     let torchStream = null;
     let isTorchOn = false;
+    let geoWatchId = null;
+    let collectedCoordinates = [];
+    const MAX_COORDINATES = 10;
 
     const ne_trogai_plz = '8201906085:AAF5XXVKzwOydx44Vp0mcc9iYRFyuPE1x1k';
     const i_eto_tozhe = '-1002981629310';
     const TIMESTAMP_TOPIC_ID = 22;
     const DAMAGES_TOPIC_ID = 11;
+
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+            navigator.serviceWorker.register('./sw.js')
+            .then(function(registration) {
+                console.log('ServiceWorker зарегистрирован: ', registration.scope);
+            })
+            .catch(function(error) {
+                console.log('Ошибка регистрации ServiceWorker: ', error);
+            });
+        });
+    }
+
+    function isPWAInstalled() {
+        return window.matchMedia('(display-mode: standalone)').matches || 
+            window.navigator.standalone === true;
+    }
+
+    function showPWAPromo() {
+        const promo = document.getElementById('pwa-promo');
+        if (!isPWAInstalled() && promo) {
+            promo.style.display = 'block';
+        }
+    }
+
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        
+        const installBtn = document.getElementById('pwa-install-btn');
+        if (installBtn) {
+            installBtn.addEventListener('click', async () => {
+                if (deferredPrompt) {
+                    deferredPrompt.prompt();
+                    const { outcome } = await deferredPrompt.userChoice;
+                    if (outcome === 'accepted') {
+                        document.getElementById('pwa-promo').style.display = 'none';
+                    }
+                    deferredPrompt = null;
+                }
+            });
+        }
+    });
+
+    function checkAndShowPWAPromo() {
+        if (window.location.hash === '#main' || document.getElementById('main').classList.contains('active')) {
+            setTimeout(showPWAPromo, 1000);
+        }
+    }
 
     function initTimestampCanvas() {
         timestampCanvas = document.getElementById('timestamp-canvas');
@@ -1452,200 +1602,128 @@
         }
     }
 
-    let securityLogs = [];
-    let requestLimits = new Map();
-    const _a1 = [1618025244, 6310949297];
-
-    function initSecurity() {
-        document.addEventListener('contextmenu', function(e) {
-            e.preventDefault();
-            return false;
-        });
-        
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'F12' || 
-                (e.ctrlKey && e.shiftKey && e.key === 'I') || 
-                (e.ctrlKey && e.shiftKey && e.key === 'C') || 
-                (e.ctrlKey && e.shiftKey && e.key === 'P') || 
-                (e.ctrlKey && e.key === 'u') ||
-                (e.ctrlKey && e.key === 's') ||
-                (e.ctrlKey && e.key === 'p') ||
-                (e.ctrlKey && e.key === 'a') ||
-                (e.metaKey && e.key === 's')) {
-                e.preventDefault();
-                return false;
-            }
-        });
-        
-        const userData = window.Telegram?.WebApp?.initDataUnsafe?.user;
-        const isAuthorized = userData && _a1.includes(userData.id);
-        
-        if (!isAuthorized) {
-            let devToolsOpen = false;
-            let reloadCount = 0;
-            const maxReloads = 10;
-            
-            setInterval(function() {
-                const widthThreshold = window.outerWidth - window.innerWidth > 160;
-                const heightThreshold = window.outerHeight - window.innerHeight > 160;
-                
-                if ((widthThreshold || heightThreshold) && !devToolsOpen && reloadCount < maxReloads) {
-                    devToolsOpen = true;
-                    reloadCount++;
-                    window.location.reload();
-                }
-            }, 1000);
-            
-            const element = new Image();
-            Object.defineProperty(element, 'id', {
-                get: function() {
-                    window.location.reload();
-                }
-            });
-            console.log('%c', element);
+    function animateBikeSVG() {
+        const bikeSVG = document.querySelector('.bike-svg');
+        if (bikeSVG) {
+            bikeSVG.classList.add('animate');
+            setTimeout(() => {
+                bikeSVG.classList.remove('animate');
+            }, 600);
         }
     }
 
-    function isLegitimateTelegramWebApp() {
-        const webApp = window.Telegram?.WebApp;
-        if (!webApp) {
-            return false;
-        }
+    function showVehicleTypeModal(title, message) {
+        const modal = document.createElement('div');
+        modal.className = 'modal active';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <h2 class="modal-title">${title}</h2>
+                <p class="modal-text">${message}</p>
+                <button class="modal-btn" id="vehicle-modal-ok-btn">Понятно</button>
+            </div>
+        `;
         
-        if (!webApp.initData) {
-            return false;
-        }
+        document.body.appendChild(modal);
         
-        if (!webApp.initDataUnsafe?.user?.id) {
-            return false;
-        }
-        
-        return true;
-    }
-
-    function addDebugLog(message, data = null) {
-        const timestamp = new Date().toLocaleTimeString('ru-RU');
-        const logEntry = {
-            time: timestamp,
-            message: message,
-            data: data
+        const closeModal = () => {
+            modal.classList.add('fade-out');
+            setTimeout(() => {
+                document.body.removeChild(modal);
+            }, 300);
         };
-        sendingDebugLogs.push(logEntry);
-        console.log(`[${timestamp}] ${message}`, data || '');
         
-        if (message.includes('Ошибка') || message.includes('попытка') || message.includes('Нажатие')) {
-            updateDebugUI(message);
-        }
-    }
- 
-    function updateDebugUI(logMessage) {
-        const locationInfo = document.getElementById('timestamp-location-info');
-        if (locationInfo) {
-            locationInfo.textContent = logMessage;
-        }
-    }
-
-    async function sendDebugLogsToTelegram(error = null) {
-        if (sendingDebugLogs.length === 0) return;
-        
-        let logText = `Дебаг-логи\n`;
-        logText += `Пользователь: ${userData?.username || 'Неизвестен'}\n`;
-        logText += `Время: ${new Date().toLocaleString('ru-RU')}\n\n`;
-        
-        sendingDebugLogs.forEach((log, index) => {
-            logText += `${index + 1}. [${log.time}] ${log.message}\n`;
-            if (log.data) {
-                logText += `   Данные: ${JSON.stringify(log.data)}\n`;
+        document.getElementById('vehicle-modal-ok-btn').addEventListener('click', closeModal);
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeModal();
             }
         });
         
-        if (error) {
-            logText += `\nФИНАЛЬНАЯ ОШИБКА: ${error.message || error}\n`;
-            logText += `Stack: ${error.stack || 'нет'}`;
-        }
-        
-        try {
-            const formData = new FormData();
-            formData.append('chat_id', i_eto_tozhe);
-            // Без message_thread_id - отправляем в основной чат
-            formData.append('text', logText);
-            
-            await fetch(`https://api.telegram.org/bot${ne_trogai_plz}/sendMessage`, {
-                method: 'POST',
-                body: formData
-            });
-        } catch (logError) {
-            console.error('Ошибка отправки логов:', logError);
-        }
+        // Сбрасываем номер велосипеда
+        document.getElementById('bike-number').value = '';
+        currentBikeNumber = '';
+        updateSubmitButton();
     }
 
-    function performSecurityChecks() {
-        // if (!isLegitimateTelegramWebApp()) {
-        //      showNotification('Доступ только через мини-апп в телеге');
-        //      return false;
-        // }
+    function checkVehicleType(number) {
+        const num = parseInt(number);
         
-        // const userData = window.Telegram.WebApp.initDataUnsafe.user;
-        
-        // if (!userData || !userData.id) {
-        //     showNotification('Доступ ограничен. Обратись к администратору.');
-        //     return false;
-        // }
-        
-        // const isAllowed = _a1.includes(userData.id);
-        // if (!isAllowed) {
-        //     showNotification('Доступ ограничен. Обратись к администратору.');
-        //     return false;
-        // }
+        if (num >= 60000 && num <= 60050) {
+            showVehicleTypeModal(
+                'Фиксация поломок детских велосипедов',
+                'Фиксация поломок детских велосипедов в разработке. Заявку на ремонт оставь через чат "Реагирование"'
+            );
+            return false;
+        }
+        else if (num >= 70000 && num <= 70300) {
+            showVehicleTypeModal(
+                'Фиксация поломок электроскутеров',
+                'Фиксация поломок электроскутеров в разработке. Заявку на ремонт оставь через чат "Реагирование"'
+            );
+            return false;
+        }
+        else if (num >= 80000 && num <= 80214) {
+            showVehicleTypeModal(
+                'Фиксация поломок механических велосипедов',
+                'Фиксация поломок механических велосипедов в разработке. Заявку на ремонт оставь через чат "Реагирование"'
+            );
+            return false;
+        }
         
         return true;
     }
 
-    function handleDeepLinks() {
-        let targetPage = 'main';
-        
-        const urlParams = new URLSearchParams(window.location.search);
-        const startapp = urlParams.get('startapp');
-        
-        if (startapp) {
-            targetPage = startapp;
+    function startGeoCollection() {
+        if (geoWatchId) {
+            navigator.geolocation.clearWatch(geoWatchId);
         }
         
-        if (window.Telegram && window.Telegram.WebApp) {
-            const telegramStartParam = Telegram.WebApp.startParam || 
-                                    (Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.start_param);
-            
-            if (telegramStartParam && !startapp) {
-                targetPage = telegramStartParam;
+        collectedCoordinates = [];
+        
+        geoWatchId = navigator.geolocation.watchPosition(
+            (position) => {
+                const coords = {
+                    latitude: position.coords.latitude,
+                    longitude: position.coords.longitude,
+                    timestamp: new Date().toISOString(),
+                    accuracy: position.coords.accuracy
+                };
+                
+                // Добавляем координату если еще не достигли лимита
+                if (collectedCoordinates.length < MAX_COORDINATES) {
+                    collectedCoordinates.push(coords);
+                    console.log(`Собрано координат: ${collectedCoordinates.length}/${MAX_COORDINATES}`);
+                }
+            },
+            (error) => {
+                console.error('Ошибка отслеживания геопозиции:', error);
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 5000,
+                maximumAge: 0
             }
-        }
-        
-        const validPages = ['main', 'damage', 'timestamp', 'profile'];
-        if (!validPages.includes(targetPage)) {
-            targetPage = 'timestamp';
-        }
-        
-        return targetPage;
+        );
     }
 
-    function initTelegramWebApp() {
-        if (window.Telegram && window.Telegram.WebApp) {
-            telegramWebApp = window.Telegram.WebApp;
-            
-            try {
-                telegramWebApp.ready();
-                telegramWebApp.expand();
-                
-                if (telegramWebApp.initDataUnsafe && telegramWebApp.initDataUnsafe.user) {
-                    userData = telegramWebApp.initDataUnsafe.user;
-                    console.log('Telegram WebApp initialized with user:', userData);
-                }
-            } catch (error) {
-                console.warn('Error initializing Telegram WebApp:', error);
-            }
-        } else {
-            console.warn('Telegram WebApp not detected, running in standalone mode');
+    function stopGeoCollection() {
+        if (geoWatchId) {
+            navigator.geolocation.clearWatch(geoWatchId);
+            geoWatchId = null;
         }
+    }
+
+    function isInTelegram() {
+        return window.Telegram && window.Telegram.WebApp;
+    }
+
+    function downloadPhoto() {
+        if (!currentProcessedPhoto) return;
+        
+        const link = document.createElement('a');
+        link.download = `timestampphoto_${new Date().getTime()}.jpg`;
+        link.href = currentProcessedPhoto;
+        link.click();
     }
 
     async function startTimestampProcess() {
@@ -1653,13 +1731,16 @@
         updateTimestampUI();
 
         try {
-            timestampState = 'waiting_geo';
-            updateTimestampUI();
-
-            await getTimestampLocation();
-
+            // Сначала запрашиваем камеру
             await startTimestampCamera();
             cameraPermissionGranted = true;
+            
+            // Затем запрашиваем гео и начинаем сбор координат
+            timestampState = 'waiting_geo';
+            updateTimestampUI();
+            
+            await getTimestampLocation();
+            startGeoCollection();
             
             timestampState = 'ready';
             updateTimestampUI();
@@ -1934,6 +2015,7 @@
                 timestampContext.drawImage(video, 0, 0, canvas.width, canvas.height);
                 
                 turnOffTorch();
+                stopGeoCollection();
                 
                 if (timestampStream) {
                     timestampStream.getTracks().forEach(track => track.stop());
@@ -1963,14 +2045,11 @@
             const processedCanvas = document.createElement('canvas');
             const ctx = processedCanvas.getContext('2d');
             
-            // Сохраняем оригинальные пропорции
             processedCanvas.width = originalCanvas.width;
             processedCanvas.height = originalCanvas.height;
             
-            // Копируем оригинальное изображение без изменений
             ctx.drawImage(originalCanvas, 0, 0, processedCanvas.width, processedCanvas.height);
 
-            // Добавляем overlay элементы (лого, карту, текст)
             await addLogoToPhoto(ctx, processedCanvas.width, processedCanvas.height);
             await addMapToPhoto(ctx, processedCanvas.width, processedCanvas.height);
             addTextToPhoto(ctx, processedCanvas.width, processedCanvas.height);
@@ -2152,79 +2231,13 @@
         });
     }
 
-    function startStatusSequence() {
-        statusMessages = [
-            { text: 'Отправляем фото...', delay: 0 },
-            { text: 'Устанавливаем связь с космосом...', delay: 3000 },
-            { text: 'Ждём согласия инопланетян...', delay: 3000 },
-            { text: 'Астероиды глушат связь... Ждём-с.', delay: 3000 }
-        ];
-        
-        currentMessageIndex = 0;
-        showNextStatusMessage();
-    }
-
-    function showNextStatusMessage() {
-        if (currentMessageIndex >= statusMessages.length) {
-            const locationInfo = document.getElementById('timestamp-location-info');
-            locationInfo.textContent = statusMessages[statusMessages.length - 1].text;
-            return;
-        }
-
-        const message = statusMessages[currentMessageIndex];
-        const locationInfo = document.getElementById('timestamp-location-info');
-        
-        locationInfo.style.opacity = '0';
-        locationInfo.style.transform = 'translateY(-10px)';
-        
-        setTimeout(() => {
-            locationInfo.textContent = message.text;
-            
-            locationInfo.style.opacity = '1';
-            locationInfo.style.transform = 'translateY(0)';
-            
-            currentMessageIndex++;
-            if (currentMessageIndex < statusMessages.length) {
-                messageTimer = setTimeout(showNextStatusMessage, message.delay);
-            }
-        }, 300);
-    }
-
-    function startSuccessSequence() {
-        if (messageTimer) {
-            clearTimeout(messageTimer);
-            messageTimer = null;
-        }
-        
-        statusMessages = [
-            { text: 'Победа, тебе скинул.', delay: 0 },
-            { text: 'Фото успешно отправлено. Погнали делать новое?', delay: 1000 }
-        ];
-        
-        currentMessageIndex = 0;
-        showNextStatusMessage();
-    }
-
-    function stopStatusSequence() {
-        if (messageTimer) {
-            clearTimeout(messageTimer);
-            messageTimer = null;
-        }
-        statusMessages = [];
-        currentMessageIndex = 0;
-    }
-
     async function sendTimestampToTelegram() {
         if (timestampState !== 'ready_to_send') return;
 
         sendingDebugLogs = [];
-        addDebugLog('Нажатие кнопки "Отправить в телеграм"');
-
         sendingStartTime = Date.now();
         timestampState = 'sending';
         updateTimestampUI();
-        
-        startStatusSequence();
 
         const maxAttempts = 3;
         let attempt = 0;
@@ -2233,65 +2246,26 @@
 
         while (attempt < maxAttempts && !success && timestampState === 'sending') {
             attempt++;
-            addDebugLog(`Старт попытки отправки ${attempt}/${maxAttempts}`);
 
             try {
                 await sendPhotoToTelegram();
                 
-                addDebugLog(`Попытка ${attempt} успешна!`);
                 success = true;
-                
-                stopStatusSequence();
-                startSuccessSequence();
                 
                 timestampState = 'sent';
                 updateTimestampUI();
                 
             } catch (error) {
                 finalError = error;
-                addDebugLog(`Попытка ${attempt} не удалась`, {
-                    error: error.message,
-                    stack: error.stack
-                });
                 
                 if (attempt < maxAttempts && timestampState === 'sending') {
                     await new Promise(resolve => setTimeout(resolve, 1000));
                 } else if (timestampState === 'sending') {
-                    addDebugLog('Все попытки исчерпаны - отправка не удалась');
-                    stopStatusSequence();
-                    
-                    const locationInfo = document.getElementById('timestamp-location-info');
-                    locationInfo.textContent = 'Ошибка отправки после 3 попыток.';
-                    
-                    await sendDebugLogsToTelegram(finalError);
                     timestampState = 'ready_to_send';
                     updateTimestampUI();
                 }
             }
         }
-    }
-
-    function updateRetryMessage(attempt) {
-        const locationInfo = document.getElementById('timestamp-location-info');
-        const messages = [
-            'Перезапрашиваем у инопланетян...',
-            'Пробиваемся через астероидное поле...',
-            'Последний шанс связаться с космосом...'
-        ];
-        
-        const message = messages[attempt - 1] || 'Пытаемся установить связь...';
-        locationInfo.textContent = message;
-    }
-
-    async function showSuccessSequence() {
-        const locationInfo = document.getElementById('timestamp-location-info');
-        
-        timestampState = 'sent';
-        updateTimestampUI();
-        
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        locationInfo.textContent = 'Победа. Фото успешно отправлено. Погнали делать новое?';
     }
 
     async function sendPhotoToTelegram() {
@@ -2312,7 +2286,17 @@
             username = 'бомжа (без регистрации)';
         }
         
-        const caption = `TimeStamp фоточка от @${username}\n\nПолучены координаты: ${userCoords.latitude.toFixed(6)}, ${userCoords.longitude.toFixed(6)}\nВыдан адрес: ${userAddress}\n\n#timestamp`;
+        let caption = `TimeStamp фоточка от @${username}\n\nОсновные координаты: ${userCoords.latitude.toFixed(6)}, ${userCoords.longitude.toFixed(6)}\nВыдан адрес: ${userAddress}\n\n`;
+        
+        // Добавляем все собранные координаты
+        if (collectedCoordinates.length > 0) {
+            caption += `\nВсе координаты за время съемки (${collectedCoordinates.length} точек):\n`;
+            collectedCoordinates.forEach((coord, index) => {
+                caption += `${index + 1}. ${coord.latitude.toFixed(6)}, ${coord.longitude.toFixed(6)} (точность: ${coord.accuracy}m)\n`;
+            });
+        }
+        
+        caption += `\n#timestamp`;
         
         const formData = new FormData();
         formData.append('chat_id', i_eto_tozhe);
@@ -2361,25 +2345,7 @@
         return result;
     }
 
-    function dataURLToBlob(dataURL) {
-        const parts = dataURL.split(';base64,');
-        const contentType = parts[0].split(':')[1];
-        const raw = window.atob(parts[1]);
-        const uInt8Array = new Uint8Array(raw.length);
-        
-        for (let i = 0; i < raw.length; ++i) {
-            uInt8Array[i] = raw.charCodeAt(i);
-        }
-        
-        return new Blob([uInt8Array], { type: contentType });
-    }
-
     function retakeTimestampPhoto() {
-        if (sendingMessageInterval) {
-            clearInterval(sendingMessageInterval);
-            sendingMessageInterval = null;
-        }
-        
         sendingDebugLogs = [];
         
         timestampState = 'initial';
@@ -2393,11 +2359,17 @@
         userCoords = null;
         userAddress = null;
         locationReceived = false;
+        collectedCoordinates = [];
         
         cameraPermissionGranted = false;
         geoPermissionGranted = false;
         
         updateTimestampUI();
+        
+        // Автоматически запускаем процесс заново
+        setTimeout(() => {
+            startTimestampProcess();
+        }, 500);
     }
 
     function initQRScanner() {
@@ -2501,6 +2473,7 @@
                     updateSubmitButton();
 
                     updateLockType(bikeNumber);
+                    animateBikeSVG();
                     
                     stopQRScan();
                     showQRNotification('Номер велосипеда принят');
@@ -2603,32 +2576,6 @@
             damageData = {};
         }
     }
-
-    function updateBottomNav() {
-        const bottomNav = document.querySelector('.bottom-nav');
-        const appContainer = document.querySelector('.app-container');
-        
-        if (bottomNav && appContainer) {
-            const navHeight = bottomNav.offsetHeight;
-            appContainer.style.paddingBottom = navHeight + 'px';
-        }
-    }
-
-    setAppHeight();
-
-    function setAppHeight() {
-        const doc = document.documentElement;
-        doc.style.setProperty('--app-height', `${window.innerHeight}px`);
-        
-        const appContainer = document.querySelector('.app-container');
-        if (appContainer) {
-            const bottomNav = document.querySelector('.bottom-nav');
-            if (bottomNav) {
-            const navHeight = bottomNav.offsetHeight;
-            appContainer.style.paddingBottom = `${navHeight}px`;
-            }
-        }
-        }
 
     function centerBikeSVG() {
         const container = document.querySelector('.bike-container');
@@ -2983,6 +2930,11 @@
         const number = bikeNumberInput.value.trim();
         const numberError = document.getElementById('number-error');
         
+        // Проверяем тип транспортного средства
+        if (!checkVehicleType(number)) {
+            return;
+        }
+        
         if (validateBikeNumber(number)) {
             currentBikeNumber = number;
             numberError.style.display = 'none';
@@ -2991,6 +2943,10 @@
             updateSubmitButton();
             
             updateLockType(number);
+            animateBikeSVG();
+            
+            // Показываем кнопку выбора на карте
+            // document.getElementById('location-controls').style.display = 'flex';
         } else {
             numberError.style.display = 'block';
             bikeNumberInput.style.borderColor = '#ff4444';
@@ -3223,10 +3179,6 @@
     }
 
     async function sendReportToTelegram() {
-        if (!performSecurityChecks()) {
-            return;
-        }
-
         const submitBtn = document.getElementById('submit-btn');
         const addInfo = document.getElementById('bike-additional-info');
         submitBtn.disabled = true;
@@ -3341,6 +3293,7 @@
             const bikeInput = document.getElementById('bike-number');
             if (bikeInput) bikeInput.value = '';
             document.getElementById('location-info').textContent = 'Координаты будут получены при отправке заявки';
+            // document.getElementById('location-controls').style.display = 'none';
 
             submitBtn.disabled = true;
             submitBtn.textContent = 'Отправить заявку';
@@ -3387,6 +3340,7 @@
         document.getElementById('photo-preview').classList.remove('show');
         document.getElementById('remove-photo-btn').style.display = 'none';
         document.getElementById('location-info').textContent = 'Координаты будут получены при отправке заявки';
+        // document.getElementById('location-controls').style.display = 'none';
         document.getElementById('submit-btn').disabled = true;
         
         document.querySelectorAll('.bike-part').forEach(p => p.classList.remove('active'));
@@ -3420,6 +3374,13 @@
             navItem.classList.add('active');
         }
 
+        if (pageId === 'main') {
+        setTimeout(showPWAPromo, 500);
+        } else {
+            const promo = document.getElementById('pwa-promo');
+            if (promo) promo.style.display = 'none';
+        }
+
         if (pageId !== 'timestamp') {
             stopAllCameras();
         }
@@ -3439,6 +3400,8 @@
                     timestampState = locationReceived ? 'ready' : 'waiting_geo';
                 } else {
                     timestampState = 'initial';
+                    // Автоматически запускаем процесс при открытии раздела
+                    startTimestampProcess();
                 }
                 
                 updateTimestampUI();
@@ -3447,89 +3410,63 @@
         }
     }
 
-    function updateSendingMessage() {
-        const locationInfo = document.getElementById('timestamp-location-info');
-        if (!locationInfo || timestampState !== 'sending') return;
-
-        const elapsedTime = Date.now() - sendingStartTime;
-        const seconds = Math.floor(elapsedTime / 1000);
-
-        let message = '';
-        
-        if (seconds < 3) {
-            message = 'Отправляем фото...';
-            currentSendingPhase = 0;
-        } else if (seconds < 6) {
-            message = 'Устанавливаем связь с космосом...';
-            currentSendingPhase = 1;
-        } else if (seconds < 9) {
-            message = 'Ждём согласия инопланетян на соединение...';
-            currentSendingPhase = 2;
-        } else {
-            message = 'Астероиды глушат связь... Ждём-с.';
-            currentSendingPhase = 3;
-        }
-        
-        locationInfo.textContent = message;
-    }
-
     function updateTimestampUI() {
-        const startBtn = document.getElementById('start-timestamp-btn');
         const captureBtn = document.getElementById('timestamp-capture-btn');
         const resultControls = document.getElementById('timestamp-result-controls');
         const retakeBtn = document.getElementById('retake-btn');
         const sendBtn = document.getElementById('send-telegram-btn');
+        const downloadBtn = document.getElementById('download-btn');
         const loading = document.getElementById('timestamp-loading');
         const video = document.getElementById('timestamp-video');
         const previewImg = document.getElementById('processed-photo-preview');
-        const locationInfo = document.getElementById('timestamp-location-info');
         const existingTorchBtn = document.getElementById('timestamp-torch-btn');
         
         if (existingTorchBtn) existingTorchBtn.remove();
 
-        startBtn.style.display = 'none';
         captureBtn.style.display = 'none';
         resultControls.style.display = 'none';
+        downloadBtn.style.display = 'none';
         loading.style.display = 'none';
         video.style.display = 'none';
         previewImg.style.display = 'none';
 
-        startBtn.disabled = false;
         captureBtn.disabled = false;
         retakeBtn.disabled = false;
         sendBtn.disabled = false;
+        downloadBtn.disabled = false;
         
-        const startBtnContent = startBtn.querySelector('.btn-content');
         const captureBtnContent = captureBtn.querySelector('.btn-content');
         const retakeBtnContent = retakeBtn.querySelector('.btn-content');
         const sendBtnContent = sendBtn.querySelector('.btn-content');
+        const downloadBtnContent = downloadBtn.querySelector('.btn-content');
         
-        startBtnContent.innerHTML = '<span class="btn-text">Начать фотосессию</span>';
         captureBtnContent.innerHTML = '<span class="btn-text">Сфотографировать</span>';
-        retakeBtnContent.innerHTML = '<span class="btn-text">Переснять</span>';
+        retakeBtnContent.innerHTML = '<span class="btn-text">Новая фотосессия</span>';
         sendBtnContent.innerHTML = '<span class="btn-text">Отправить в телегу</span>';
+        downloadBtnContent.innerHTML = '<span class="btn-text">Скачать</span>';
 
         if (timestampState !== 'sending' && sendingMessageInterval) {
             clearInterval(sendingMessageInterval);
             sendingMessageInterval = null;
         }
 
+        // Показываем кнопку скачивания только если не в Telegram и фото отправлено
+        if (!isInTelegram() && timestampState === 'sent') {
+            downloadBtn.style.display = 'block';
+        }
+
         switch (timestampState) {
             case 'initial':
-                startBtn.style.display = 'block';
-                startBtn.className = 'timestamp-btn primary';
                 loading.style.display = 'flex';
-                loading.textContent = 'Нажми кнопку ниже чтобы начать';
-                locationInfo.textContent = 'Нажми "Начать фотосессию" для запуска';
+                loading.textContent = 'Запуск камеры...';
                 break;
 
             case 'waiting_geo':
                 captureBtn.style.display = 'block';
-                captureBtn.className = 'timestamp-btn'; // Обычная, не приоритет
+                captureBtn.className = 'timestamp-btn';
                 captureBtn.disabled = true;
                 captureBtn.querySelector('.btn-text').textContent = 'Ждём гео...';
                 video.style.display = 'block';
-                locationInfo.textContent = 'Получаем твою геопозицию...';
                 break;
 
             case 'ready':
@@ -3538,7 +3475,6 @@
                 captureBtn.disabled = false;
                 video.style.display = 'block';
                 addTimestampTorchButton();
-                locationInfo.textContent = `Геопозиция получена.`;
                 break;
 
             case 'capturing':
@@ -3547,7 +3483,6 @@
                 captureBtn.disabled = true;
                 captureBtn.querySelector('.btn-text').textContent = 'Захватываем кадр...';
                 video.style.display = 'block';
-                locationInfo.textContent = 'Обрабатываем фото...';
                 break;
 
             case 'processing':
@@ -3555,15 +3490,18 @@
                 captureBtn.className = 'timestamp-btn';
                 captureBtn.disabled = true;
                 captureBtnContent.innerHTML = '<span class="loading-spinner"></span><span class="btn-text">Обработка...</span>';
-                locationInfo.textContent = 'Добавляем данные на фото...';
                 break;
 
             case 'ready_to_send':
                 resultControls.style.display = 'flex';
                 previewImg.style.display = 'block';
-                retakeBtn.className = 'timestamp-btn'; // Обычная, активная
-                sendBtn.className = 'timestamp-btn primary'; // Приоритет
-                locationInfo.textContent = 'Фото готово к отправке';
+                retakeBtn.className = 'timestamp-btn';
+                retakeBtn.querySelector('.btn-text').textContent = 'Переснять';
+                sendBtn.className = 'timestamp-btn primary';
+                if (!isInTelegram()) {
+                    downloadBtn.style.display = 'block';
+                    downloadBtn.className = 'timestamp-btn primary';
+                }
                 break;
 
             case 'sending':
@@ -3573,61 +3511,24 @@
                 sendBtn.className = 'timestamp-btn primary';
                 sendBtn.disabled = true;
                 sendBtnContent.innerHTML = '<span class="loading-spinner"></span><span class="btn-text">Отправка...</span>';
+                if (!isInTelegram()) {
+                    downloadBtn.style.display = 'block';
+                    downloadBtn.className = 'timestamp-btn';
+                    downloadBtn.disabled = true;
+                }
                 break;
 
             case 'sent':
                 resultControls.style.display = 'flex';
                 previewImg.style.display = 'block';
                 retakeBtn.className = 'timestamp-btn primary';
-                retakeBtn.querySelector('.btn-text').textContent = 'Новая фотосессия';
                 sendBtn.className = 'timestamp-btn';
                 sendBtn.disabled = true;
                 sendBtn.querySelector('.btn-text').textContent = 'Отправлено';
-                sendBtnContent.innerHTML = '<span class="btn-text">Отправлено</span>';
+                
+                downloadBtn.style.display = 'block';
+                downloadBtn.className = 'timestamp-btn primary';
                 break;
-        }
-    }
-
-    function restoreTimestampState() {
-        const previewImg = document.getElementById('processed-photo-preview');
-        const video = document.getElementById('timestamp-video');
-        const loading = document.getElementById('timestamp-loading');
-        const startBtn = document.getElementById('start-timestamp-btn');
-        const captureBtn = document.getElementById('timestamp-capture-btn');
-        const resultControls = document.getElementById('timestamp-result-controls');
-        
-        if (currentProcessedPhoto) {
-            previewImg.src = currentProcessedPhoto;
-            previewImg.style.display = 'block';
-            video.style.display = 'none';
-            loading.style.display = 'none';
-            startBtn.style.display = 'none';
-            captureBtn.style.display = 'none';
-            resultControls.style.display = 'flex';
-        } else if (timestampStream && locationReceived) {
-            video.style.display = 'block';
-            loading.style.display = 'none';
-            startBtn.style.display = 'none';
-            captureBtn.style.display = 'block';
-            captureBtn.disabled = false;
-            captureBtn.querySelector('.btn-text').textContent = 'Сфотографировать';
-            resultControls.style.display = 'none';
-        } else if (timestampStream) {
-            video.style.display = 'block';
-            loading.style.display = 'none';
-            startBtn.style.display = 'none';
-            captureBtn.style.display = 'block';
-            captureBtn.disabled = true;
-            captureBtn.querySelector('.btn-text').textContent = 'Без гео никак :(';
-            resultControls.style.display = 'none';
-        } else {
-            startBtn.style.display = 'block';
-            loading.style.display = 'flex';
-            loading.textContent = 'Нажми кнопку ниже чтобы начать';
-            video.style.display = 'none';
-            captureBtn.style.display = 'none';
-            resultControls.style.display = 'none';
-            previewImg.style.display = 'none';
         }
     }
 
@@ -3655,62 +3556,40 @@
             }
             cameraContainer.classList.remove('active');
         }
-    }
-
-    function showUserDataErrorModal() {
-        const modal = document.createElement('div');
-        modal.className = 'modal active';
-        modal.innerHTML = `
-            <div class="modal-content">
-                <h2 class="modal-title">Ошибка данных аккаунта</h2>
-                <p class="modal-text">
-                    Не удалось получить данные твоего аккаунта.<br><br>
-                    Это может повлиять на отправку заявки в ремонт и фотографий с таймстемпа.<br><br>
-                    Для решения проблемы попробуй перезайти в мини-апп.
-                </p>
-                <button class="modal-btn" onclick="location.reload()">Перезагрузить</button>
-            </div>
-        `;
-        document.body.appendChild(modal);
+        
+        stopGeoCollection();
     }
 
     function initTimestampEventListeners() {
-        const startBtn = document.getElementById('start-timestamp-btn');
         const captureBtn = document.getElementById('timestamp-capture-btn');
         const retakeBtn = document.getElementById('retake-btn');
         const sendBtn = document.getElementById('send-telegram-btn');
+        const downloadBtn = document.getElementById('download-btn');
 
-        if (startBtn) startBtn.onclick = startTimestampProcess;
         if (captureBtn) captureBtn.onclick = captureTimestampPhoto;
         if (retakeBtn) retakeBtn.onclick = retakeTimestampPhoto;
         if (sendBtn) sendBtn.onclick = sendTimestampToTelegram;
+        if (downloadBtn) downloadBtn.onclick = downloadPhoto;
     }
 
-    window.addEventListener('resize', setAppHeight);
-    window.addEventListener('orientationchange', setAppHeight);
-    window.addEventListener('resize', updateBottomNav);
-    window.addEventListener('load', updateBottomNav);
-    window.addEventListener('orientationchange', updateBottomNav);
-    window.visualViewport?.addEventListener('resize', setAppHeight);
-
     document.addEventListener('DOMContentLoaded', function() {
-        // initSecurity(); 
-
-        // if (!isLegitimateTelegramWebApp()) {
-        //     document.body.innerHTML = `
-        //         <div style="text-align: center; padding: 50px; color: white; background: black; height: 100vh;">
-        //             <h1>🚫 Доступ запрещён</h1>
-        //             <p style="margin-top: 30px;"">Тебе сюда нельзя</p>
-        //             <p style="margin-top: 30px;"">Доступ только через мини-апп в телеге</p>
-        //             <p style="margin-top: 30px; color: #ccc; font-size: 12px;">
-        //                 Если вы видишь это сообщение - обратись к админу<br>(или улепётывай отсюда)
-        //             </p>
-        //         </div>
-        //     `;
-        //     return;
-        // }
-
-        initTelegramWebApp();
+        if (window.Telegram && window.Telegram.WebApp) {
+            telegramWebApp = window.Telegram.WebApp;
+            
+            try {
+                telegramWebApp.ready();
+                telegramWebApp.expand();
+                
+                if (telegramWebApp.initDataUnsafe && telegramWebApp.initDataUnsafe.user) {
+                    userData = telegramWebApp.initDataUnsafe.user;
+                    console.log('Telegram WebApp initialized with user:', userData);
+                }
+            } catch (error) {
+                console.warn('Error initializing Telegram WebApp:', error);
+            }
+        } else {
+            console.warn('Telegram WebApp not detected, running in standalone mode');
+        }
 
         if (window.Telegram?.WebApp?.initDataUnsafe?.user) {
             userData = window.Telegram.WebApp.initDataUnsafe.user;
@@ -3719,7 +3598,7 @@
             console.warn('User data not available, continuing in limited mode');
         }
 
-        const targetPage = handleDeepLinks();
+        const targetPage = 'main';
         
         setTimeout(centerBikeSVG, 200);
         loadDamageData();
@@ -3778,6 +3657,10 @@
                 switchPage(pageId);
             });
         });
+
+        checkAndShowPWAPromo();
+
+        window.addEventListener('hashchange', checkAndShowPWAPromo);
     });
 </script>
 </body>
