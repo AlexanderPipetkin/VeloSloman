@@ -2617,7 +2617,7 @@
 
     async function loadBikeSVG() {
         try {
-            const response = await fetch('vel.svg');
+            const response = await fetch('media/models/vel.svg');
             const svgText = await response.text();
             const svgContainer = document.getElementById('bike-svg-container');
             svgContainer.innerHTML = svgText;
@@ -3741,4 +3741,5 @@
 </script>
 </body>
 </html>
+
 
