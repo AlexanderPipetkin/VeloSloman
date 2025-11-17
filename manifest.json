@@ -1,16 +1,15 @@
 {
-  "name": "Velobike Technic",
-  "short_name": "Velobike",
+  "name": "Тут был леха",
+  "short_name": "Жесткий ворк", 
   "description": "Тут был леха",
-  "start_url": "/VeloSloman/VeloSloman.html",
-  "scope": "/VeloSloman/VeloSloman.html",
-  "display": "fullscreen",
+  "start_url": "./VeloSloman.html",
+  "scope": "./",
+  "display": "standalone",
   "theme_color": "#000000",
   "background_color": "#000000",
-  "viewport": "width=device-width, initial-scale=1.0, viewport-fit=cover",
   "icons": [
     {
-      "src": "media/icons/main_icon.png",
+      "src": "./media/icons/main_icon.png",
       "sizes": "128x128",
       "type": "image/png"
     }
