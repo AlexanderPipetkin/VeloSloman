@@ -1,7 +1,7 @@
 {
-  "name": "Тут был леха",
-  "short_name": "Жесткий ворк", 
-  "description": "Тут был леха",
+  "name": "Велобайк",
+  "short_name": "Велобайк на связи", 
+  "description": "P.s: Тут был леха",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
@@ -16,4 +16,3 @@
   ],
   "orientation": "portrait"
 }
-
