@@ -50,7 +50,7 @@
         .container {
             max-width: 100%;
             margin: 0 auto;
-            padding: 0 15px;
+            
             overflow-x: hidden;
             box-sizing: border-box;
         }
@@ -220,7 +220,8 @@
             min-height: 300px;
             -webkit-overflow-scrolling: touch;
             scroll-behavior: smooth;
-            overflow: hidden;
+            overflow-x: auto;
+            overflow-y: hidden;
         }
         
         .bike-svg {
@@ -238,13 +239,15 @@
         }
 
         .bike-svg.animate {
-            animation: bikePulse 0.6s ease-in-out;
+            animation: bikeShake 0.6s ease-in-out;
         }
 
-        @keyframes bikePulse {
-            0% { transform: scale(0.95); }
-            50% { transform: scale(0.97); }
-            100% { transform: scale(0.95); }
+        @keyframes bikeScrollShake {
+            0% { scroll-behavior: auto; scroll-left: var(--start-scroll); }
+            25% { scroll-left: calc(var(--start-scroll) - 15px); }
+            50% { scroll-left: calc(var(--start-scroll) + 15px); }
+            75% { scroll-left: calc(var(--start-scroll) - 8px); }
+            100% { scroll-left: var(--start-scroll); }
         }
 
         .bike-container::-webkit-scrollbar {
@@ -1215,7 +1218,6 @@
         .pwa-promo {
             margin: 0 0;
             animation: fadeIn 0.5s ease;
-            padding: 0 15px;
         }
 
         .pwa-card {
@@ -1603,13 +1605,19 @@
     }
 
     function animateBikeSVG() {
+        const bikeContainer = document.querySelector('.bike-container');
         const bikeSVG = document.querySelector('.bike-svg');
-        if (bikeSVG) {
-            bikeSVG.classList.add('animate');
-            setTimeout(() => {
-                bikeSVG.classList.remove('animate');
-            }, 600);
-        }
+        
+        if (!bikeContainer || !bikeSVG) return;
+        
+        const startScroll = bikeContainer.scrollLeft;
+        bikeContainer.style.setProperty('--start-scroll', startScroll + 'px');
+        
+        bikeContainer.classList.add('animate');
+        setTimeout(() => {
+            bikeContainer.classList.remove('animate');
+            bikeContainer.style.scrollBehavior = 'smooth';
+        }, 600);
     }
 
     function showVehicleTypeModal(title, message) {
@@ -2076,7 +2084,7 @@
             const mapImg = new Image();
             mapImg.crossOrigin = "Anonymous";
             
-            const mapUrl = `https://static-maps.yandex.ru/1.x/?ll=${userCoords.longitude},${userCoords.latitude}&size=${Math.round(mapSize)},${Math.round(mapSize)}&z=14&l=map`;
+            const mapUrl = `https://static-maps.yandex.ru/1.x/?ll=${userCoords.longitude},${userCoords.latitude}&size=${Math.round(mapSize)},${Math.round(mapSize)}&z=15&l=map`;
             
             mapImg.onload = () => {
                 ctx.drawImage(mapImg, mapX, mapY, mapSize, mapSize);
@@ -2096,15 +2104,7 @@
                     
                     resolve();
                 };
-                markerImg.onerror = function() {
-                    ctx.fillStyle = '#E76623';
-                    ctx.beginPath();
-                    ctx.arc(mapX + mapSize/2, mapY + mapSize/2, mapSize * 0.05, 0, 2 * Math.PI);
-                    ctx.fill();
-                    ctx.strokeStyle = '#FFFFFF';
-                    ctx.lineWidth = 2;
-                    ctx.stroke();
-                    
+                markerImg.onerror = function() {                    
                     ctx.fillStyle = '#E76623';
                     ctx.font = 'bold 15px "Moscow Sans"';
                     ctx.textAlign = 'right';
@@ -2123,22 +2123,16 @@
                 ctx.strokeRect(mapX, mapY, mapSize, mapSize);
                 
                 ctx.fillStyle = '#ffffff';
-                ctx.font = 'bold 18px "Moscow Sans"';
+                ctx.font = 'bold 16px "Moscow Sans"';
                 ctx.textAlign = 'center';
-                ctx.fillText('Карта недоступна', mapX + mapSize/2, mapY + mapSize/2);
+                ctx.fillText('Карта', mapX + mapSize/2, mapY + mapSize/2 - 15);
+                ctx.fillText('не прогрузилась', mapX + mapSize/2, mapY + mapSize/2 + 5);
+                ctx.fillText(':(', mapX + mapSize/2, mapY + mapSize/2 + 25);
                 
                 ctx.fillStyle = '#E76623';
-                ctx.beginPath();
-                ctx.arc(mapX + mapSize/2, mapY + mapSize/2, mapSize * 0.05, 0, 2 * Math.PI);
-                ctx.fill();
-                ctx.strokeStyle = '#FFFFFF';
-                ctx.lineWidth = 2;
-                ctx.stroke();
-                
-                ctx.fillStyle = '#E76623';
-                ctx.font = 'bold 24px "Moscow Sans"';
+                ctx.font = 'bold 15px "Moscow Sans"';
                 ctx.textAlign = 'center';
-                ctx.fillText('Кто я?', mapX + mapSize/2, mapY + mapSize + 30);
+                ctx.fillText('Велобайк. Тут был леха.', mapX + mapSize/2, mapY + mapSize + 30);
                 
                 resolve();
             };
@@ -3374,13 +3368,6 @@
             navItem.classList.add('active');
         }
 
-        if (pageId === 'main') {
-        setTimeout(showPWAPromo, 500);
-        } else {
-            const promo = document.getElementById('pwa-promo');
-            if (promo) promo.style.display = 'none';
-        }
-
         if (pageId !== 'timestamp') {
             stopAllCameras();
         }
@@ -3394,13 +3381,7 @@
                 initTimestampCanvas();
                 initTimestampEventListeners();
                 
-                if (currentProcessedPhoto) {
-                    timestampState = 'ready_to_send';
-                } else if (timestampStream) {
-                    timestampState = locationReceived ? 'ready' : 'waiting_geo';
-                } else {
-                    timestampState = 'initial';
-                    // Автоматически запускаем процесс при открытии раздела
+                if (!timestampStream && timestampState === 'initial') {
                     startTimestampProcess();
                 }
                 
@@ -3558,6 +3539,13 @@
         }
         
         stopGeoCollection();
+        
+        if (timestampState !== 'initial') {
+            timestampState = 'initial';
+            updateTimestampUI();
+        }
+        
+        turnOffTorch();
     }
 
     function initTimestampEventListeners() {
