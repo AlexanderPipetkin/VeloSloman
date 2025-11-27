@@ -1,6 +1,6 @@
 {
   "name": "Velobike",
-  "short_name": "Velobike technic", 
+  "short_name": "Velobike_technic", 
   "description": "P.s: Тут был леха",
   "start_url": "./index.html",
   "scope": "./",
