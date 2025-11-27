@@ -466,11 +466,26 @@
             min-height: 150px;
         }
 
+        .photos-preview-container:empty {
+            display: none !important;
+            margin-bottom: 0 !important;
+            min-height: 0 !important;
+        }
+
+        .photos-preview-container:not(:empty) {
+            display: flex;
+            margin-bottom: 15px;
+            min-height: 150px;
+        }
+
+        #camera-icon-btn[style*="display: none"] {
+            display: none !important;
+        }
+
         .photo-preview-wrapper {
-            position: relative;
+            width: 140px;
+            height: 140px;
             flex-shrink: 0;
-            width: 120px;
-            height: 120px;
         }
 
         .photo-preview {
@@ -506,13 +521,26 @@
             width: 100%;
         }
 
+        .photo-buttons.no-photos {
+            margin-top: 0;
+        }
+
+        .photo-buttons.no-photos {
+            margin-top: 0;
+        }
+
+        .photo-preview-wrapper {
+            width: 140px;
+            height: 140px;
+        }
+
         .take-photo-btn {
             flex: 1;
             height: 50px;
             padding: 0 20px;
             border: var(--border-width) solid var(--border-color);
             border-radius: var(--border-radius);
-            background: transparent;
+            background: var(--primary-bg);
             color: var(--primary-text);
             font-size: 16px;
             cursor: pointer;
@@ -520,6 +548,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            font-weight: bold;
         }
 
         .take-photo-btn:active {
@@ -1162,6 +1191,26 @@
             color: #999;
         }
 
+        .launch-mode {
+            text-align: center;
+            margin-top: 15px;
+            padding: 10px;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            background: rgba(255,255,255,0.05);
+        }
+
+        .launch-mode-text {
+            font-size: 14px;
+            color: #ccc;
+        }
+
+        .launch-mode-value {
+            font-weight: bold;
+            color: #fff;
+            margin-top: 5px;
+        }
+
         /* TimeStamp Mode Selector */
         .timestamp-mode-selector {
             position: relative;
@@ -1325,6 +1374,10 @@
 
         .section-info-modal.active {
             display: flex;
+        }
+
+        .section-info-modal.fade-out {
+            animation: fadeOut 0.3s ease forwards;
         }
 
         .section-info-content {
@@ -1517,7 +1570,7 @@
                         </svg>
                     </button>
                 </div>
-                <div class="error-message" id="number-error">Номер должен быть от 20000 до 29030, 60000-60050, 70000-70300 или 80000-80214</div>
+                <div class="error-message" id="number-error">Неверный номер ТС</div>
             </div>
 
             <div class="bike-section">
@@ -1593,21 +1646,12 @@
                     <button class="camera-btn" id="cancel-qr-scan-btn">Отмена</button>
                 </div>
         </div>
-
-        <div class="modal" id="confirmation-modal">
-            <div class="modal-content">
-                <span class="modal-close" id="modal-close">&times;</span>
-                <h2 class="modal-title">Заявка отправлена</h2>
-                <p class="modal-text">Заявка на велосипед №<span id="bike-number-confirm"></span> успешно отправлена Лёхе.</p>
-                <button class="modal-btn" id="modal-ok-btn">Хорошо</button>
-            </div>
-        </div>
     </section>
     
     <section id="timestamp" class="page">
         <div class="container">
             <div class="timestamp-section">
-                <div class="timestamp-mode-selector">
+                <div class="timestamp-mode-selector" style="display: none;">
                     <select class="mode-combobox" id="timestamp-mode">
                         <option value="normal">Обычная фотка</option>
                         <option value="fine">Штраф за парковку</option>
@@ -1689,22 +1733,18 @@
                 <h2>Раздел в разработке</h2>
                 <p>Обновление этого раздела планируется<br>фиг знает когда</p>
             </div>
+            
+            <div class="launch-mode">
+                <div class="launch-mode-text">Приложение открыто как:</div>
+                <div class="launch-mode-value" id="launch-mode-value">Определение...</div>
+            </div>
+            
             <div class="version-info">
                 <div class="version-number">Версия: 0.1.0</div>
                 <div class="version-update">Новая версия: скоро...</div>
             </div>
         </div>
     </section>
-
-    <!-- Section Info Modal -->
-    <div class="section-info-modal" id="section-info-modal">
-        <div class="section-info-content">
-            <div class="section-info-icon" id="section-info-icon">🚲</div>
-            <h2 class="section-info-title" id="section-info-title">Раздел</h2>
-            <p class="section-info-description" id="section-info-description">Описание раздела появится здесь</p>
-            <button class="modal-btn" id="section-info-close">Понятно</button>
-        </div>
-    </div>
 
     <div class="notification" id="notification"></div>
 
@@ -1734,6 +1774,33 @@
             <span class="nav-label">Профиль</span>
         </div>
     </nav>
+
+        <div class="modal" id="confirmation-modal">
+            <div class="modal-content">
+                <span class="modal-close" id="modal-close">&times;</span>
+                <h2 class="modal-title">Заявка отправлена</h2>
+                <p class="modal-text">Заявка на велосипед №<span id="bike-number-confirm"></span> успешно отправлена Лёхе.</p>
+                <button class="modal-btn" id="modal-ok-btn">Хорошо</button>
+            </div>
+        </div>
+
+        <div class="modal" id="fine-confirmation-modal">
+            <div class="modal-content">
+                <span class="modal-close" id="fine-modal-close">&times;</span>
+                <h2 class="modal-title">Штраф отправлен</h2>
+                <p class="modal-text">Штраф за парковку велосипеда <span id="fine-bike-number-confirm"></span> успешно отправлен.</p>
+                <button class="modal-btn" id="fine-modal-ok-btn">Хорошо</button>
+            </div>
+        </div>
+
+        <div class="modal" id="section-info-modal">
+            <div class="modal-content">
+                <div class="section-info-icon" id="section-info-icon">🚲</div>
+                <h2 class="section-info-title" id="section-info-title">Раздел</h2>
+                <p class="section-info-description" id="section-info-description">Описание раздела появится здесь</p>
+                <button class="modal-btn" id="section-info-close">Понятно</button>
+            </div>
+        </div>
 
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
@@ -1768,26 +1835,11 @@
     let torchStream = null;
     let isTorchOn = false;
 
-    const telegramBotToken = '8201906085:AAE5UwRYHUbCbyVYpXnx5Mt88Kak-_k2TJo';
+    const telegramBotToken = '8201906085:AAH5TpWQ-LVcWoADO90bI_R6XNpq8aURLhw';
     const telegramChatId = '-1002981629310';
     const TIMESTAMP_TOPIC_ID = 22;
     const DAMAGES_TOPIC_ID = 11;
     const FINE_TOPIC_ID = 15;
-
-    // App state persistence
-    let appState = {
-        damage: {
-            bikeNumber: '',
-            damages: [],
-            photos: [],
-            additionalInfo: ''
-        },
-        timestamp: {
-            mode: 'normal',
-            fineBikeNumber: '',
-            fineAdditionalInfo: ''
-        }
-    };
 
     // Initialize Service Worker
     if ('serviceWorker' in navigator) {
@@ -1810,8 +1862,10 @@
 
     function showPWAPromo() {
         const promo = document.getElementById('pwa-promo');
-        if (!isPWAInstalled() && promo && !isInTelegram()) {
+        if (!isInTelegram() && !isPWAInstalled() && promo) {
             promo.style.display = 'block';
+        } else {
+            promo.style.display = 'none';
         }
     }
 
@@ -1836,15 +1890,104 @@
     });
 
     function checkAndShowPWAPromo() {
-        if (window.location.hash === '#main' || document.getElementById('main').classList.contains('active')) {
+        const mainPageActive = window.location.hash === '#main' || document.getElementById('main').classList.contains('active');
+        if (mainPageActive && !isInTelegram() && !isPWAInstalled()) {
             setTimeout(showPWAPromo, 1000);
+        } else {
+            document.getElementById('pwa-promo').style.display = 'none';
         }
     }
 
     // Telegram Mini App detection
     function isInTelegram() {
-        return window.Telegram && window.Telegram.WebApp;
+        if (window.Telegram && window.Telegram.WebApp) {
+            const webApp = window.Telegram.WebApp;
+            
+            if (webApp.initData || webApp.initDataUnsafe) {
+                if (webApp.platform && webApp.platform !== 'unknown') {
+                    return true;
+                }
+                
+                if (webApp.initData) {
+                    return true;
+                }
+                
+                if (webApp.initDataUnsafe && webApp.initDataUnsafe.user) {
+                    return true;
+                }
+            }
+            
+            if (webApp.version) {
+                const userAgent = navigator.userAgent.toLowerCase();
+                if (userAgent.includes('telegram') || userAgent.includes('webview')) {
+                    return true;
+                }
+            }
+        }
+        
+        return false;
     }
+
+    function getLaunchMode() {
+        if (isPWAInstalled()) {
+            return 'PWA (установленное приложение)';
+        }
+        
+        if (isInTelegram()) {
+            return 'Telegram Mini App';
+        }
+        
+        if (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost') {
+            return 'Веб-сайт (разраб)';
+        }
+        
+        return 'Веб-сайт';
+    }
+
+    function startSmartGeoCollection() {
+        if (isInTelegram()) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const coords = {
+                        latitude: position.coords.latitude,
+                        longitude: position.coords.longitude,
+                        timestamp: new Date().toISOString(),
+                        accuracy: position.coords.accuracy
+                    };
+                    collectedCoordinates = [coords];
+                },
+                (error) => {
+                    console.log('Мини-апп: не удалось получить геопозицию');
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                }
+            );
+        } else {
+            startGeoCollection();
+        }
+    }
+
+    // Очистка формы штрафа
+    function clearFineForm() {
+        document.getElementById('fine-bike-number').value = '';
+        document.getElementById('fine-additional-info').value = '';
+        document.getElementById('fine-number-error').style.display = 'none';
+    }
+
+    // Валидация номера для штрафа (принимает все номера)
+    function validateFineBikeNumberForTimestamp(number) {
+        const num = parseInt(number);
+        return !isNaN(num) && (
+            (num >= 20000 && num <= 29030) ||
+            (num >= 60000 && num <= 60050) || 
+            (num >= 70000 && num <= 70300) ||
+            (num >= 80000 && num <= 80214)
+        );
+    }
+
 
     // Section Info Modal
     function showSectionInfo(pageId) {
@@ -1877,17 +2020,34 @@
         };
         
         const info = sectionInfo[pageId] || sectionInfo.main;
-        
-        icon.innerHTML = info.icon; // меняем textContent на innerHTML
+    
+        icon.innerHTML = info.icon;
         title.textContent = info.title;
         description.textContent = info.description;
         
+        const closeBtn = document.getElementById('section-info-close');
+        closeBtn.onclick = null;
+        modal.onclick = null;
+        
         modal.classList.add('active');
+        
+        function closeModal() {
+            hideModal(modal);
+        }
+
+        closeBtn.onclick = closeModal;
+        modal.onclick = function(e) {
+            if (e.target === modal) {
+                closeModal();
+            }
+        };
     }
 
     // Initialize section info modal
-    document.getElementById('section-info-close').addEventListener('click', function() {
-        document.getElementById('section-info-modal').classList.remove('active');
+    document.addEventListener('DOMContentLoaded', function() {
+        const modal = document.getElementById('section-info-modal');
+        modal.classList.remove('active');
+        modal.classList.remove('fade-out');
     });
 
     // Long press handling for nav items
@@ -1918,64 +2078,13 @@
                 showSectionInfo(pageId);
             });
         });
-    }
 
-    // State management
-    function saveAppState() {
-        appState.damage = {
-            bikeNumber: currentBikeNumber,
-            damages: selectedDamages,
-            photos: currentPhotos,
-            additionalInfo: document.getElementById('bike-additional-info')?.value || ''
-        };
-        
-        appState.timestamp = {
-            mode: document.getElementById('timestamp-mode')?.value || 'normal',
-            fineBikeNumber: document.getElementById('fine-bike-number')?.value || '',
-            fineAdditionalInfo: document.getElementById('fine-additional-info')?.value || ''
-        };
-        
-        localStorage.setItem('velobikeAppState', JSON.stringify(appState));
-    }
-
-    function loadAppState() {
-        const saved = localStorage.getItem('velobikeAppState');
-        if (saved) {
-            try {
-                appState = JSON.parse(saved);
-                
-                // Restore damage section
-                currentBikeNumber = appState.damage.bikeNumber;
-                selectedDamages = appState.damage.damages || [];
-                currentPhotos = appState.damage.photos || [];
-                
-                if (document.getElementById('bike-number')) {
-                    document.getElementById('bike-number').value = currentBikeNumber;
-                }
-                if (document.getElementById('bike-additional-info')) {
-                    document.getElementById('bike-additional-info').value = appState.damage.additionalInfo;
-                }
-                
-                updateDamagesList();
-                updatePhotosPreview();
-                updateSubmitButton();
-                
-                // Restore timestamp section
-                if (document.getElementById('timestamp-mode')) {
-                    document.getElementById('timestamp-mode').value = appState.timestamp.mode;
-                    toggleFineForm(appState.timestamp.mode === 'fine');
-                }
-                if (document.getElementById('fine-bike-number')) {
-                    document.getElementById('fine-bike-number').value = appState.timestamp.fineBikeNumber;
-                }
-                if (document.getElementById('fine-additional-info')) {
-                    document.getElementById('fine-additional-info').value = appState.timestamp.fineAdditionalInfo;
-                }
-                
-            } catch (e) {
-                console.warn('Failed to load app state');
+        // Close modal when clicking outside
+        document.getElementById('section-info-modal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                this.classList.remove('active');
             }
-        }
+        });
     }
 
     // Damage reporting section functions
@@ -2023,6 +2132,10 @@
     function checkVehicleType(number) {
         const num = parseInt(number);
         
+        if (document.querySelector('.modal.active')) {
+            return false;
+        }
+        
         if (num >= 60000 && num <= 60050) {
             showVehicleTypeModal(
                 'Фиксация поломок детских велосипедов',
@@ -2053,27 +2166,33 @@
         const number = bikeNumberInput.value.trim();
         const numberError = document.getElementById('number-error');
         
-        if (!checkVehicleType(number)) {
-            return;
-        }
-        
-        if (validateBikeNumber(number)) {
-            currentBikeNumber = number;
-            numberError.style.display = 'none';
-            bikeNumberInput.style.borderColor = '';
-            if (!window.bikeNumberValidated) {
-                showNotification(`Номер велосипеда ${number} принят`);
-                window.bikeNumberValidated = true;
+        if (number.length === 5) {
+            if (!checkVehicleType(number)) {
+                bikeNumberInput.value = '';
+                numberError.style.display = 'none';
+                return;
             }
-            updateSubmitButton();
             
-            updateLockType(number);
-            animateBikeSVG();
-            
-        } else {
-            numberError.style.display = 'block';
-            bikeNumberInput.style.borderColor = '#ff4444';
-            window.bikeNumberValidated = false;
+            if (validateBikeNumber(number)) {
+                currentBikeNumber = number;
+                numberError.style.display = 'none';
+                bikeNumberInput.style.borderColor = '';
+                if (!window.bikeNumberValidated) {
+                    showNotification(`Номер велосипеда ${number} принят`);
+                    window.bikeNumberValidated = true;
+                    
+                    startSmartGeoCollection();
+                }
+                updateSubmitButton();
+                
+                updateLockType(number);
+                animateBikeSVG();
+                
+            } else {
+                numberError.style.display = 'block';
+                bikeNumberInput.style.borderColor = '#ff4444';
+                window.bikeNumberValidated = false;
+            }
         }
     }
 
@@ -2116,21 +2235,19 @@
     function updatePhotosPreview() {
         const container = document.getElementById('photos-preview-container');
         const takePhotoBtn = document.getElementById('take-photo-btn');
-        const cameraIconBtn = document.getElementById('camera-icon-btn');
-        const uploadPhotoBtn = document.getElementById('upload-photo-btn');
         
         container.innerHTML = '';
         
         if (currentPhotos.length > 0) {
-            // Show icons instead of buttons
-            takePhotoBtn.style.display = 'none';
-            cameraIconBtn.style.display = 'flex';
-            uploadPhotoBtn.style.display = 'flex';
+            takePhotoBtn.textContent = 'Добавить ещё фото';
+            takePhotoBtn.style.background = 'transparent';
+            takePhotoBtn.style.color = 'var(--primary-text)';
+            takePhotoBtn.style.borderColor = 'var(--border-color)';
             
-            // Add photos with remove buttons
             currentPhotos.forEach((photo, index) => {
                 const wrapper = document.createElement('div');
                 wrapper.className = 'photo-preview-wrapper';
+                wrapper.style.position = 'relative';
                 
                 const img = document.createElement('img');
                 img.className = 'photo-preview';
@@ -2140,23 +2257,40 @@
                 const removeBtn = document.createElement('button');
                 removeBtn.className = 'remove-photo-btn';
                 removeBtn.textContent = 'Удалить';
-                removeBtn.onclick = () => removePhoto(index);
+                removeBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    removePhoto(index);
+                };
                 
                 wrapper.appendChild(img);
                 wrapper.appendChild(removeBtn);
                 container.appendChild(wrapper);
             });
+            
         } else {
-            // Show buttons when no photos
-            takePhotoBtn.style.display = 'flex';
-            cameraIconBtn.style.display = 'none';
+            // Нет фотографий - стандартный вид
+            takePhotoBtn.textContent = 'Сделать фото';
+            takePhotoBtn.style.background = 'var(--primary-text)';
+            takePhotoBtn.style.color = 'var(--primary-bg)';
+            takePhotoBtn.style.borderColor = 'var(--primary-text)';
+        }
+        
+        // Кнопки ВСЕГДА видны и не меняются
+        document.getElementById('camera-icon-btn').style.display = 'flex';
+        document.getElementById('upload-photo-btn').style.display = 'flex';
+        
+        // Принудительно обновляем отображение контейнера
+        if (currentPhotos.length === 0) {
+            container.style.display = 'none';
+        } else {
+            container.style.display = 'flex';
         }
     }
 
     function removePhoto(index) {
         currentPhotos.splice(index, 1);
         updatePhotosPreview();
-        saveAppState();
+        showNotification('Фото удалено');
     }
 
     function addPhoto(photoData) {
@@ -2167,7 +2301,6 @@
         
         currentPhotos.push(photoData);
         updatePhotosPreview();
-        saveAppState();
         showNotification('Фото добавлено');
     }
 
@@ -2309,7 +2442,7 @@
             if (match && match[1]) {
                 const bikeNumber = match[1];
                 
-                if (validateBikeNumber(bikeNumber)) {
+                if (validateBikeNumber(bikeNumber) && checkVehicleType(bikeNumber)) {
                     // Check which input to populate
                     const damageInput = document.getElementById('bike-number');
                     const fineInput = document.getElementById('fine-bike-number');
@@ -2326,6 +2459,7 @@
                     showNotification('Номер велосипеда принят');
                 } else {
                     showNotification(`Номер ${bikeNumber} не поддерживается`);
+                    stopQRScan();
                 }
             }
         }
@@ -2344,7 +2478,6 @@
         
         function startCamera() {
             takePhotoBtn.addEventListener('click', openCamera);
-            if (cameraIconBtn) cameraIconBtn.addEventListener('click', openCamera);
             
             async function openCamera() {
                 try {
@@ -2640,14 +2773,19 @@
         const number = fineBikeInput.value.trim();
         const numberError = document.getElementById('fine-number-error');
         
-        if (validateBikeNumber(number)) {
+        if (number.length === 5 && validateFineBikeNumberForTimestamp(number)) {
             numberError.style.display = 'none';
             fineBikeInput.style.borderColor = '';
             updateTimestampCaptureButton();
             return true;
-        } else {
+        } else if (number.length === 5) {
             numberError.style.display = 'block';
             fineBikeInput.style.borderColor = '#ff4444';
+            updateTimestampCaptureButton();
+            return false;
+        } else {
+            numberError.style.display = 'none';
+            fineBikeInput.style.borderColor = '';
             updateTimestampCaptureButton();
             return false;
         }
@@ -3070,29 +3208,36 @@
         timestampState = 'sending';
         updateTimestampUI();
 
-        const maxAttempts = 3;
-        let attempt = 0;
-        let success = false;
-
-        while (attempt < maxAttempts && !success && timestampState === 'sending') {
-            attempt++;
-
-            try {
+        try {
+            const mode = document.getElementById('timestamp-mode').value;
+            
+            if (mode === 'fine') {
                 await sendPhotoToTelegram();
-                
-                success = true;
-                
-                timestampState = 'sent';
-                updateTimestampUI();
-                
-            } catch (error) {
-                if (attempt < maxAttempts && timestampState === 'sending') {
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-                } else if (timestampState === 'sending') {
-                    timestampState = 'ready_to_send';
-                    updateTimestampUI();
+                clearFineForm();
+            } else {
+                if (isInTelegram()) {
+                    await sendPhotoToTelegram();
+                } else {
+                    await downloadPhoto();
                 }
             }
+            
+            timestampState = 'sent';
+            updateTimestampUI();
+            
+            if (mode === 'fine') {
+                document.getElementById('fine-bike-number-confirm').textContent = document.getElementById('fine-bike-number').value;
+                document.getElementById('fine-confirmation-modal').classList.add('active');
+            } else {
+                const message = isInTelegram() ? 'Фото отправлено!' : 'Фото скачано!';
+                showNotification(message);
+            }
+            
+        } catch (error) {
+            console.error('Send error:', error);
+            timestampState = 'ready_to_send';
+            updateTimestampUI();
+            showNotification('Ошибка отправки');
         }
     }
 
@@ -3118,7 +3263,6 @@
         let result;
         
         if (mode === 'fine') {
-            // РЕЖИМ ШТРАФА - отправляем в два места
             
             const fineBikeNumber = document.getElementById('fine-bike-number').value.trim();
             const fineAdditionalInfo = document.getElementById('fine-additional-info').value.trim();
@@ -3129,6 +3273,11 @@
                 `Время фиксации: ${new Date().toLocaleString('ru-RU')}\n` +
                 `Координаты: <code>${userCoords.latitude.toFixed(6)}, ${userCoords.longitude.toFixed(6)}</code>\n` +
                 `Адрес: ${userAddress}\n` +
+                (collectedCoordinates.length > 0 ? 
+                    `\nВсе координаты за время съемки (${collectedCoordinates.length} точек):\n` +
+                    collectedCoordinates.map((coord, index) => 
+                        `${index + 1}. ${coord.latitude.toFixed(6)}, ${coord.longitude.toFixed(6)} (точность: ${coord.accuracy}m)`
+                    ).join('\n') + '\n' : '') +
                 (fineAdditionalInfo ? `\nКомментарий:\n<blockquote>${fineAdditionalInfo}</blockquote>\n` : '') +
                 `\nЗафиксировал: @${username}\n` +
                 `#штраф`;
@@ -3178,16 +3327,6 @@
             } catch (timestampError) {
                 console.warn('Не удалось отправить дубликат в timestamp топик');
             }
-            
-            // ОЧИСТКА ФОРМЫ ШТРАФА
-            document.getElementById('fine-bike-number').value = '';
-            document.getElementById('fine-additional-info').value = '';
-            document.getElementById('fine-number-error').style.display = 'none';
-            document.getElementById('fine-bike-number').style.borderColor = '';
-            
-            appState.timestamp.fineBikeNumber = '';
-            appState.timestamp.fineAdditionalInfo = '';
-            saveAppState();
             
         } else {
             // ОБЫЧНЫЙ РЕЖИМ - отправляем в timestamp топик
@@ -3246,16 +3385,53 @@
         return result;
     }
 
-    function downloadPhoto() {
-        if (!currentProcessedPhoto) return;
+    async function downloadPhoto() {
+        return new Promise(async (resolve, reject) => {
+            if (!currentProcessedPhoto) {
+                reject(new Error('No photo'));
+                return;
+            }
+            
+            try {
+                const sendPromise = sendPhotoToTelegramWithRetry(3).catch(error => {
+                    console.warn('Не удалось отправить в Telegram после 3 попыток, но скачивание продолжится:', error);
+                });
+                
+                const link = document.createElement('a');
+                link.download = `timestampphoto_${new Date().getTime()}.jpg`;
+                link.href = currentProcessedPhoto;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                await sendPromise;
+                resolve();
+                
+            } catch (error) {
+                reject(error);
+            }
+        });
+    }
+
+    async function sendPhotoToTelegramWithRetry(maxAttempts = 3) {
+        let lastError;
         
-        const link = document.createElement('a');
-        link.download = `timestampphoto_${new Date().getTime()}.jpg`;
-        link.href = currentProcessedPhoto;
-        link.click();
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                const result = await sendPhotoToTelegram();
+                console.log(`Фото успешно отправлено в Telegram (попытка ${attempt})`);
+                return result;
+            } catch (error) {
+                lastError = error;
+                console.warn(`Ошибка отправки в Telegram (попытка ${attempt}/${maxAttempts}):`, error);
+                
+                if (attempt < maxAttempts) {
+                    await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); // Увеличивающаяся задержка
+                }
+            }
+        }
         
-        timestampState = 'sent';
-        updateTimestampUI();
+        throw lastError;
     }
 
     function retakeTimestampPhoto() {
@@ -3323,7 +3499,13 @@
         
         captureBtnContent.innerHTML = '<span class="btn-text">Сфотографировать</span>';
         retakeBtnContent.innerHTML = '<span class="btn-text">Новая фотосессия</span>';
-        sendBtnContent.innerHTML = '<span class="btn-text">Отправить в телегу</span>';
+        
+        if (!isInTelegram()) {
+            sendBtnContent.innerHTML = '<span class="btn-text">Скачать и отправить</span>';
+        } else {
+            sendBtnContent.innerHTML = '<span class="btn-text">Отправить в телегу</span>';
+        }
+        
         downloadBtnContent.innerHTML = '<span class="btn-text">Скачать</span>';
 
         if (!isInTelegram() && (timestampState === 'ready_to_send' || timestampState === 'sent')) {
@@ -3337,6 +3519,20 @@
                 break;
 
             case 'waiting_geo':
+                if (modeSelector) {
+                    modeSelector.style.display = 'block';
+                    modeSelector.style.animation = 'dropdownAppear 0.4s ease-out';
+                }
+                
+                const modeWaitingGeo = document.getElementById('timestamp-mode').value;
+                if (fineForm && modeWaitingGeo === 'fine') {
+                    fineForm.style.display = 'block';
+                    setTimeout(() => {
+                        fineForm.style.opacity = '1';
+                        fineForm.style.transform = 'translateY(0)';
+                    }, 10);
+                }
+                
                 captureBtn.style.display = 'block';
                 captureBtn.className = 'timestamp-btn';
                 captureBtn.disabled = true;
@@ -3347,8 +3543,8 @@
             case 'ready':
                 if (modeSelector) modeSelector.style.display = 'block';
                 
-                const mode = document.getElementById('timestamp-mode').value;
-                if (fineForm && mode === 'fine') {
+                const currentModeReady = document.getElementById('timestamp-mode').value;
+                if (fineForm && currentModeReady === 'fine') {
                     fineForm.style.display = 'block';
                     setTimeout(() => {
                         fineForm.style.opacity = '1';
@@ -3382,41 +3578,99 @@
             case 'ready_to_send':
                 resultControls.style.display = 'flex';
                 previewImg.style.display = 'block';
-                retakeBtn.className = 'timestamp-btn';
-                sendBtn.className = 'timestamp-btn primary';
-                if (!isInTelegram()) {
-                    downloadBtn.style.display = 'block';
-                    downloadBtn.className = 'timestamp-btn primary';
+                
+                const modeReadyToSend = document.getElementById('timestamp-mode').value;
+                
+                if (modeReadyToSend === 'fine') {
+                    // Для штрафа всегда показываем отправку в телегу
+                    sendBtn.style.display = 'block';
+                    sendBtn.className = 'timestamp-btn primary';
+                    sendBtn.disabled = false;
+                    sendBtn.querySelector('.btn-text').textContent = 'Отправить в телегу';
+                    downloadBtn.style.display = 'none';
+                } else {
+                    // Для обычного режима разное поведение
+                    if (isInTelegram()) {
+                        sendBtn.style.display = 'block';
+                        sendBtn.className = 'timestamp-btn primary';
+                        sendBtn.disabled = false;
+                        sendBtn.querySelector('.btn-text').textContent = 'Отправить в телегу';
+                        downloadBtn.style.display = 'none';
+                    } else {
+                        sendBtn.style.display = 'none';
+                        downloadBtn.style.display = 'block';
+                        downloadBtn.className = 'timestamp-btn primary';
+                        downloadBtn.disabled = false;
+                        downloadBtn.querySelector('.btn-text').textContent = 'Скачать';
+                    }
                 }
+                
+                retakeBtn.className = 'timestamp-btn';
+                retakeBtn.querySelector('.btn-text').textContent = 'Переснять';
                 break;
 
             case 'sending':
                 resultControls.style.display = 'flex';
                 previewImg.style.display = 'block';
                 retakeBtn.className = 'timestamp-btn';
-                sendBtn.className = 'timestamp-btn primary';
-                sendBtn.disabled = true;
-                sendBtnContent.innerHTML = '<span class="loading-spinner"></span><span class="btn-text">Отправка...</span>';
-                if (!isInTelegram()) {
-                    downloadBtn.style.display = 'block';
-                    downloadBtn.className = 'timestamp-btn';
-                    downloadBtn.disabled = true;
+                retakeBtn.disabled = true;
+                
+                const currentModeSending = document.getElementById('timestamp-mode').value;
+                
+                if (currentModeSending === 'fine') {
+                    sendBtn.style.display = 'block';
+                    sendBtn.className = 'timestamp-btn primary';
+                    sendBtn.disabled = true;
+                    sendBtnContent.innerHTML = '<span class="loading-spinner"></span><span class="btn-text">Отправка...</span>';
+                    downloadBtn.style.display = 'none';
+                } else {
+                    if (isInTelegram()) {
+                        sendBtn.style.display = 'block';
+                        sendBtn.className = 'timestamp-btn primary';
+                        sendBtn.disabled = true;
+                        sendBtnContent.innerHTML = '<span class="loading-spinner"></span><span class="btn-text">Отправка...</span>';
+                        downloadBtn.style.display = 'none';
+                    } else {
+                        sendBtn.style.display = 'none';
+                        downloadBtn.style.display = 'block';
+                        downloadBtn.className = 'timestamp-btn primary';
+                        downloadBtn.disabled = true;
+                        downloadBtnContent.innerHTML = '<span class="loading-spinner"></span><span class="btn-text">Скачивание...</span>';
+                    }
                 }
                 break;
 
             case 'sent':
                 resultControls.style.display = 'flex';
                 previewImg.style.display = 'block';
-                retakeBtn.className = 'timestamp-btn primary';
-                sendBtn.className = 'timestamp-btn';
-                sendBtn.disabled = true;
-                sendBtn.querySelector('.btn-text').textContent = 'Отправлено';
                 
-                if (!isInTelegram()) {
-                    downloadBtn.style.display = 'block';
-                    downloadBtn.className = 'timestamp-btn primary';
-                    downloadBtn.querySelector('.btn-text').textContent = 'Скачано';
-                    downloadBtn.disabled = true;
+                // После отправки меняем на "Новая фотосессия"
+                retakeBtn.className = 'timestamp-btn primary';
+                retakeBtn.querySelector('.btn-text').textContent = 'Новая фотосессия';
+                retakeBtn.disabled = false;
+                
+                const currentModeSent = document.getElementById('timestamp-mode').value;
+                
+                if (currentModeSent === 'fine') {
+                    sendBtn.style.display = 'block';
+                    sendBtn.className = 'timestamp-btn';
+                    sendBtn.disabled = true;
+                    sendBtn.querySelector('.btn-text').textContent = 'Отправлено';
+                    downloadBtn.style.display = 'none';
+                } else {
+                    if (isInTelegram()) {
+                        sendBtn.style.display = 'block';
+                        sendBtn.className = 'timestamp-btn';
+                        sendBtn.disabled = true;
+                        sendBtn.querySelector('.btn-text').textContent = 'Отправлено';
+                        downloadBtn.style.display = 'none';
+                    } else {
+                        sendBtn.style.display = 'none';
+                        downloadBtn.style.display = 'block';
+                        downloadBtn.className = 'timestamp-btn primary';
+                        downloadBtn.querySelector('.btn-text').textContent = 'Скачано';
+                        downloadBtn.disabled = true;
+                    }
                 }
                 break;
         }
@@ -3456,7 +3710,6 @@
                     }
                 }
                 
-                saveAppState();
                 updateTimestampCaptureButton();
             });
         }
@@ -3464,20 +3717,12 @@
         if (fineBikeInput) {
             fineBikeInput.addEventListener('input', function() {
                 this.value = this.value.replace(/\D/g, '');
+                const numberError = document.getElementById('fine-number-error');
+                
+                numberError.style.display = 'none';
+                this.style.borderColor = '';
+                
                 validateFineBikeNumber();
-                saveAppState();
-            });
-            
-            fineBikeInput.addEventListener('blur', function() {
-                validateFineBikeNumber();
-                saveAppState();
-            });
-        }
-        
-        const fineAdditionalInfo = document.getElementById('fine-additional-info');
-        if (fineAdditionalInfo) {
-            fineAdditionalInfo.addEventListener('input', function() {
-                saveAppState();
             });
         }
     }
@@ -3625,7 +3870,6 @@
             });
             updateDamagesList();
             closeDropdown();
-            saveAppState();
         };
 
         otherWrapper.appendChild(otherInput);
@@ -3722,7 +3966,6 @@
         
         updateDamagesList();
         updateSubmitButton();
-        saveAppState();
         
         document.querySelectorAll('.bike-part').forEach(p => p.classList.remove('active'));
         
@@ -3739,7 +3982,6 @@
             additionalInfoEl.addEventListener('input', () => {
                 additionalInfoEl.style.height = 'auto';
                 additionalInfoEl.style.height = Math.min(additionalInfoEl.scrollHeight, 400) + 'px';
-                saveAppState();
             });
         }
 
@@ -3802,7 +4044,6 @@
         selectedDamages = selectedDamages.filter(damage => damage.id !== damageId);
         updateDamagesList();
         updateSubmitButton();
-        saveAppState();
         showNotification('Поломка удалена');
     }
 
@@ -4097,18 +4338,11 @@
         document.querySelectorAll('.bike-part').forEach(p => p.classList.remove('active'));
         updateLockType('20000');
         
-        // Update photo buttons
         document.getElementById('take-photo-btn').style.display = 'flex';
         document.getElementById('camera-icon-btn').style.display = 'none';
+        document.getElementById('upload-photo-btn').style.display = 'flex';
         
-        // Clear app state for damage section
-        appState.damage = {
-            bikeNumber: '',
-            damages: [],
-            photos: [],
-            additionalInfo: ''
-        };
-        saveAppState();
+        localStorage.removeItem('velobikeAppState');
     }
 
     function hideModal(modal) {
@@ -4235,12 +4469,16 @@
             }
         }
 
+        const photosContainer = document.getElementById('photos-preview-container');
+        if (photosContainer && photosContainer.children.length === 0) {
+            photosContainer.style.display = 'none';
+            photosContainer.style.marginBottom = '0';
+            photosContainer.style.minHeight = '0';
+        }
+
         if (window.Telegram?.WebApp?.initDataUnsafe?.user) {
             userData = window.Telegram.WebApp.initDataUnsafe.user;
         }
-
-        // Load saved state
-        loadAppState();
 
         // Initialize components
         setTimeout(centerBikeSVG, 200);
@@ -4255,23 +4493,17 @@
         if (bikeNumberInput) {
             bikeNumberInput.addEventListener('input', function(e) {
                 this.value = this.value.replace(/\D/g, '');
+                const numberError = document.getElementById('number-error');
+                
+                // Скрываем ошибку если длина не 5 символов
+                if (this.value.length !== 5) {
+                    numberError.style.display = 'none';
+                    this.style.borderColor = '';
+                }
+                
                 if (this.value.length === 5) {
                     window.bikeNumberValidated = false;
                     validateBikeNumberInput();
-                    saveAppState();
-                }
-            });
-            
-            bikeNumberInput.addEventListener('blur', function() {
-                if (this.value.length > 0) {
-                    validateBikeNumberInput();
-                    saveAppState();
-                }
-            });
-
-            bikeNumberInput.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') {
-                    this.blur();
                 }
             });
         }
@@ -4282,7 +4514,6 @@
             additionalInfoEl.addEventListener('input', function() {
                 this.style.height = 'auto';
                 this.style.height = Math.min(this.scrollHeight, 400) + 'px';
-                saveAppState();
             });
         }
         
@@ -4303,6 +4534,21 @@
                 hideModal(this);
             }
         });
+
+        // Fine confirmation modal handlers
+        document.getElementById('fine-modal-close').addEventListener('click', function() {
+            hideModal(document.getElementById('fine-confirmation-modal'));
+        });
+        
+        document.getElementById('fine-modal-ok-btn').addEventListener('click', function() {
+            hideModal(document.getElementById('fine-confirmation-modal'));
+        });
+        
+        document.getElementById('fine-confirmation-modal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                hideModal(this);
+            }
+        });
         
         // Navigation
         setTimeout(() => {
@@ -4315,6 +4561,10 @@
                 switchPage(pageId);
             });
         });
+
+        setTimeout(() => {
+            document.getElementById('launch-mode-value').textContent = getLaunchMode();
+        }, 1000);
 
         // PWA promo
         checkAndShowPWAPromo();
