@@ -2557,7 +2557,7 @@
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
                 
-                addPhoto(canvas.toDataURL('image/jpeg', 0.8));
+                addPhoto(canvas.toDataURL('image/png', 0.95));
                 
                 turnOffTorch();
                 
@@ -2853,8 +2853,8 @@
             const stream = await navigator.mediaDevices.getUserMedia({
                 video: { 
                     facingMode: { ideal: 'environment' },
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 }
+                    width: { ideal: 1920 },
+                    height: { ideal: 1080 }
                 },
                 audio: false
             });
@@ -2997,7 +2997,7 @@
             await addMapToPhoto(ctx, processedCanvas.width, processedCanvas.height, mode);
             addTextToPhoto(ctx, processedCanvas.width, processedCanvas.height, mode);
             
-            currentProcessedPhoto = processedCanvas.toDataURL('image/jpeg', 1.0);
+            currentProcessedPhoto = processedCanvas.toDataURL('image/png', 0.95);
             
             const previewImg = document.getElementById('processed-photo-preview');
             previewImg.src = currentProcessedPhoto;
